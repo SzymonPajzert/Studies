@@ -27,19 +27,20 @@ let max_wartosc x =
 (*Jesli zbior jest jednoprzedzialowy to maximum jest jego wiekszy koniec, w przeciwnym wypadku infinity *)
 
 let przeciwienstwo (x:wartosc) =
-   let (a, b, c) 
+   let (a, b, c) = x
    in 
-      (a, - b, - c)
+      ((a, -. b, -. c):wartosc)
 (* Przedzialowa liczebnosc sie nie zmienia, zmieniamy jedynie znaki koncowek *)
 
-let plus x y = 
+let plus (x:wartosc) (y:wartosc) = 
    let ((xa, xb, xc), (ya, yb, yc)) = (x, y)
    in
-      if xa && xb
+      if (xa && ya)
       then
-         (true, xb +. yb, xc +. yc)
+         (true, (xb +. yb), (xc +. yc))
          (*Jesli oba zbiory sa jednoprzedzialowe, nowe konce sa dodanymi koncami *)
       else
-            
+         (false, 0., 0.)
+	 (*UWAGA heura*)
 
 let minus x y = plus x (przeciwienstwo y)
