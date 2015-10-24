@@ -3,7 +3,7 @@ type wartosc =
    Przedzial of (bool * float * float)
 (* czy zbior jest jednoprzedzialowy * mniejszy koniec * wiekszy koniec *)
 
-let wartosc_dokladnosc x p = Prziedzial of (true, x-.x*.p/.100., x+.x*.p/.100)
+let wartosc_dokladnosc x p = Przedzial of (true, x-.x*.p/.100., x+.x*.p/.100)
 (* zbior jest jednoprzedzialowy, konce sa wyznaczone jako pesymistyczna dokladnosc *)
 
 let wartosc_dokladna x = Przedzial of (true, x, x)
@@ -29,7 +29,7 @@ let max_wartosc = function
       else infinity
 (*Jesli zbior jest jednoprzedzialowy to maximum jest jego wiekszy koniec, w przeciwnym wypadku infinity *)
 
-let przeciwienstwo (x:wartosc) =
+(*let przeciwienstwo (x:wartosc) =
    let (a, b, c) = x
    in
       ((a, -. b, -. c):wartosc)
@@ -47,3 +47,4 @@ let plus (x:wartosc) (y:wartosc) =
 	 (*UWAGA heura*)
 
 let minus x y = plus x (przeciwienstwo y)
+*)
