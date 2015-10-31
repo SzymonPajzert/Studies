@@ -8,15 +8,15 @@ Jeśli fst>b, to jest to dwuprzedziałowy zbiór,
 Jeśli fst=snd=nan, to jest to zbiór pusty*)
 
 let wartosc_dokladnosc (x:float) (p:float) =
-   (x-.x*.p/.100., x+.x*.p/.100.):wartosc
+   ((x-.x*.p/.100., x+.x*.p/.100.):wartosc)
 (* zbior jest jednoprzedzialowy, konce sa wyznaczone jako pesymistyczna dokladnosc *)
 
 let wartosc_dokladna (x:float) =
-   (x,x)
+   ((x,x):wartosc)
 (* zbior jest jednoprzedzialowy, konce sa podana liczba *)
 
 let wartosc_od_do (x:float) (y:float) =
-   (x, y)
+   ((x, y):wartosc)
 (* zbior jest jednoprzedzialowy, konce sa podane*)
 
 let in_wartosc (w:wartosc) (x:float) =
@@ -47,10 +47,10 @@ Jeśli fst=b=nan, to zwracamy fst, czyli nan*)
 let sr_wartosc (x:wartosc) =
    if fst x > snd x
    then nan
-   else (fst x +. snd x)/.2
+   else (fst x +. snd x)/.2.
 
 let przeciwienstwo (x:wartosc) =
-   (-.snd x,-.fst x)
+   ((-.snd x,-.fst x):wartosc)
 
 (*Branie przeciwieństwa zdefiniowanego jako różnica Mińkowskiego ze zbiorem {0}
 Jeśli między fst i snd istnieje jakaś relacja r ze zbioru {<, =, >} to relacja ta
@@ -58,6 +58,16 @@ zachodzi także dla -snd r -fst. Nie zmieniają się więc liczebności przedzia
 Zbiór pusty pozostaje zbiorem pustym, cały - całym*)
 
 let plus (x:wartosc) (y:wartosc) =
-   ((fst x +. fst y),(snd x +. snd y))
+   if fst x > snd x && fst y > snd y
+   then ((neg_infinity,infinity):wartosc)
+   else ((fst x +. fst y,snd x +. snd y):wartosc)
+(*Jeśli oba zbiory są dwuprzedziałowe, to otrzymujemy zbiór pełen*)
 
-let minus x y = plus x (przeciwienstwo y)
+
+let minus (x:wartosc) (y:wartosc) = plus x (przeciwienstwo y)
+
+let odwrotnosc (x:wartosc) =
+   match x with
+   | (a,b) when a=neg_infinity && b=infinity -> ((neg_infinity,infinity):wartosc)
+   | (0., 0.) -> ((nan,nan):wartosc)
+   | (a,b) -> (((1. /. b),(1. /. a)):wartosc)
