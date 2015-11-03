@@ -21,11 +21,9 @@ let wartosc_od_do (x:float) (y:float) =
 (* zbior jest jednoprzedzialowy, konce sa podane*)
 
 let in_wartosc ((fst, snd):wartosc) (x:float) =
-   let czynalezy = (fst <= x) && (x<=snd )
-   in
-      if fst > snd
-      then not czynalezy
-      else czynalezy
+   if fst > snd
+   then x >= fst || x <= snd
+   else x >= fst && x <= snd
 
 let min_wartosc (x:wartosc) =
    if fst x > snd x
@@ -61,7 +59,7 @@ Zbiór pusty pozostaje zbiorem pustym, cały - całym*)
 let plus (x:wartosc) (y:wartosc) =
    if fst x > snd x && fst y > snd y
    then ((neg_infinity,infinity):wartosc)
-   else ((fst x +. fst y,snd x +. snd y):wartosc)
+   else ((fst x +. fst y, snd x +. snd y):wartosc)
 (*Jeśli oba zbiory są dwuprzedziałowe, to otrzymujemy zbiór pełen*)
 
 
@@ -74,25 +72,63 @@ let odwrotnosc (x:wartosc) =
    | (a, 0.) -> (neg_infinity, 1. /. a)
    | (a,b) -> ((1. /. b, 1. /. a):wartosc)
 
-let razy (x:wartosc) (y:wartosc) =
-   match(x,y) with
-   | ((a1, b1), (a2, b2)) when a1 <= b1 && a2 <= b2 ->
-      ((min (min (b1 *. b2) (a1 *. a2)) (min (a1 *. b2) (a2 *. b1))), (max (max (b1 *. b2) (a1 *. a2)) (max (a1 *. b2) (a2 *. b1))))
-   (*Trywialny przypadek dla jednoprzedziałowych zbiorów.*)
+let isnan (x : float) = x <> x
 
-   | ((a1, b1), (a2, b2)) when (a1 *. b1 *. (a1 -. b1) > 0.) && a2 > b2 ->
-      ((neg_infinity, infinity):wartosc)
-   (*Pierwszy zbiór zawiera otoczenie zera, drugi zawiera wystarczająco duże i małe liczby*)
+let mnoz x y =
+   match (x, y) with
+   | (n, _) when isnan n -> nan
+   | (_, n) when isnan n -> nan
+   | (0., _) -> 0.
+   | (_, 0.) -> 0.
+   | _ -> x *. y
 
-   | ((a1, b1), (a2, b2)) when (a2 *. b2 *. (a2 -. b2) > 0.) && a1 > b1 ->
-      ((neg_infinity, infinity):wartosc)
-   (*Pierwszy zbiór zawiera wystarczająco duże i małe liczby, drugi zawiera otoczenie zera*)
+let rec razy (a1, b1) (a2, b2) =
+      match ((a1 > b1), (a2 > b2)) with
+      | (false, false) ->
+         let a = min (min (mnoz a1 a2) (mnoz b1 b2)) (min (mnoz a1 b2) (mnoz a2 b1)) in
+         let b = max (max (mnoz a1 a2) (mnoz b1 b2)) (max (mnoz a1 b2) (mnoz a2 b1))
+         in (a, b)
+      (*Trywialny przypadek dla jednoprzedziałowych zbiorów.*)
+      (*Jeśli jeden ze zbiorów jest pusty, otrzymujemy zbiór pusty*)
 
-   | ((a1, b1), (a2, b2)) when a1 > b1 && a2 > b2 ->
-      odwrotnosc (razy (odwrotnosc x) (odwrotnosc y))
-   (*Jeśli oba dwuprzedziałowe zbiory są bez otoczenia zera, to możemy wziąć odwrotność iloczynu ich odwrotności*)
-   | _ -> ((nan, nan):wartosc)
-   (*Jeśli żadna poprzednia opcja nie została złapana, to znaczy, że mnożyliśmy zbiór pusty*)
+      | (false, true) ->
+         if a1 *. b1 < 0.
+         then ((neg_infinity, infinity):wartosc)
+         else
+            if b1<=0.
+            then przeciwienstwo (razy (przeciwienstwo(a1, b1)) (a2, b2))
+            else
+            (*Więc a1<=b1*)
+            (
+               match (a1 > 0., b1 > 0.) with
+               (*Sprawdzam trzy rodzaje przedziału [a1,b1]*)
+               | (true, true) ->
+                  if a1 *. a2 <= b1 *. b2
+                  then (neg_infinity, infinity)
+                  else (a1 *. a2, b1 *. b2)
+                  (*Jeżeli drugi zbiór ma lukę zawierającą się w liczbach dodatnich to*)
+                  (**)
+               | (true, false) ->
+                  if a1 = 0.
+                  then (neg_infinity, infinity)
+                  else (a1 *. a2, a1 *. b2)
+               | (false, false) ->
+                  przeciwienstwo (razy (a1, b1) (przeciwienstwo(a2, b2)))
+            )
+      (*Jeśli zbiór jednoprzedziałowy zawiera okolice zera, to otrzymujemy zbiór liczb rzeczywistych*)
+      (*Jeśli zbiór jednoprzedziałowy zawiera się w R- to bierzemy przeciwieństwo iloczynu przeciwienstwa i drugiego zbioru*)
+      | (true, false) ->
+         razy (a2, b2) (a1, b1)
 
+      | (true, true) ->
+         if a1 *. b1 > 0.
+         then (neg_infinity, infinity)
+         (*Jeśli pierwszy przedział zawiera okolice zera, to otrzymujemy zbiór liczb rzeczywistych*)
+         else
+            if a2 *. b2 > 0.
+            then (neg_infinity, infinity)
+            (*Jeśli drugi przedział zawiera okolice zera, to otrzymujemy zbiór liczb rzeczywistych*)
+            else odwrotnosc (razy (odwrotnosc (a1, b1)) (odwrotnosc (a2, b2)))
+            (*Jeśli oba zbiory nie zawierają oklicy zera, to są owracalne. Liczę więc odwrotnośc iloczynu odwrotności*)
 
 let podzielic (x:wartosc) (y:wartosc) = razy x (odwrotnosc y)
