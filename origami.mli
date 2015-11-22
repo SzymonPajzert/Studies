@@ -17,12 +17,6 @@ val kolko : point -> float -> kartka
 (** [kolko p r] zwraca kartkę, reprezentującą kółko domknięte o środku
 w punkcie [p] i promieniu [r] *)
 
-(*funkcja pola iloczynu wektoroweg*)
-val det : point -> point -> point -> float
-
-(*funkcja iloczynu skalarnego*)
-val det : point -> point -> point -> float
-
 val zloz : point -> point -> kartka -> kartka
 (** [zloz p1 p2 k] składa kartkę [k] wzdłuż prostej przechodzącej
 przez punkty [p1] i [p2] (muszą to być różne punkty). Papier jest
