@@ -6,7 +6,7 @@ OCAMLFLAGS=$(INCLUDES) -g
 OCAMLOPTFLAGS=$(INCLUDES)
 
 #tu nalezy wpisac wszystkie moduly do skompilowania w kolejnosci zgodnej z zaleznosciami
-MODS= origami.ml test.ml
+MODS= origami.mli origami.ml test.ml
 
 all:
 	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(MODS)
