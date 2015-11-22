@@ -9,13 +9,16 @@ val prostokat : point -> point -> kartka
 (** [prostokat p1 p2] zwraca kartkę, reprezentującą domknięty
 prostokąt o bokach równoległych do osi układu współrzędnych i lewym
 dolnym rogu [p1] a prawym górnym [p2]. Punkt [p1] musi więc być
-nieostro na lewo i w dół od punktu [p2]. Gdy w kartkę tę wbije się 
+nieostro na lewo i w dół od punktu [p2]. Gdy w kartkę tę wbije się
 szpilkę wewnątrz (lub na krawędziach) prostokąta, kartka zostanie
 przebita 1 raz, w pozostałych przypadkach 0 razy *)
 
 val kolko : point -> float -> kartka
 (** [kolko p r] zwraca kartkę, reprezentującą kółko domknięte o środku
 w punkcie [p] i promieniu [r] *)
+
+(*funkcja wskaznika*)
+val det : point -> point -> point -> float
 
 val zloz : point -> point -> kartka -> kartka
 (** [zloz p1 p2 k] składa kartkę [k] wzdłuż prostej przechodzącej
@@ -29,6 +32,6 @@ złożeniem plus przebicie rozłożonej kartki w punkcie, który nałożył
 się na punkt przebicia. *)
 
 val skladaj : (point * point) list -> kartka -> kartka
-(** [skladaj [(p1_1,p2_1);...;(p1_n,p2_n)] k = zloz p1_n p2_n (zloz ... (zloz p1_1 p2_1 k)...)] 
-czyli wynikiem jest złożenie kartki [k] kolejno wzdłuż wszystkich prostych 
+(** [skladaj [(p1_1,p2_1);...;(p1_n,p2_n)] k = zloz p1_n p2_n (zloz ... (zloz p1_1 p2_1 k)...)]
+czyli wynikiem jest złożenie kartki [k] kolejno wzdłuż wszystkich prostych
 z listy *)
