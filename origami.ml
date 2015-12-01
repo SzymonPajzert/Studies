@@ -4,12 +4,14 @@ type kartka = point -> int
 
 let prostokat (x1, y1) (x2, y2) =
   function (x, y) ->
+    (*jeśli punkt jest wewnątrz, zwracam 1*)
     if x1 <= x && x <= x2 && y1 <= y && y <= y2
     then 1
     else 0
 
 let kolko (x1, y1) r =
   function (x, y) ->
+    (*jeśli punkt jest wewnątrz, zwracam 1*)
     if (x -. x1) *. (x -. x1) +. (y -. y1) *. (y -. y1) <= r *. r
     then 1
     else 0
@@ -30,7 +32,8 @@ let zloz (x1, y1) (x2, y2) (k:kartka) =
   fun (x, y) ->
     let d = det (x1, y1) (x, y) (x2, y2) in
     (*W zależności od strony po której znaduje się punkt zwracam wynik*)
-    if d = 0. then k (x, y)
+    (*dodaję okolicę zera w razie błędu floata*)
+    if (-0.000001) < d &&  d < 0.000001 then k (x, y)
     else if d > 0. then 0
     else
       let s = skal (x1, y1) (x, y) (x2, y2) /. skal (x1, y1) (x2, y2) (x2, y2) in
@@ -38,9 +41,9 @@ let zloz (x1, y1) (x2, y2) (k:kartka) =
       do długości wektora [x2 - x1, y2 - x1]*)
       let (xs, ys) = ((x1 +. (x2 -. x1) *. s), (y1 +. (y2 -. y1) *. s)) in
       (*środek symetrii*)
-      let (xo, yo) = sym (x, y) (xs, ys)  
+      let (xo, yo) = sym (x, y) (xs, ys)
       in
         k (x,y) + k (xo, yo)
 
-let skladaj l k = k
-  List.fold_left (fun x y -> (zloz y x)) k l
+let skladaj l k =
+  List.fold_left (fun x y -> (zloz (fst y) (snd y) x)) k l
