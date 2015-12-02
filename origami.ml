@@ -1,3 +1,6 @@
+(*Author: Szymon Pajzert
+Code Reviewer: Konrad Majewski*)
+
 type point = float * float
 
 type kartka = point -> int
