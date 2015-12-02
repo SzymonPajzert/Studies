@@ -32,8 +32,8 @@ let zloz (x1, y1) (x2, y2) (k:kartka) =
   fun (x, y) ->
     let d = det (x1, y1) (x, y) (x2, y2) in
     (*W zależności od strony po której znaduje się punkt zwracam wynik*)
-    (*dodaję okolicę zera w razie błędu floata*)
-    if (-0.000001) < d &&  d < 0.000001 then k (x, y)
+    (*zakładam nieskończoną dokładność float*)
+    if d = 0 then k (x, y)
     else if d > 0. then 0
     else
       let s = skal (x1, y1) (x, y) (x2, y2) /. skal (x1, y1) (x2, y2) (x2, y2) in
