@@ -11,7 +11,6 @@ let cmp_el x (xin, yin) =
 (*Jeśli zbiory się przecinają lub są sąsiadami, to porównanie zwraca 0. W przeciwnym wypadku
 zwraca relację między dowolnymi elementami przedziałów*)
 let cmp (a1, b1) (a2, b2) =
-  print_endline "cmp";
   if b1 + 1 < a2 then -1
   else if b2 + 1 < a1 then 1
   else 0
