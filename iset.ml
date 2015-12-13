@@ -158,7 +158,7 @@ let elements set =
 
 let below x set =
   (*rem to zbiór mniejszych od x*)
-  let (rem, _, _) = split x set in
+  let (rem, _, _) = split (x + 1) set in
   fold (fun i acc -> (snd i - fst i + 1) +/ acc) rem 0
 
 let nonrootjoin l r =
