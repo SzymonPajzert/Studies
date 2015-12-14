@@ -6,9 +6,9 @@ let passed () =
   print_int !counter;
   print_newline ()
 
-let empty = (Iset.empty, Naiveset.empty)
+let empty = (ISet.empty, Naiveset.empty)
 
-exception Inconsistent of (Iset.t * Naiveset.t) * string
+exception Inconsistent of (ISet.t * Naiveset.t) * string
 
 (* It should run functions, but I don't know yet how to do it
 let run_assertion f1 f2  args =
@@ -18,24 +18,24 @@ let run_assertion f1 f2  args =
 *)
 
 let is_empty set =
-  let answer1 = Iset.is_empty (fst set) in
+  let answer1 = ISet.is_empty (fst set) in
   let answer2 = Naiveset.is_empty (snd set) in
   if (answer1 = answer2) then answer1
   else raise (Inconsistent (set, "is_empty"))
 
-let add i set = (Iset.add i (fst set), Naiveset.add i (snd set))
+let add i set = (ISet.add i (fst set), Naiveset.add i (snd set))
 
 let remove i set =
-  (Iset.remove i (fst set), Naiveset.remove i (snd set))
+  (ISet.remove i (fst set), Naiveset.remove i (snd set))
 
 let mem x set =
-  let answer1 = Iset.mem x (fst set) in
+  let answer1 = ISet.mem x (fst set) in
   let answer2 = Naiveset.mem x (snd set) in
   if (answer1 = answer2) then answer1
   else raise (Inconsistent (set, "mem"))
 
 let below x set =
-  let answer1 = Iset.below x (fst set) in
+  let answer1 = ISet.below x (fst set) in
   let answer2 = Naiveset.below x (snd set) in
   if (answer1 = answer2) then answer1
   else
@@ -43,13 +43,13 @@ let below x set =
     raise (Inconsistent (set, "below")))
 
 let split x set =
-  let (answer1l, answer1b, answer1r) = Iset.split x (fst set) in
+  let (answer1l, answer1b, answer1r) = ISet.split x (fst set) in
   let (answer2l, answer2b, answer2r) = Naiveset.split x (snd set) in
   if (answer1b = answer2b) then (answer1l, answer1b, answer1r), (answer2l, answer2b, answer2r)
   else raise (Inconsistent (set, "split"))
 
 let elements set =
-  let answer1 = Iset.elements (fst set) in
+  let answer1 = ISet.elements (fst set) in
   let answer2 = Naiveset.elements (snd set) in
   try
     let f x (b1, e1) (b2, e2) = x && b1 = b2 && e1 = e2 in

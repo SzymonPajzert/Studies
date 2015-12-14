@@ -49,7 +49,7 @@ let cardinality = function
   | Empty -> 0
 
 let make l k r =
-  let newcardinality = cardinality l + cardinality r + (snd k - fst k + 1) in
+  let newcardinality = cardinality l +/ cardinality r +/ (snd k - fst k + 1) in
   Node (l, k, r, max (height l) (height r) + 1, newcardinality)
 
 (*Jednorazowo balansuje i zwraca AVL z dwóch drzew AVL i korzenia*)
@@ -89,14 +89,14 @@ let rec remove_min_elt = function
   | Node (l, k, r, _, _) -> bal (remove_min_elt l) k r
 
 (*Tworzy drzewo AVL z dwóch drzew AVL, przy założeniu, że pierwsze ma mniejsze
-przedziały od drugiego*)
+przedziały od drugiego
 let merge t1 t2 =
   match t1, t2 with
   | Empty, _ -> t2
   | _, Empty -> t1
   | _ ->
       let k = min_elt t2 in
-      bal t1 k (remove_min_elt t2)
+      bal t1 k (remove_min_elt t2)*)
 
 (*Dodawanie przedziału do zbioru, przy założeniu, że cmp tego przedziału i każdego innego
 jest różne od zera. Jeśli jest to zgenerowany przedział, zwraca identyczność*)
@@ -104,7 +104,7 @@ let rec add_one x =
   if not (is_interval x) then function set -> set
   else
     function
-    | Empty -> Node (Empty, x, Empty, 1, snd x - fst x + 1)
+    | Empty -> Node (Empty, x, Empty, 1, (snd x - fst x) +/ 1)
     | Node (l, k, r, h, _) ->
         let c = cmp x k in
         if c = 0 then assert false
@@ -171,8 +171,8 @@ let elements set =
 
 let below x set =
   (*rem to zbiór mniejszych od x*)
-  let (rem, _, _) = split (x + 1) set in
-  cardinality rem
+  let (rem, mem, _) = split x set in
+  cardinality rem +/ (if mem then 1 else 0)
 
 let nonrootjoin l r =
   match (l, r) with
