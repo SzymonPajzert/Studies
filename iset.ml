@@ -1,3 +1,7 @@
+(*Autor: Szymon Pajzert
+Code Reviewer: Dominik Klemba
+Testy w paczce i manualtest.ml*)
+
 (*Funkcje dla przedziałów*)
 type interval = int * int
 
