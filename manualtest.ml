@@ -38,7 +38,9 @@ let below x set =
   let answer1 = Iset.below x (fst set) in
   let answer2 = Naiveset.below x (snd set) in
   if (answer1 = answer2) then answer1
-  else raise (Inconsistent (set, "below"))
+  else
+    (Printf.printf "%d %d\n" answer1 answer2;
+    raise (Inconsistent (set, "below")))
 
 let split x set =
   let (answer1l, answer1b, answer1r) = Iset.split x (fst set) in
@@ -87,4 +89,14 @@ let set = remove (3, 5) set
 let () =
   print_set set 20;
   elements set;
+  passed ()
+
+let set = add (3, 4) (add (8, 10) (add (15, 20) empty))
+let () =
+  print_set set 20;
+  elements set;
+  passed ()
+
+let x = below 10 set
+let () =
   passed ()

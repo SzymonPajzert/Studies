@@ -7,7 +7,7 @@ OCAMLOPTFLAGS=$(INCLUDES)
 
 #tu nalezy wpisac wszystkie moduly do skompilowania w kolejnosci zgodnej z zaleznosciami
 MODS= naiveset.mli naiveset.ml iset.mli iset.ml
-TEST= test.mli test.ml
+TEST= manualtest.ml
 
 all:
 	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(MODS) $(TEST)

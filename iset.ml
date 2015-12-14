@@ -28,9 +28,11 @@ let ( +/ ) a b =
   if b < max_int - a then a + b else max_int
 
 (*Funckje zbioru*)
+
+(*Lewy syn, interwał, prawy syn, wysokość, moc elementów przedziałów w poddrzewie*)
 type t =
   | Empty
-  | Node of t * interval * t * int
+  | Node of t * interval * t * int * int
 
 let empty = Empty
 
@@ -38,10 +40,14 @@ let is_empty set =
   set = Empty
 
 let height = function
-  | Node (_, _, _, h) -> h
+  | Node (_, _, _, h, _) -> h
   | Empty -> 0
 
-let make l k r = Node (l, k, r, max (height l) (height r) + 1)
+let cardinality = function
+  | Node (_, _, _, _, c) -> c
+  | Empty -> 0
+
+let make l k r = Node (l, k, r, max (height l) (height r) + 1, cardinality l + cardinality r + (snd k - fst k + 1))
 
 (*Jednorazowo balansuje i zwraca AVL z dwóch drzew AVL i korzenia*)
 let bal l k r =
@@ -49,34 +55,34 @@ let bal l k r =
   let hr = height r in
   if hl > hr + 2 then
     match l with
-    | Node (ll, lk, lr, _) ->
+    | Node (ll, lk, lr, _, _) ->
         if height ll >= height lr then make ll lk (make lr k r)
         else
           (match lr with
-          | Node (lrl, lrk, lrr, _) ->
+          | Node (lrl, lrk, lrr, _, _) ->
               make (make ll lk lrl) lrk (make lrr k r)
           | Empty -> assert false)
     | Empty -> assert false
   else if hr > hl + 2 then
     match r with
-    | Node (rl, rk, rr, _) ->
+    | Node (rl, rk, rr, _, _) ->
         if height rr >= height rl then make (make l k rl) rk rr
         else
           (match rl with
-          | Node (rll, rlk, rlr, _) ->
+          | Node (rll, rlk, rlr, _, _) ->
               make (make l k rll) rlk (make rlr rk rr)
           | Empty -> assert false)
     | Empty -> assert false
-  else Node (l, k, r, max hl hr + 1)
+  else make l k r
 
 let rec min_elt = function
-  | Node (Empty, k, _, _) -> k
-  | Node (l, _, _, _) -> min_elt l
+  | Node (Empty, k, _, _, _) -> k
+  | Node (l, _, _, _, _) -> min_elt l
   | Empty -> raise Not_found
 
 let rec remove_min_elt = function
-  | Node (Empty, _, r, _) -> r
-  | Node (l, k, r, _) -> bal (remove_min_elt l) k r
+  | Node (Empty, _, r, _, _) -> r
+  | Node (l, k, r, _, _) -> bal (remove_min_elt l) k r
   | Empty -> invalid_arg "ISet.remove_min_elt"
 
 (*Tworzy drzewo AVL z dwóch drzew AVL, przy założeniu, że pierwsze ma mniejsze
@@ -95,7 +101,7 @@ let rec add_one x =
   if not (is_interval x) then function set -> set
   else
     function
-    | Node (l, k, r, h) ->
+    | Node (l, k, r, h, _) ->
         let c = cmp x k in
         if c = 0 then assert false
         else if c < 0 then
@@ -104,7 +110,7 @@ let rec add_one x =
         else
           let nr = add_one x r in
           bal l k nr
-    | Empty -> Node (Empty, x, Empty, 1)
+    | Empty -> Node (Empty, x, Empty, 1, snd x - fst x + 1)
 
 (*Tworzy drzewo AVL z dwóch drzew AVL i wartości dla korzenia, przy założeniu,
 że pierwsze ma mniejsze przedziały od drugiego*)
@@ -112,7 +118,7 @@ let rec join l v r =
   match (l, r) with
   | (Empty, _) -> add_one v r
   | (_, Empty) -> add_one v l
-  | (Node(ll, lv, lr, lh), Node(rl, rv, rr, rh)) ->
+  | (Node(ll, lv, lr, lh, _), Node(rl, rv, rr, rh, _)) ->
       if lh > rh + 2 then bal ll lv (join lr v r) else
       if rh > lh + 2 then bal (join l v rl) rv rr else
       make l v r
@@ -122,7 +128,7 @@ let split x set =
   let rec loop x = function
     | Empty ->
         (Empty, false, Empty)
-    | Node (l, v, r, _) ->
+    | Node (l, v, r, _, _) ->
         let c = cmp_el x v in
         if c = 0 then (add_one (fst v, x - 1) l, true, add_one (x + 1, snd v) r)
         else if c < 0 then
@@ -135,7 +141,7 @@ let split x set =
 (*W sygnaturze*)
 let mem x set =
   let rec loop = function
-    | Node (l, k, r, _) ->
+    | Node (l, k, r, _, _) ->
         let c = cmp_el x k in
         c = 0 || loop (if c < 0 then l else r)
     | Empty -> false in
@@ -144,26 +150,26 @@ let mem x set =
 let iter f set =
   let rec loop = function
     | Empty -> ()
-    | Node (l, k, r, _) -> loop l; f k; loop r in
+    | Node (l, k, r, _, _) -> loop l; f k; loop r in
   loop set
 
 let fold f set acc =
   let rec loop acc = function
     | Empty -> acc
-    | Node (l, k, r, _) ->
+    | Node (l, k, r, _, _) ->
           loop (f k (loop acc l)) r in
   loop acc set
 
 let elements set =
   let rec loop acc = function
     | Empty -> acc
-    | Node(l, k, r, _) -> loop (k :: loop acc r) l in
+    | Node(l, k, r, _, _) -> loop (k :: loop acc r) l in
   loop [] set
 
 let below x set =
   (*rem to zbiór mniejszych od x*)
   let (rem, _, _) = split (x + 1) set in
-  fold (fun i acc -> (snd i - fst i + 1) +/ acc) rem 0
+  cardinality rem
 
 let nonrootjoin l r =
   match (l, r) with
@@ -184,7 +190,7 @@ wejściowym wynosi 0 oraz sumę tych przedziałów*)
 let intersectremove i set =
   let rec loop x = function
     | Empty -> (Empty, x)
-    | Node (l, v, r, _) ->
+    | Node (l, v, r, _, _) ->
         let c = cmp x v in
         if c = 0 then
           let m = inmerge x v in
