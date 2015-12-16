@@ -27,11 +27,9 @@ let interval_merge i1 i2 =
   assert (cmp i1 i2 = 0);
   min (fst i1) (fst i2), max (snd i1) (snd i2)
 
-(*Dodawanie, wykorzystywane tylko do dodawania nieujemnych wartości liczebności*)
-let ( +/ ) a b =
-  assert (a >= 0 && b >= 0);
-  if b < max_int - a then a + b else max_int
-
+(*Bezpieczne dodawanie*)
+let rec ( +/ ) a b =
+  if a + b < 0 then max_int else a + b
 (*Funckje zbioru*)
 
 (*Lewy syn, interwał, prawy syn, wysokość, moc elementów przedziałów w poddrzewie*)
@@ -57,7 +55,7 @@ let cardinality = function
 
 (*Tworzy drzewo*)
 let make l k r =
-  let newcardinality = cardinality l +/ cardinality r +/ (snd k - fst k + 1) in
+  let newcardinality = cardinality l +/ cardinality r +/ (snd k +/ (-fst k) + 1) in
   Node (l, k, r, max (height l) (height r) + 1, newcardinality)
 
 (*Jednorazowo balansuje i zwraca AVL z dwóch drzew AVL i korzenia*)
