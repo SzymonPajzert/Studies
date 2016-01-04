@@ -8,7 +8,10 @@ OCAMLCFLAGS=$(INCLUDES)
 MODS= pMap.mli pMap.ml topol.mli topol.ml
 
 all:
-	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(MODS)
+	$(OCAMLOPT) -c $(OCAMLOPTFLAGS) $(MODS)
+
+test:
+	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(MODS) test.ml
 
 .SUFFIXES: .mll .mly .ml .mli .cmo .cmi .cmx
 
@@ -31,4 +34,4 @@ all:
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $<
 
 clean:
-	rm -f *~ *.cm[oix] *.o *.a res*.txt nkjp.cmxa
+	rm -f *~ *.cm[oix] *.o *.a
