@@ -6,12 +6,12 @@ OCAMLFLAGS=$(INCLUDES) -g
 OCAMLOPTFLAGS=$(INCLUDES)
 OCAMLCFLAGS=$(INCLUDES)
 MODS= pMap.mli pMap.ml topol.mli topol.ml
-
+TEST= test.ml
 all:
 	$(OCAMLOPT) -c $(OCAMLOPTFLAGS) $(MODS)
 
-test:
-	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(MODS) test.ml
+test: $(TEST)
+	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(MODS) $(TEST)
 
 .SUFFIXES: .mll .mly .ml .mli .cmo .cmi .cmx
 
