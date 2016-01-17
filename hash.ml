@@ -51,11 +51,11 @@ module Make(MA: MaxArray) =
         for i = 0 to dim - 1 do
           if i = index then ()
           else
-            let topour = maxarray.(i) - curstate.(i) in
+            let to_pour = min (maxarray.(i) - curstate.(i)) curstate.(index) in
             let after_pour =
               Array.init dim (fun it ->
-                if it = i then maxarray.(it)
-                else if it = index then curstate.(it) - topour
+                if it = i then curstate.(i) + to_pour
+                else if it = index then curstate.(it) - to_pour
                 else curstate.(it))
               |> hash
             in

@@ -1,27 +1,3 @@
-(*Dla danej tablicy maksymalnych pojemności hashuje aktualną tablicę pewnej ilości wody*)
-let hash_array ~array x =
-  assert (Array.length array = Array.length x);
-  let multiplier = ref 1 in
-  let result = ref 0 in
-  let iterator index value =
-    result := !result + value * !multiplier;
-    multiplier := (array.(index) + 1) * !multiplier
-  in
-  Array.iteri iterator x;
-  !result
-
-(*Dla danej tablicy maksymalnych pojemności odhashowuje aktualną wartość do tablicy*)
-let dehash_array ~array x =
-  let divisor = ref 1 in
-  let remainder = ref x in
-  let initialiser index =
-    divisor := (array.(index) + 1) * !divisor;
-    let result = !remainder mod !divisor in
-    remainder := (!remainder - result) / (array.(index) + 1);
-    result
-  in
-  Array.init (Array.length array) initialiser
-
 (*rekurencyjne NWD*)
 let rec gcd x y =
   if x > y then gcd y x
@@ -29,23 +5,31 @@ let rec gcd x y =
     if x = 0 then y
     else gcd (y mod x) x
 
-(*
 let przelewanka input =
   (*Znajduje NWD wartości w danych wejściowych w celu przyspieszenia obliczeń*)
-  (*Tworzy tablice zawierające pojemności szklanek oraz hashowaną szukaną wartość*)
+  (*Tworzy tablice zawierające pojemności szklanek i inicjalizuje moduł haszowań*)
   let gcd = Array.fold_left (fun acc (x, y) -> gcd acc (gcd x y)) 0 input in
   let max_values = Array.init (Array.length input) (fun i -> fst input.(i) / gcd) in
-  let hash = hash_array ~array:max_values in
-  let target = Array.init (Array.length input) (fun i -> snd input.(i) / gcd) |> hash
-*)
+  let module Hasher =  Hash.Make(struct let capacities = max_values end) in
+  let open Hasher in
 
-let hash = hash_array ~array:[| 5; 6 |]
-let dehash = dehash_array ~array:[| 5; 6 |]
+  (*Haszuje szukany stan i tworzy tablicę wyników z przetrzymywaną liczbą kroków*)
+  (*W tablicy tej -1 oznacza nie bycie jeszcze odpwiedzonym*)
+  let target = Array.init (Array.length input) (fun i -> snd input.(i) / gcd) |> hash in
+  let results = Array.init ((max_values |> hash) + 1) (fun _ -> -1) in
 
-let t x =
-  Array.iter (Printf.printf "%d ") x;
-  Printf.printf "\n";
-  Array.iter (Printf.printf "%d ") (x |> hash |> dehash)
+  (*Kolejka q przetrzymuje pary do przeszukania zawierające hash wartości i liczbę kroków*)
+  let q = Queue.create () in
+  Queue.add (0, 0) q;
 
-let () =
-  t [| 1; 3 |]
+  (*Pętla while przechodząca wszystkie wartości z kolejki*)
+  while not (Queue.is_empty q) && results.(target) = -1 do
+    let (h, num) = Queue.take q in
+    if results.(h) <> -1 then ()
+    else
+      results.(h) <- num;
+      List.iter (fun x -> if results.(x) = -1 then Queue.add (x, num+1) q else ()) (next h)
+  done;
+
+  (*Zwracanie zapisanego wyniku*)
+  results.(target)
