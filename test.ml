@@ -22,4 +22,4 @@ let () =
   test_next [|0;0;0|]
 
 let () =
-  Przelewanka.przelewanka [|3, 1; 5, 2; 4, 1|] |> Printf.printf "%d\n"
+  Przelewanka.przelewanka [|3, 1; 5, 2; 4, 0|] |> Printf.printf "%d\n"
