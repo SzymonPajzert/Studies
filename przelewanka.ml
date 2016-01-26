@@ -1,3 +1,6 @@
+(* Autor: Szymon Pajzert *)
+(* CodeReviev: Paweł Perzyna *)
+
 (*rekurencyjne NWD*)
 let rec gcd x y =
   if x > y then gcd y x
