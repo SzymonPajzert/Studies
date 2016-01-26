@@ -6,16 +6,12 @@ OCAMLFLAGS=$(INCLUDES) -g
 OCAMLOPTFLAGS=$(INCLUDES)
 
 #tu nalezy wpisac wszystkie moduly do skompilowania w kolejnosci zgodnej z zaleznosciami
-HASH= hash.mli hash.ml
 PRZEL = przelewanka.ml
 TEST = test.ml
 
 
 all:
-	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(HASH) $(PRZEL) $(TEST)
-
-hash:
-	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(HASH) $(TEST)
+	$(OCAMLOPT) -o test $(OCAMLOPTFLAGS) $(PRZEL) $(TEST)
 
 .SUFFIXES: .mll .mly .ml .mli .cmo .cmi .cmx
 
