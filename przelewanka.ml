@@ -10,7 +10,7 @@ let przelewanka input =
   (*Tworzy tablice zawierające pojemności szklanek i inicjalizuje moduł haszowań*)
   let dim = Array.length input in
   let gcd = max (Array.fold_left (fun acc (x, _) -> gcd acc x) 0 input) 1 in
-  let max_values = Array.init (Array.length input) (fun i -> (fst input.(i)) / gcd) in
+  let max_values = Array.init dim (fun i -> (fst input.(i)) / gcd) in
   let results = Hashtbl.create (Array.fold_left ( * ) 1 max_values) in
   (* q przetrzymuje tablice do przeszukania, results przechowuje wyniki *)
   let q = Queue.create () in
@@ -18,35 +18,33 @@ let przelewanka input =
   Queue.add beg q;
   Hashtbl.add results beg 0;
 
-  (*Haszuje szukany stan i tworzy tablicę wyników z przetrzymywaną liczbą kroków*)
-  (*W tablicy tej -1 oznacza nie bycie jeszcze odpwiedzonym*)
+  (*Kondensuje szukany stan i tworzy tablicę wyników z przetrzymywaną liczbą kroków*)
   let is_good = ref true in
   let target =
     let init i =
       is_good := !is_good && ((snd input.(i)) mod gcd = 0);
       snd input.(i) / gcd
     in
-    Array.init (Array.length input) init
+    Array.init dim init
   in
   if not (!is_good) then Hashtbl.add results target (-1);
 
-  (* Dla danego stanu zwraca obicza listę zawierającą następne możliwe i dodaje je do kolejki*)
+  (* Dla danego stanu oblicza listę zawierającą następne możliwe i dodaje je do kolejki*)
   let next curstate num =
     let add x =
       if not (Hashtbl.mem results x) then
         (Hashtbl.add results x (num + 1);
         Queue.add x q)
     in
-    (* Dodawanie stanów po wylaniu wybranej szklanki oraz napałenieniu jej do pełna *)
+    (* Dodawanie stanów po wylaniu zawartości wybranej szklanki oraz napałenieniu jej*)
     for index = 0 to dim - 1 do
       Array.init dim (fun i -> if i = index then 0 else curstate.(i)) |> add;
       Array.init dim (fun i -> if i = index then max_values.(i) else curstate.(i)) |> add
     done;
-    (* Dodawanie stanów po przelewaniu z jednej szklanki do drugiej*)
+    (* Dodawanie stanów po przelaniu z jednej szklanki do drugiej*)
     for index = 0 to dim - 1 do
       for i = 0 to dim - 1 do
-        if i = index then ()
-        else
+        if i <> index then
           let to_pour = min (max_values.(i) - curstate.(i)) curstate.(index) in
           let after_pour =
             Array.init dim (fun it ->
@@ -66,6 +64,6 @@ let przelewanka input =
     next curstate num
   done;
 
-  (*Zwracanie zapisanego wyniku*)
+  (* Zwracanie wyniku *)
   try Hashtbl.find results target
   with Not_found -> -1
