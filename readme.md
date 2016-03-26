@@ -87,7 +87,7 @@ Rozwiązania należy implementować **samodzielnie** pod rygorem niezaliczenia p
 
 ### Przykład
 
-Dla danych wejściowych:
+###### Dla danych wejściowych:
 
 1. NEW_DISEASE_ENTER_DESCRIPTION Kowalski Bardzo ciężka choroba
 2. NEW_DISEASE_ENTER_DESCRIPTION Nowak delikatne przeziębienie...
@@ -102,9 +102,7 @@ Dla danych wejściowych:
 11. NEW_DISEASE_COPY_DESCRIPTION Nowak Kowalski
 12. PRINT_DESCRIPTION van_Beethoven 1
 
-
-
-Poprawnym wynikiem jest:   
+###### Poprawnym wynikiem jest:   
 1. OK
 2. OK
 3. IGNORED
@@ -118,7 +116,7 @@ Poprawnym wynikiem jest:
 11. IGNORED
 12. przeziębienie z powikłaniami !
 
-Zaś poprawny wynik na wyjście diagnostyczne to:
+###### Zaś poprawny wynik na wyjście diagnostyczne to:
 1. DESCRIPTIONS: 1
 2. DESCRIPTIONS: 2
 3. DESCRIPTIONS: 2
