@@ -13,25 +13,20 @@
 #debug: all
 
 CC=gcc
+CFLAG=-O2
 
 all:
-	$(CC) -c parse.c
-	$(CC) -c structure.c
-	$(CC) -c hospital.c
-	$(CC) -o hospital structure.o parse.o hospital.o
-
-testing: CC=gcc -g --pedantic
-testing:
-	$(CC) -c parse.c
-	$(CC) -c test.c
-	$(CC) -o test parse.o test.o
+	$(CC) $(CFLAG) -c parse.c
+	$(CC) $(CFLAG) -c structure.c
+	$(CC) $(CFLAG) -c hospital.c
+	$(CC) $(CFLAG) -o hospital structure.o parse.o hospital.o
 
 debug: CC=gcc -g --pedantic
 debug:
-	$(CC) -c parse.c
-	$(CC) -c structure.c
-	$(CC) -c hospital.c
-	$(CC) -o hospital structure.o parse.o hospital.o
+	$(CC) $(CFLAG) -c parse.c
+	$(CC) $(CFLAG) -c structure.c
+	$(CC) $(CFLAG) -c hospital.c
+	$(CC) $(CFLAG) -o hospital.dbg structure.o parse.o hospital.o
 
 clean:
 	rm *.o hospital

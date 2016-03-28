@@ -23,7 +23,7 @@ void deleteRequest(struct Request* request);
 void printRequest(struct Request *storage);
 
 char* strallocopy(char* value);
-char** split(char* string, int words);
+void split(char* string, int words, char* result[]);
 int parseLine(struct Request *storage);
 
 #endif /* PARSE_H */

@@ -8,20 +8,29 @@
 struct Request* createRequest(void) {
     struct Request* result;
     result = (struct Request*) malloc(sizeof(struct Request));
+    result -> str1 = NULL;
+    result -> str2 = NULL;
     return result;
 }
 
-void deleteRequest(struct Request* request) {
-    free(request -> str1);
-    free(request -> str2);
-    free(request);
+void cleanRequest(struct Request *request) {
+    request->command = NO_LINE_AVAILABLE;
+
+    if(request -> str1) {
+        free(request -> str1);
+        request -> str1 = NULL;
+    }
+
+    if(request -> str2) {
+        free(request -> str2);
+        request -> str2 = NULL;
+    }
     return;
 }
 
-void cleanRequest(struct Request *storage) {
-    storage->command = NO_LINE_AVAILABLE;
-    free(storage->str1);
-    free(storage->str2);
+void deleteRequest(struct Request* request) {
+    cleanRequest(request);
+    free(request);
     return;
 }
 
@@ -42,8 +51,7 @@ char* strallocopy(char* value) {
     return newadress;
 }
 
-char** split(char* begin, int words) {
-    char** result = (char**) malloc(sizeof(char*) * words);
+void split(char* begin, int words, char* result[]) {
     int i;
 
     for (i=0; i<words-1 && begin; i++) {
@@ -55,22 +63,24 @@ char** split(char* begin, int words) {
         }
     }
     result[i] = begin;
-
-    return result;
+    return;
 }
 
 int parseLine(struct Request *storage) {
     char *begin, *parametersPtr;
     size_t size;
     int charNum;
-    char** parameters;
 
     cleanRequest(storage);
     begin = NULL;
     size = 0;
 
     /* Delimeter is counted, if takes care about no-line case */
-    if (  charNum = getline(&begin, &size, stdin), charNum <= 1 ) { return 0; }
+    if (  charNum = getline(&begin, &size, stdin), charNum <= 1 ) {
+        free(begin);
+        return 0;
+    }
+    
     /* delete delimeter char */
     begin[charNum-1] = '\0';
 
@@ -79,44 +89,45 @@ int parseLine(struct Request *storage) {
     parametersPtr++;
 
     if (strcmp("NEW_DISEASE_ENTER_DESCRIPTION", begin) == 0) {
+        char* parameters[2];
         storage -> command = NEW_DISEASE_ENTER_DESCRIPTION;
 
-        parameters = split(parametersPtr, 2);
+        split(parametersPtr, 2, parameters);
         storage -> str1 = strallocopy(parameters[0]);
         storage -> str2 = strallocopy(parameters[1]);
-        return 1;
     }
     if (strcmp("NEW_DISEASE_COPY_DESCRIPTION", begin) == 0) {
+        char* parameters[2];
         storage -> command = NEW_DISEASE_COPY_DESCRIPTION;
 
-        parameters = split(parametersPtr, 2);
+        split(parametersPtr, 2, parameters);
         storage -> str1 = strallocopy(parameters[0]);
         storage -> str2 = strallocopy(parameters[1]);
-        return 1;
     }
     if (strcmp("CHANGE_DESCRIPTION", begin) == 0) {
+        char* parameters[3];
         storage -> command = CHANGE_DESCRIPTION;
 
-        parameters = split(parametersPtr, 3);
+        split(parametersPtr, 3, parameters);
         storage -> str1 = strallocopy(parameters[0]);
         storage -> num = atoi(parameters[1]);
         storage -> str2 = strallocopy(parameters[2]);
-        return 1;
     }
     if (strcmp("PRINT_DESCRIPTION", begin) == 0) {
+        char* parameters[3];
         storage -> command = PRINT_DESCRIPTION;
 
-        parameters = split(parametersPtr, 2);
+        split(parametersPtr, 2, parameters);
         storage -> str1 = strallocopy(parameters[0]);
         storage -> num = atoi(parameters[1]);
-        return 1;
     }
     if (strcmp("DELETE_PATIENT_DATA", begin) == 0) {
+        char* parameters[1];
         storage -> command = DELETE_PATIENT_DATA;
 
-        parameters = split(parametersPtr, 1);
+        split(parametersPtr, 1, parameters);
         storage -> str1 = strallocopy(parameters[0]);
-        return 1;
     }
-    return -1;
+    free(begin);
+    return 1;
 }

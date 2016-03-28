@@ -28,14 +28,10 @@ void addReference(struct Disease *disease) {
 }
 
 int removeReference(struct Disease *disease){
-    if (disease->referenceCount == 0) {
-        return 1;
-    }
-
     disease->referenceCount--;
     if (disease->referenceCount <= 0) {
+        free(disease->name);
         free(disease);
-        disease->hospital->allRefCount--;
     }
     return 0;
 }
