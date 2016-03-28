@@ -266,7 +266,7 @@ void changeDescription(struct Hospital *hospital, char* name,
         return;
     }
 
-    if(replaceNthDisease(patientPtr->diseaseList, n, name, hospital)){
+    if(replaceNthDisease(patientPtr->diseaseList, n, diseaseDescription, hospital)){
         printf("OK\n");
     }
     else {
@@ -298,7 +298,7 @@ void printDescription(struct Hospital *hospital, char* name, int n) {
 }
 
 void printDescriptionNumber(struct Hospital *hospital) {
-    fprintf(stderr, "DESCRIPTIONS %d\n", hospital->allRefCount);
+    fprintf(stderr, "DESCRIPTIONS: %d\n", hospital->allRefCount);
 }
 
 void deletePatientData(struct Hospital *hospital, char* name) {

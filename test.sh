@@ -2,7 +2,6 @@
 
 if [[ $# == 3 ]]
 then
-    echo Tutaj
     PROGRAM="./$2 -v"
     DIRECTORY="./$3"
     STDERR_CHECK=1
@@ -25,20 +24,20 @@ for inFile in $DIRECTORY/*.in; do
     cat $inFile | $PROGRAM 1> ${fileName}.realout 2> ${fileName}.realerr
 
     if [[ $? != 0 ]]; then
-       echo "Niepoprawny kod wyjścia dla ${RED}$fileName${DEFAULT}"
+       echo "Niepoprawny kod wyjścia dla $fileName"
        OK=0
     fi
 
     diff ${fileName}.out ${fileName}.realout &> /dev/null
     if [[ $? != 0 ]]; then
-        echo "Niepoprawne wyjście błędu dla ${RED}$fileName${DEFAULT}"
+        echo "Niepoprawne wyjście dla $fileName"
         OK=0
     fi
 
     if [[ $STDERR_CHECK == 1 ]]; then
         diff ${fileName}.err ${fileName}.realerr &> /dev/null
         if [[ $? != 0 ]]; then
-            echo "Niepoprawne wyjście błędu dla ${RED}$fileName${DEFAULT}"
+            echo "Niepoprawne wyjście błędu dla $fileName"
             OK=0
         fi
     fi
