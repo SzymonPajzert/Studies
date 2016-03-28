@@ -3,10 +3,12 @@
 #include <string.h>
 #include "structure.h"
 
+/* TODO reference count bug in disease*/
+
 /* Declaration of PatientList */
 typedef struct PatientListElement *PatientList;
 
-/* Hospital structure with for disease. Its functions defined at the end.*/
+/* Hospital structure with counter for descriptions. Its functions defined at the end.*/
 struct Hospital {
     PatientList patientList;
     int allRefCount;
@@ -30,6 +32,7 @@ void addReference(struct Disease *disease) {
 int removeReference(struct Disease *disease){
     disease->referenceCount--;
     if (disease->referenceCount <= 0) {
+        disease->hospital->allRefCount--;
         free(disease->name);
         free(disease);
     }
@@ -45,7 +48,8 @@ struct Disease* createDisease(struct Hospital* hospital, char* name) {
     return newDisease;
 }
 
-/* Definition of Disease List */
+/* Definition of Disease List. It's implemented as FILO list, with const time
+access to the last element. */
 struct DiseaseListElement {
     struct Disease* disease;
     int num;
@@ -92,11 +96,14 @@ struct Disease* getNthDisease(DiseaseList diseaseList, int n) {
     else { return NULL; }
 }
 
-int replaceNthDisease(DiseaseList diseaseList, int n, struct Disease* disease) {
+int replaceNthDisease(DiseaseList diseaseList, int n,
+                      char* diseaseName, struct Hospital* hospital) {
+
     struct DiseaseListElement *query;
     query = getNthElement(diseaseList, n);
 
     if(query) {
+        struct Disease* disease = createDisease(hospital, diseaseName);
         removeReference(query -> disease);
         query -> disease = disease;
         addReference(query -> disease);
@@ -120,6 +127,7 @@ DiseaseList addDisease(DiseaseList diseaseList, struct Disease* disease){
     return newElement;
 }
 
+/* Patient structure with its list below. */
 struct Patient {
     char* name;
     DiseaseList diseaseList;
@@ -251,7 +259,6 @@ void newDiseaseCopyDescription(struct Hospital *hospital, char* name1, char* nam
 void changeDescription(struct Hospital *hospital, char* name,
                        int n, char *diseaseDescription) {
     struct Patient *patientPtr;
-    struct Disease *newDiseasePtr;
 
     patientPtr = getPatient(hospital->patientList, name);
     if (patientPtr == NULL) {
@@ -259,12 +266,10 @@ void changeDescription(struct Hospital *hospital, char* name,
         return;
     }
 
-    newDiseasePtr = createDisease(hospital, diseaseDescription);
-    if(replaceNthDisease(patientPtr->diseaseList, n, newDiseasePtr)){
+    if(replaceNthDisease(patientPtr->diseaseList, n, name, hospital)){
         printf("OK\n");
     }
     else {
-        removeReference(newDiseasePtr);
         printf("IGNORED\n");
     }
 
