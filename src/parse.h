@@ -3,8 +3,8 @@
 
  */
 
-#ifndef PARSE_H
-#define PARSE_H
+ #ifndef MIDDLE_AGES_PARSE_H
+#define MIDDLE_AGES_PARSE_H
 
  typedef enum {
      INIT, MOVE, PRODUCE_KNIGHT, PRODUCE_PEASANT, END_TURN
@@ -21,4 +21,4 @@ typedef struct def_command {
   */
 command* parse_command();
 
-#endif /* PARSE_H */
+#endif /* MIDDLE_AGES_PARSE_H */

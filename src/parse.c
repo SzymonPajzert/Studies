@@ -1,10 +1,8 @@
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-
-typedef enum {
-    INIT, MOVE, PRODUCE_KNIGHT, PRODUCE_PEASANT, END_TURN
-} command_type;
+#include <stdio.h>
+#include "error.h"
+#include "parse.h"
 
 int get_command_arg_len(command_type command) {
     switch (command) {
@@ -20,16 +18,6 @@ int get_command_arg_len(command_type command) {
             return 0;
     }
     return 0;
-}
-
-typedef struct def_command {
-    command_type name;
-    int data[7];
-} command;
-
-void input_error() {
-    perror("input error\n");
-    exit(42);
 }
 
 command_type extract_command_type(char *buffer) {
@@ -62,29 +50,40 @@ command_type extract_command_type(char *buffer) {
  * @param[in] size Expected number of integers in output.
  */
 void extract_int_args(char *buffer, int *arr, int size) {
-    char *cur_ptr, *next_space;
-    int converted_int;
-    next_space = strchr(buffer, ' ');
-    cur_ptr = next_space + 1;
-
-    int i;
-    for (i = 0; i < size; i++) {
-        // Look for space if it isn't last token
-        if (i < size - 1) {
-            next_space = strchr(cur_ptr, ' ');
-            if (next_space == NULL) input_error();
-            else *next_space = '\0';
-        }
-
-        converted_int = atoi(cur_ptr);
-
-        // Failed conversion, wrong input
-        if (converted_int == 0 && *cur_ptr != '0') input_error();
-        arr[i] = converted_int;
-
-        if (next_space == NULL) input_error();
-        else *next_space = ' ';
+    if (size <= 0) {
+        return;
+    } else {
+        char *cur_ptr, *next_space;
+        int converted_int;
+        next_space = strchr(buffer, ' ');
         cur_ptr = next_space + 1;
+
+        int i;
+        for (i = 0; i < size; i++) {
+            // Look for space if it isn't last token
+            if (i < size - 1) {
+                next_space = strchr(cur_ptr, ' ');
+                if (next_space == NULL) {
+                    input_error();
+                } else {
+                    *next_space = '\0';
+                }
+            }
+
+            converted_int = atoi(cur_ptr);
+
+            // Failed conversion, wrong input
+            if (converted_int == 0 && *cur_ptr != '0') input_error();
+            arr[i] = converted_int;
+
+            if (next_space == NULL) {
+                input_error();
+            }
+            else {
+                *next_space = ' ';
+            }
+            cur_ptr = next_space + 1;
+        }
     }
 }
 
