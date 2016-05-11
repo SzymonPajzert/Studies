@@ -1,14 +1,14 @@
- /** @file
-    Interface of parser.
+/** @file
+   Interface of parser.
 
- */
+*/
 
- #ifndef MIDDLE_AGES_PARSE_H
+#ifndef MIDDLE_AGES_PARSE_H
 #define MIDDLE_AGES_PARSE_H
 
- typedef enum {
-     INIT, MOVE, PRODUCE_KNIGHT, PRODUCE_PEASANT, END_TURN
- } command_type;
+typedef enum {
+    INIT, MOVE, PRODUCE_KNIGHT, PRODUCE_PEASANT, END_TURN
+} command_type;
 
 typedef struct def_command {
     command_type name;
@@ -16,9 +16,10 @@ typedef struct def_command {
 } command;
 
 
-/** Reads a command.
-  Returns command with data points using 'command' structure.
-  */
+/**
+ * Reads a command.
+ * Returns command with data points using 'command' structure.
+ */
 command* parse_command();
 
 #endif /* MIDDLE_AGES_PARSE_H */
