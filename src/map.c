@@ -1,12 +1,23 @@
+/**@file
+ * Implementation of map structure and associated functionalities.
+ */
+
 #include <stdio.h>
 #include "error.h"
 #include "map.h"
 
+/**
+ * Basic element of the map, implemented as deque element.
+ *
+ */
 typedef struct Tile {
     int number;
+    /**< number of the tile */
     struct Tile *prev_tile;
+    /**< pointer to the previous tile or NULL */
     struct Tile *next_tile;
-    Pawn *occupying_pawn;
+    /**< pointer to the next tile or NULL */
+    Pawn *occupying_pawn;       /**< pointer to the occupying pawn */
 } Tile;
 
 /**
@@ -26,25 +37,39 @@ Tile *get_tile(Tile *begin, int n) {
  * Insert to tile at nth position. Exits with error if tile exists.
  * @return Pointer to newly inserted tile.
  */
-Tile *insert_tile(Tile *begin, int n, Pawn *inserted_pawn) {
-    Tile *found = get_tile(begin, n);
+Tile *insert_tile(Tile **begin, int n, Pawn *inserted_pawn) {
+    Tile *found = get_tile(*begin, n);
     if (found->number == n) {
-        perror("existing tile insertion");
-        exit(40);
+        input_error();
+        return NULL;
     } else {
         Tile *new_tile = malloc(sizeof(Tile));
         new_tile->number = n;
         new_tile->occupying_pawn = inserted_pawn;
-        new_tile->next_tile = found->next_tile;
-        new_tile->prev_tile = found;
 
-        found->next_tile = new_tile;
-        new_tile->next_tile->prev_tile = new_tile;
-
+        if (found->number < n) {
+            new_tile->next_tile = found->next_tile;
+            new_tile->prev_tile = found;
+            found->next_tile = new_tile;
+            if (new_tile->next_tile) {
+                (new_tile->next_tile)->prev_tile = new_tile;
+            }
+        } else {
+            new_tile->next_tile = found;
+            new_tile->prev_tile = found->prev_tile;
+            if (found->prev_tile) {
+                found->prev_tile->next_tile = new_tile;
+            }
+            found->prev_tile = new_tile;
+            *begin = new_tile;
+        }
         return new_tile;
     }
 }
 
+/**
+ * Remove the tile and set pointer to the next or previous tile.
+ */
 Pawn *remove_tile(Tile **removed_tile) {
     Tile *prev, *next;
     Pawn *result;
@@ -53,6 +78,7 @@ Pawn *remove_tile(Tile **removed_tile) {
     prev = (*removed_tile)->prev_tile;
     next = (*removed_tile)->next_tile;
     free(*removed_tile);
+    *removed_tile = NULL;
 
     if (next != NULL) {
         next->prev_tile = prev;
@@ -67,13 +93,22 @@ Pawn *remove_tile(Tile **removed_tile) {
     return result;
 }
 
+/**
+ * Tier 2 element of the map, implemented as deque element.
+ */
 typedef struct Column {
     int number;
+    /**< number of the column */
     struct Column *prev_column;
+    /**< pointer to previous column or NULL */
     struct Column *next_column;
-    Tile *first_tile;
+    /**< pointer to next column or NULL */
+    Tile *first_tile;               /**< pointer to first tile in column */
 } Column;
 
+/**
+ * Get column by number.
+ */
 Column *get_column(Column *begin, int n) {
     Column *result = begin;
     while (result->next_column && result->next_column->number <= n) {
@@ -90,7 +125,8 @@ Column *get_column(Column *begin, int n) {
 Column *insert_column(Column *begin, int n, Tile *inserted_tile) {
     Column *found = get_column(begin, n);
     if (found->number == n) {
-        map_error("same tile insertion");
+        input_error();
+        return NULL;
     } else {
         Column *new_column = malloc(sizeof(Tile));
         new_column->number = n;
@@ -99,7 +135,9 @@ Column *insert_column(Column *begin, int n, Tile *inserted_tile) {
         new_column->prev_column = found;
 
         found->next_column = new_column;
-        new_column->next_column->prev_column = new_column;
+        if (new_column->next_column) {
+            new_column->next_column->prev_column = new_column;
+        }
         return new_column;
     }
 }
@@ -112,7 +150,7 @@ void remove_colum(Column **removed_column) {
     Column *prev, *next;
 
     if ((*removed_column)->first_tile != NULL) {
-        map_error("non empty column deletion");
+        input_error();
     }
 
     prev = (*removed_column)->prev_column;
@@ -130,24 +168,41 @@ void remove_colum(Column **removed_column) {
     }
 }
 
+/**
+ * Map size variable used by validate_input function - maximum possible
+ * column or tile number.
+ */
 int map_size = -1;
+/**
+ * Instance of the map, containing after initialization column with number 0
+ * - to ensure that map isn't empty and column won't be used.
+ */
 Column *map;
 
+/**
+ * Set map size and allocate memory for the map.
+ */
 void init_map(int n) {
-    if (map_size == -1) {
-        map_size = n;
-        map = malloc(sizeof(Column));
-        map->number = 0;
-        return;
-    }
+    if (n > 0) {
+        if (map_size == -1) {
+            map_size = n;
+            map = malloc(sizeof(Column));
+            map->number = 0;
+            return;
+        }
 
-    if (map_size != n) {
-        map_error("double map initialization\n");
+        if (map_size != n) {
+            input_error();
+        }
+    } else {
+        input_error();
     }
 }
 
-int get_size() {
-    return map_size;
+void validate_input(int x, int y) {
+    if (x > map_size || x < 0 || y > map_size || y < 0) {
+        input_error();
+    }
 }
 
 Tile *get_tile_from_map(int x, int y) {
@@ -165,6 +220,7 @@ Tile *get_tile_from_map(int x, int y) {
 }
 
 Pawn *get_pawn(int x, int y) {
+    validate_input(x, y);
     Tile *found = get_tile_from_map(x, y);
     if (found != NULL) {
         return found->occupying_pawn;
@@ -174,16 +230,17 @@ Pawn *get_pawn(int x, int y) {
 }
 
 Pawn *remove_pawn(int x, int y) {
+    validate_input(x, y);
     Tile *found = get_tile_from_map(x, y);
     if (found != NULL) {
         Column *result_column;
-        Pawn *result = found->occupying_pawn;
+        Pawn *result;
 
         result_column = get_column(map, x);
         if (result_column->first_tile == found) {
-            remove_tile(&(result_column->first_tile));
+            result = remove_tile(&(result_column->first_tile));
         } else {
-            remove_tile(&found);
+            result = remove_tile(&found);
         }
 
         if (result_column->first_tile == NULL) {
@@ -197,6 +254,7 @@ Pawn *remove_pawn(int x, int y) {
 }
 
 void insert_pawn(int x, int y, Pawn *pawn) {
+    validate_input(x, y);
     Column *column;
     Tile *tile;
 
@@ -209,26 +267,30 @@ void insert_pawn(int x, int y, Pawn *pawn) {
         tile->occupying_pawn = pawn;
         insert_column(column, x, tile);
     } else {
-        tile = get_tile(column->first_tile, y);
-        if (tile->number == y) {
-            tile->occupying_pawn = pawn;
-        } else {
-            insert_tile(tile, y, pawn);
-        }
+        insert_tile(&(column->first_tile), y, pawn);
     }
 }
 
 void move_pawn(int x1, int y1, int x2, int y2) {
+    validate_input(x1, y1);
+    validate_input(x2, y2);
     Pawn *moved = remove_pawn(x1, y1);
-    insert_pawn(x2, y2, moved);
+
+    if (rested_pawn(moved)) {
+        update_rest(moved);
+        insert_pawn(x2, y2, moved);
+    } else {
+        input_error();
+    }
+
 }
 
 int is_free(int x, int y) {
-    if (get_pawn(x, y) != NULL) return 1;
-    else return 0;
+    validate_input(x, y);
+    return (get_pawn(x, y) == NULL);
 }
 
-void print_map() {
+void print_topleft() {
     int m = map_size < 10 ? map_size : 10;
     Pawn *grid[m + 1][m + 1];
     for (int i = 1; i <= m; i++) {
@@ -239,6 +301,7 @@ void print_map() {
 
     Tile *tile;
     Column *column = map;
+
     /* Switching to the next column, first one is a place holder */
     column = column->next_column;
 
@@ -246,17 +309,38 @@ void print_map() {
         tile = column->first_tile;
         while (tile && tile->number <= m) {
             grid[column->number][tile->number] = tile->occupying_pawn;
+            tile = tile->next_tile;
         }
+        column = column->next_column;
     }
 
-    for (int i = 1; i <= m; i++) {
-        for (int j = 1; j <= m; j++) {
+    for (int j = 1; j <= m; j++) {
+        for (int i = 1; i <= m; i++) {
             if (grid[i][j] != NULL) {
                 printf("%c", to_char(grid[i][j]));
             } else {
                 printf(".");
             }
-            printf("\n");
         }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void deallocate_map() {
+    Column *column = map, *next_column;
+    Tile *tile, *next_tile;
+
+    while (column) {
+        tile = column->first_tile;
+        while (tile) {
+            next_tile = tile->next_tile;
+            free(tile->occupying_pawn);
+            free(tile);
+            tile = next_tile;
+        }
+        next_column = column->next_column;
+        free(column);
+        column = next_column;
     }
 }

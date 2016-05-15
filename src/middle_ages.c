@@ -1,7 +1,14 @@
+/**@file
+ * Main program file
+ */
+
 #include <stdlib.h>
 #include "parse.h"
 #include "engine.h"
 
+/**
+ * Main function run by user.
+ */
 int main() {
 
     start_game();
@@ -33,8 +40,11 @@ int main() {
                 end_turn();
                 break;
         }
+
+        if (new_command->name != END_TURN) {
+            print_topleft();
+        }
         free(new_command);
-        print_topleft();
     }
 
     end_game();

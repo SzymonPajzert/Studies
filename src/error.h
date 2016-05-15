@@ -1,21 +1,14 @@
-/*@file
- * Set of common utilities shared in middle_ages game
+/**@file
+ * Interface of error library.
  */
 
-#ifndef MIDDLE_AGES_UTIL_H
-#define MIDDLE_AGES_UTIL_H
+#ifndef MIDDLE_AGES_ERROR_H
+#define MIDDLE_AGES_ERROR_H
 
-#include <stdio.h>
+/**
+ * Used if state of the game is corrupted or incorrect input is given.
+ * Ends game end finishes with error code 42.
+ */
+void input_error();
 
-#define input_error() \
-    perror("input error\n");\
-    exit(42);
-
-#define map_error(MSG) \
-    perror((MSG)); \
-    exit(40);
-
-#define game_state_error() \
-    perror("game state error");
-
-#endif //MIDDLE_AGES_UTIL_H
+#endif //MIDDLE_AGES_ERROR_H

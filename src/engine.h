@@ -52,11 +52,32 @@ void produce_peasant(int x1, int y1, int x2, int y2);
  */
 void end_turn();
 
+/**
+ * End state the game - print result and free memory.
+ */
 void end_game();
 
 /**
  * Prints (into stdout) top-left corner of the board of size m x m where m = min(n,10).
  */
 void print_topleft();
+
+// Added include guard, because type is used in two files.
+#ifndef MIDDLE_AGES_GAME_RESULT_ENUM
+#define MIDDLE_AGES_GAME_RESULT_ENUM
+/**
+ * Enum type containing all possible game results.
+ */
+typedef enum {
+    FIRST_WON, SECOND_WON, DRAW, PLAYED
+} game_result;
+#endif /* MIDDLE_AGES_GAME_RESULT_ENUM */
+
+/**
+ * Check whether game is still playable - turn count isn't exceeded and both
+ * players have kings.
+ * @return game result or PLAYED if it hasn't ended.
+ */
+game_result get_game_result();
 
 #endif /* MIDDLE_AGES_ENGINE_H */

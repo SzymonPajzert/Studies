@@ -1,4 +1,7 @@
-#include <stdio.h>
+/**@file
+ * Implementation of game engine.
+ */
+
 #include <stdlib.h>
 #include "error.h"
 #include "player.h"
@@ -7,48 +10,67 @@
 #include "map.h"
 #include "engine.h"
 
+/** Max function */
+#define max(x, y) (((x)<(y)) ? (y) : (x))
 
-void start_game() {
-    _start_game();
-}
+/** Abs function */
+#define abs(x) ((x)<0 ? -(x) : (x) )
 
 void init(int n, int k, int p, int x1, int y1, int x2, int y2) {
+    // Check max metric
+    if (max(abs(x1 - x2), abs(y1 - y2)) < 8) {
+        input_error();
+    }
+
     init_map(n);
-    set_max_turn(k);
-    init_game();
+    init_game(k);
 
     Player *init_player = get_n_player(p);
-    init_player->has_king = 1;
+    if (init_player->has_king) {
+        input_error(); //has been initialized before
+    } else {
+        init_player->has_king = 1;
+    }
 
-    Pawn *king, *knight1, *knight2, *peasant;
-    king = malloc(sizeof(Pawn));
-    knight1 = malloc(sizeof(Pawn));
-    knight2 = malloc(sizeof(Pawn));
-    peasant = malloc(sizeof(Pawn));
+    if (!is_initialized()) {
+        Player *first_player = get_n_player(1);
+        Player *second_player = get_n_player(2);
 
-    int x[2], y[2];
-    x[0] = x1;
-    x[1] = x2;
-    y[0] = y1;
-    y[1] = y2;
+        insert_pawn(x1, y1, create(KING, first_player));
+        insert_pawn(x1 + 1, y1, create(PEASANT, first_player));
+        insert_pawn(x1 + 2, y1, create(KNIGHT, first_player));
+        insert_pawn(x1 + 3, y1, create(KNIGHT, first_player));
 
-    insert_pawn(x[p - 1], y[p - 1], king);
-    insert_pawn(x[p - 1] + 1, y[p - 1], knight1);
-    insert_pawn(x[p - 1] + 2, y[p - 1], knight2);
-    insert_pawn(x[p - 1] + 3, y[p - 1], peasant);
+        insert_pawn(x2, y2, create(KING, second_player));
+        insert_pawn(x2 + 1, y2, create(PEASANT, second_player));
+        insert_pawn(x2 + 2, y2, create(KNIGHT, second_player));
+        insert_pawn(x2 + 3, y2, create(KNIGHT, second_player));
+    }
+
+    // Check whether kings positions are the same in both inits
+    Pawn *first_king, *second_king;
+    first_king = get_pawn(x1, y1);
+    second_king = get_pawn(x2, y2);
+    if (!first_king || first_king->owner != get_n_player(1) ||
+        !second_king || second_king->owner != get_n_player(2)) {
+        input_error();
+    }
 }
 
 /**
  * Checks whether pointer points to existing pawn owned by current player.
  */
 void assert_proper_existence(Pawn *pawn) {
-    if (pawn == NULL || pawn->owner != get_cur_player()) {
-        /* @TODO move of invalid pawn */
+    if (pawn == NULL || pawn->owner != get_cur_player() || !rested_pawn(pawn)) {
         input_error();
     }
 }
 
 void move(int x1, int y1, int x2, int y2) {
+    if (!is_initialized() || abs(x1 - x2) > 1 || abs(y1 - y2) > 1) {
+        input_error();
+    }
+
     Pawn *active, *passive;
     active = get_pawn(x1, y1);
     assert_proper_existence(active);
@@ -60,37 +82,43 @@ void move(int x1, int y1, int x2, int y2) {
         fight_result result = fight(active, passive);
         switch (result) {
             case FIRST:
-                /* @TODO death of first */
+                die(remove_pawn(x1, y1));
                 break;
 
             case SECOND:
-                /* @TODO death of second */
+                die(remove_pawn(x2, y2));
+                move_pawn(x1, y1, x2, y2);
                 break;
 
             case BOTH:
-                /* @TODO simultaneous death */
+                die(remove_pawn(x1, y1));
+                die(remove_pawn(x2, y2));
                 break;
 
             case IMPOSSIBLE:
-                /* @TODO impossible fight */
+                input_error();
                 break;
         }
     }
 
 }
 
+/**
+ * Universal produce function, generating pawns.
+ */
 void produce(int x1, int y1, int x2, int y2, pawn_type type) {
+    if (!is_initialized() || abs(x1 - x2) > 1 || abs(y1 - y2) > 1) {
+        input_error();
+    }
+
     Pawn *peasant = get_pawn(x1, y1);
     assert_proper_existence(peasant);
 
-    if (peasant_is_rested(peasant, get_turn_number()) && is_free(x2, y2)) {
-        Pawn *produced = malloc(sizeof(Pawn));
-        produced->owner = get_cur_player();
-        produced->last_moved = get_turn_number() - 1;
-        produced->type = type;
+    if (rested_peasant(peasant) && is_free(x2, y2)) {
+        Pawn *produced = create(type, get_cur_player());
         insert_pawn(x2, y2, produced);
     } else {
-        /* @TODO invalid input during production */
+        input_error();
     }
 }
 
@@ -100,16 +128,4 @@ void produce_knight(int x1, int y1, int x2, int y2) {
 
 void produce_peasant(int x1, int y1, int x2, int y2) {
     produce(x1, y1, x2, y2, PEASANT);
-}
-
-void end_turn() {
-    _end_turn();
-}
-
-void end_game() {
-    _end_game();
-}
-
-void print_topleft() {
-    print_map();
 }

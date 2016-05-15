@@ -13,11 +13,6 @@
 void init_map(int n);
 
 /**
- * Get size of map.
- */
-int get_size();
-
-/**
  * Get pawn residing in the tile. If tile is empty, NULL is returned.
  */
 Pawn *get_pawn(int x, int y);
@@ -47,6 +42,11 @@ int is_free(int x, int y);
 /**
  * Return top-left corner of map of size at most 10.
  */
-void print_map();
+void print_topleft();
+
+/**
+ * Free map memory.
+ */
+void deallocate_map();
 
 #endif /* MIDDLE_AGES_MAP_H */
