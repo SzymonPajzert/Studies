@@ -33,7 +33,7 @@ Game *game_instance;
 
 void start_game() {
     game_instance = malloc(sizeof(Game));
-    game_instance->initialized = -1;
+    game_instance->initialized = 0;
     game_instance->cur_player_num = 0;
     game_instance->turn_count = 1;
     game_instance->max_turn_num = -1;
@@ -44,17 +44,20 @@ void start_game() {
     }
 }
 
-void init_game(int n) {
+void init_game(int n, int p) {
     if (n > 0) {
         if (game_instance->initialized++ < 1) {
             if (game_instance->max_turn_num == -1) {
-                game_instance->max_turn_num = n;
+                game_instance->max_turn_num = n+1;
                 return;
             }
 
-            if (game_instance->max_turn_num != n) {
+            if (game_instance->max_turn_num != n+1) {
                 input_error();
             }
+
+            game_instance->cur_player_num=p;
+            if (p==2) game_instance->turn_count--;
         }
     } else {
         input_error();
@@ -63,17 +66,18 @@ void init_game(int n) {
 }
 
 void end_game() {
+    int result=41;
     switch (get_game_result()) {
-        case FIRST_WON:
-            fprintf(stderr, "player 1 won\n");
+        case WIN:
+            result = 0;
             break;
 
-        case SECOND_WON:
-            fprintf(stderr, "player 2 won\n");
+        case DEFEAT:
+            result=2;
             break;
 
         case DRAW:
-            fprintf(stderr, "draw\n");
+            result=1;
             break;
 
         default:
@@ -82,14 +86,14 @@ void end_game() {
     }
     deallocate_map();
     free(game_instance);
+    exit(result);
 }
 
 void end_turn() {
     if (!is_initialized()) input_error();
-    game_instance->cur_player_num = game_instance->cur_player_num == 1 ? 0 : 1;
-    if (game_instance->cur_player_num == 0) {
-        game_instance->turn_count = game_instance->turn_count + 1;
-    }
+    game_instance->turn_count++;
+    printf("END_TURN\n");
+    fflush(stdout);
 }
 
 game_result get_game_result() {
@@ -100,18 +104,19 @@ game_result get_game_result() {
 
         if (first_has_king) {
             if (second_has_king) {
-                if (game_instance->turn_count - 1 ==
-                    game_instance->max_turn_num) {
+                if (game_instance->turn_count == game_instance->max_turn_num) {
                     return DRAW;
                 } else {
                     return PLAYED;
                 }
             } else {
-                return FIRST_WON;
+                if (get_cur_player()->number == 1) return DEFEAT;
+                else return WIN;
             }
         } else {
             if (second_has_king) {
-                return SECOND_WON;
+                if (get_cur_player()->number == 2) return DEFEAT;
+                else return WIN;
             } else {
                 return DRAW;
             }

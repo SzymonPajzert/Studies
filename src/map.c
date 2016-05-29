@@ -290,43 +290,6 @@ int is_free(int x, int y) {
     return (get_pawn(x, y) == NULL);
 }
 
-void print_topleft() {
-    int m = map_size < 10 ? map_size : 10;
-    Pawn *grid[m + 1][m + 1];
-    for (int i = 1; i <= m; i++) {
-        for (int j = 1; j <= m; j++) {
-            grid[i][j] = NULL;
-        }
-    }
-
-    Tile *tile;
-    Column *column = map;
-
-    /* Switching to the next column, first one is a place holder */
-    column = column->next_column;
-
-    while (column && column->number <= m) {
-        tile = column->first_tile;
-        while (tile && tile->number <= m) {
-            grid[column->number][tile->number] = tile->occupying_pawn;
-            tile = tile->next_tile;
-        }
-        column = column->next_column;
-    }
-
-    for (int j = 1; j <= m; j++) {
-        for (int i = 1; i <= m; i++) {
-            if (grid[i][j] != NULL) {
-                printf("%c", to_char(grid[i][j]));
-            } else {
-                printf(".");
-            }
-        }
-        printf("\n");
-    }
-    printf("\n");
-}
-
 void deallocate_map() {
     Column *column = map, *next_column;
     Tile *tile, *next_tile;

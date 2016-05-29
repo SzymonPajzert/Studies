@@ -13,10 +13,9 @@
 void start_game();
 
 /**
- * Set game max turn number and add units to the map if its the first
- * initialization.
+ * Set game max turn number and player number.
  */
-void init_game(int n);
+void init_game(int n, int p);
 
 // Added include guard, because type is used in two files.
 #ifndef MIDDLE_AGES_GAME_RESULT_ENUM
@@ -25,7 +24,7 @@ void init_game(int n);
  * Enum type containing all possible game results.
  */
 typedef enum {
-    FIRST_WON, SECOND_WON, DRAW, PLAYED
+    WIN, DEFEAT, DRAW, PLAYED
 } game_result;
 #endif /* MIDDLE_AGES_GAME_RESULT_ENUM */
 

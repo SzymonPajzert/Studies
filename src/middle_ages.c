@@ -40,10 +40,6 @@ int main() {
                 end_turn();
                 break;
         }
-
-        if (new_command->name != END_TURN) {
-            print_topleft();
-        }
         free(new_command);
     }
 

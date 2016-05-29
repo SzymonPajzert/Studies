@@ -57,11 +57,6 @@ void end_turn();
  */
 void end_game();
 
-/**
- * Prints (into stdout) top-left corner of the board of size m x m where m = min(n,10).
- */
-void print_topleft();
-
 // Added include guard, because type is used in two files.
 #ifndef MIDDLE_AGES_GAME_RESULT_ENUM
 #define MIDDLE_AGES_GAME_RESULT_ENUM
@@ -69,7 +64,7 @@ void print_topleft();
  * Enum type containing all possible game results.
  */
 typedef enum {
-    FIRST_WON, SECOND_WON, DRAW, PLAYED
+    WIN, DEFEAT, DRAW, PLAYED
 } game_result;
 #endif /* MIDDLE_AGES_GAME_RESULT_ENUM */
 

@@ -2,7 +2,6 @@
  * Implementation of game engine.
  */
 
-#include <stdlib.h>
 #include "error.h"
 #include "player.h"
 #include "pawn.h"
@@ -23,37 +22,25 @@ void init(int n, int k, int p, int x1, int y1, int x2, int y2) {
     }
 
     init_map(n);
-    init_game(k);
+    init_game(k, (p + 1) % 2 + 1);
 
-    Player *init_player = get_n_player(p);
-    if (init_player->has_king) {
-        input_error(); //has been initialized before
-    } else {
-        init_player->has_king = 1;
-    }
+    Player *first_player = get_n_player(1);
+    Player *second_player = get_n_player(2);
 
-    if (!is_initialized()) {
-        Player *first_player = get_n_player(1);
-        Player *second_player = get_n_player(2);
+    insert_pawn(x1, y1, create(KING, first_player));
+    first_player->has_king=1;
+    insert_pawn(x1 + 1, y1, create(PEASANT, first_player));
+    insert_pawn(x1 + 2, y1, create(KNIGHT, first_player));
+    insert_pawn(x1 + 3, y1, create(KNIGHT, first_player));
 
-        insert_pawn(x1, y1, create(KING, first_player));
-        insert_pawn(x1 + 1, y1, create(PEASANT, first_player));
-        insert_pawn(x1 + 2, y1, create(KNIGHT, first_player));
-        insert_pawn(x1 + 3, y1, create(KNIGHT, first_player));
+    insert_pawn(x2, y2, create(KING, second_player));
+    second_player->has_king=1;
+    insert_pawn(x2 + 1, y2, create(PEASANT, second_player));
+    insert_pawn(x2 + 2, y2, create(KNIGHT, second_player));
+    insert_pawn(x2 + 3, y2, create(KNIGHT, second_player));
 
-        insert_pawn(x2, y2, create(KING, second_player));
-        insert_pawn(x2 + 1, y2, create(PEASANT, second_player));
-        insert_pawn(x2 + 2, y2, create(KNIGHT, second_player));
-        insert_pawn(x2 + 3, y2, create(KNIGHT, second_player));
-    }
-
-    // Check whether kings positions are the same in both inits
-    Pawn *first_king, *second_king;
-    first_king = get_pawn(x1, y1);
-    second_king = get_pawn(x2, y2);
-    if (!first_king || first_king->owner != get_n_player(1) ||
-        !second_king || second_king->owner != get_n_player(2)) {
-        input_error();
+    if(p == 1) {
+        end_turn();
     }
 }
 
