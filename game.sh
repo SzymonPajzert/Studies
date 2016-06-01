@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 
 readonly distance=8
+readonly unit_number=3
 
 function validate_int {
     if [[ $1 == *[^0-9]* ]]; then echo "invalid int $1"; exit 1; fi
 }
 
+extract_result_1=0
+extract_result_2=0
 function extract_int {
     local t=$1
     extract_result_1=${t%,*}
@@ -13,6 +16,13 @@ function extract_int {
     extract_result_2=${t#*,}
     validate_int ${extract_result_2}
 }
+
+function make_pipe {
+    PIPE=$(mktemp -u)
+    mkfifo ${PIPE}
+    eval "exec $1<>${PIPE}"
+}
+
 
 while (( "$#" )); do
     case $1 in
@@ -38,11 +48,11 @@ while (( "$#" )); do
         ;;
     -ai1)
         if [ -x $2 ]; then ai1=$2; else exit 1; fi
-        shift 1
+        shift 2
         ;;
     -ai2)
         if [ -x $2 ]; then ai2=$2; else exit 1; fi
-        shift 1
+        shift 2
         ;;
     *)
         echo "wrong argument"
@@ -57,6 +67,8 @@ if (( ${n} <= ${distance} )); then echo "too small n"; exit 1; fi
 if [ -z ${k+x} ]; then k=100; fi
 if [ -z ${s+x} ]; then s=1; fi
 
+# Coordinates randomization.
+
 # If only second pair of coordinates is given, set it as first
 swap_1_and_2=0
 if [[ -z ${x1+x} && -n ${x2+x} ]]; then
@@ -65,40 +77,47 @@ if [[ -z ${x1+x} && -n ${x2+x} ]]; then
     swap_1_and_2=1
 fi
 
-# We assure that it is possible to find proper x coordinates.
-# To make all cases possible, swap randomly x and y coordinates.
-# Swap either if it is not currently possible to find good x.
-swapped=`shuf -i 0-1 -n 1`
-if (( swapped == 1 )) || (( x1 <= distance )) && (( x1 + distance >= n )); then
-    if [[ -n ${x1+x} ]]; then t=${x1}; x1=${y1}; y1=${t}; fi
-    if [[ -n ${x2+x} ]]; then t=${x2}; x2=${y2}; y2=${t}; fi
-fi
-
+(( x_safe_range = n - unit_number ))
 # If no coordinates are given, choose pair of non contradictory coordinates
-if [ -z ${x1+x} ]; then
+if [[ -z ${x1+x} ]]; then
     if (( n >= 2*distance )); then
         x1=`shuf -i 1-${n} -n 1`
         y1=`shuf -i 1-${n} -n 1`
     else
         # Eliminate possibilities where first coordinate hinders choice of second
-        (( safe_range = 2*n - 2*distance ))
-        x1=`shuf -i 1-${safe_range} -n 1`
-        if (( 2*x1 > safe_range )); then
-            (( x1 += 2*distance - n ))
+        (( y_safe_range = 2*n - 2*distance ))
+        y1=`shuf -i 1-${y_safe_range} -n 1`
+        if (( 2*y1 > y_safe_range )); then
+            (( y1 += 2*distance - n ))
         fi
-        y1=`shuf -i 1-${n} -n 1`
+        x1=`shuf -i 1-${x_safe_range} -n 1`
     fi
 fi
 
 # If only one pair of coordinates is given, look for second one
-if [ -z ${x2+x} ]; then
-    (( x2_left_range = x1 > distance ? x1 - distance : 0 ))
-    (( x2_right_range = x1 + distance <= n ? n + 1 - x1 - distance : 0))
-    (( x2_range = x2_left_range + x2_right_range ))
-    if (( x2_range == 0 )); then echo "not possible"; exit 1; fi
-    x2=`shuf -i 1-${x2_range} -n 1`
-    if (( x2 > x2_left_range )); then (( x2 +=  n - x2_right_range)); fi
-    y2=`shuf -i 1-${n} -n 1`
+if [[ -z ${x2+x} ]]; then
+    (( y2_top_range = y1 > distance ? y1 - distance : 0 ))
+    (( y2_bottom_range = y1 + distance <= n ? n + 1 - y1 - distance : 0))
+    (( y2_range = y2_top_range + y2_bottom_range ))
+
+    if (( y2_range == 0 )); then
+        (( x2_left_range = x1 > distance ? x1 - distance : 0 ))
+        (( t = x1 + distance + unit_number ))
+        (( x2_right_range = t <= n ? n + 1 - t : 0 ))
+        (( x2_range = x2_left_range + x2_right_range ))
+        if (( x2_range == 0)); then echo "impossible"; exit 1;
+        else
+            x2=`shuf -i 1-${x2_range} -n 1`
+            if (( x2 > x2_left_range ));
+                then (( x2 +=  n - x2_right_range - unit_number));
+            fi
+            y2=`shuf -i 1-${n} -n 1`
+        fi
+    else
+        y2=`shuf -i 1-${y2_range} -n 1`
+        if (( y2 > y2_top_range )); then (( y2 +=  n - y2_bottom_range)); fi
+        x2=`shuf -i 1-${x_safe_range} -n 1`
+    fi
 fi
 
 if (( swap_1_and_2 == 1 )); then
@@ -106,67 +125,61 @@ if (( swap_1_and_2 == 1 )); then
     (( y1 = y1 + y2 )); (( y2 = y1 - y2 )); (( y1 = y1 - y2 ))
 fi
 
-if (( swapped == 1 )); then
-    (( x1 = x1 + y1 )); (( y1 = x1 - y1 )); (( x1 = x1 - y1 ))
-    (( x2 = x2 + y2 )); (( y2 = x2 - y2 )); (( x2 = x2 - y2 ))
-fi
-
-if (( x1 - x2 < distance )) && (( x2 - x1 < distance )) && \
-   (( y1 - y2 < distance )) && (( y2 - y1 < distance )); then
-    echo "too small distance";
-    exit 1;
-fi
-
-echo "$n $k $s $x1 $y1 $x2 $y2"
-
 # End of parsing, start of the game.
 
-gui_in=3
-gui_out=4
-player1_in=4
-player1_out=3
-player2_in=4
-player2_out=3
+if [[ -n ${ai1+x} ]] && [[ -n ${ai2+x} ]]; then
+    make_pipe 3
+    gui_in=3
+    for i in `seq 5 8`; do make_pipe ${i}; done
+    cur_ai_in=5
+    cur_ai_out=6
+    next_ai_in=7
+    next_ai_out=8
 
-gui_arguments=""
-if [ -z ${ai1+x} ]; then
-    gui_arguments="${gui_arguments} -human1";
-else
-    PIPE=$(mktemp -u)
-    mkfifo ${PIPE}
-    player1_in=5
-    eval "exec ${player1_in}<>${PIPE}"
+    ${ai1} <&5 >&6 &
+    ai1_pid=$!
 
-    PIPE=$(mktemp -u)
-    mkfifo ${PIPE}
-    player1_in=6
-    eval "exec ${player1_out}<>${PIPE}"
+    ${ai2} <&7 >&8 &
+    ai2_pid=$!
 
-    ${ai1} <&${player1_in} >&${player1_out}
+    ./sredniowiecze_gui_with_libs.sh <&3 &>/dev/null &
+    gui_pid=$!
+
+    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${cur_ai_in}
+    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${next_ai_in}
+
+    while kill -0 ${gui_pid} && \
+          kill -0 ${ai1_pid} && \
+          kill -0 ${ai2_pid}; do
+        read line <&${cur_ai_out}
+        if [[ -n ${line} ]]; then
+            echo ${line} >&${gui_in}
+            echo ${line} >&${next_ai_in}
+
+            if [[ ${line} == "END_TURN" ]]; then
+                t=${next_ai_in}
+                next_ai_in=${cur_ai_in}
+                cur_ai_in=${t}
+
+                t=${next_ai_out}
+                next_ai_out=${cur_ai_out}
+                cur_ai_out=${t}
+
+                sleep ${s}
+            fi
+        fi
+    done
+
+    while read -t 1 line <&${cur_ai_out}; do
+        echo ${line} >&${gui_in}
+        echo ${line} >&${next_ai_in}
+    done
+
+    kill ${gui_pid}
+    kill ${ai1_pid}
+    kill ${ai1_pid}
+    exit 0
 fi
 
-if [ -z ${ai2+x} ]; then
-    gui_arguments="${gui_arguments} -human2";
-else
-    PIPE=$(mktemp -u)
-    mkfifo ${PIPE}
-    player2_in=5
-    eval "exec ${player2_in}<>${PIPE}"
-
-    PIPE=$(mktemp -u)
-    mkfifo ${PIPE}
-    player2_in=6
-    eval "exec ${player2_out}<>${PIPE}"
-
-    ${ai2} <&${player2_in} >&${player2_out}
-fi
-
-PIPE=$(mktemp -u)
-mkfifo ${PIPE}
-eval "exec ${gui_in}<>${PIPE}"
-
-PIPE=$(mktemp -u)
-mkfifo ${PIPE}
-eval "exec ${gui_out}<>${PIPE}"
-
-./sredniowiecze_gui_with_libs.sh ${gui_arguments} <&${gui_in} >&${gui_out} &
