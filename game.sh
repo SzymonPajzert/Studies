@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 readonly distance=8
 readonly unit_number=3
@@ -28,31 +28,31 @@ while (( "$#" )); do
     case $1 in
     -n)
         validate_int $2; n=$2;
-        shift 2
+        if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     -k)
         validate_int $2; k=$2
-        shift 2
+        if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     -s)
         validate_int $2; s=$2
-        shift 2
+        if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     -p1)
         extract_int $2; x1=${extract_result_1}; y1=${extract_result_2}
-        shift 2
+        if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     -p2)
         extract_int $2; x2=${extract_result_1}; y2=${extract_result_2}
-        shift 2
+        if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     -ai1)
         if [ -x $2 ]; then ai1=$2; else exit 1; fi
-        shift 2
+        if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     -ai2)
         if [ -x $2 ]; then ai2=$2; else exit 1; fi
-        shift 2
+        if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     *)
         echo "wrong argument"
@@ -62,7 +62,7 @@ while (( "$#" )); do
 done
 
 if [ -z ${n} ]; then n=10; fi
-if (( n <= distance )); then echo "too small n"; exit 1; fi
+if (( n <= distance )) || (( n >= 2147483648)); then echo "too small n"; exit 1; fi
 
 if [ -z ${k} ]; then k=100; fi
 if [ -z ${s} ]; then s=1; fi
@@ -125,8 +125,7 @@ if (( swap_1_and_2 == 1 )); then
     (( y1 = y1 + y2 )); (( y2 = y1 - y2 )); (( y1 = y1 - y2 ))
 fi
 
-echo `pgrep -o -x game.sh`
-echo "${n} ${k} ${s} ${x1} ${y1} ${x2} ${y2}"
+echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}"
 
 # End of parsing, start of the game.
 # Human vs Human game
@@ -207,19 +206,15 @@ else
     echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
 fi
 
-r=0
 while kill -0 ${gui_pid} &>/dev/null && \
       ( [[ ${ai1_pid} == 0 ]] || kill -0 ${ai1_pid} &>/dev/null )  && \
-      ( [[ ${ai2_pid} == 0 ]] || kill -0 ${ai2_pid} &>/dev/null ) &&
-      (( r == 0 )); do
+      ( [[ ${ai2_pid} == 0 ]] || kill -0 ${ai2_pid} &>/dev/null ); do
     read -t 1 line <&${cur_ai_out}
-    r=$?
-    echo ${r}
     if [[ -n ${line} ]]; then
         echo ${line} >&${next_ai_in}
         if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
 
-        if [[ ${line} == "END_TURN" ]] || (( r != 0 )); then
+        if [[ ${line} == "END_TURN" ]]; then
             if [[ ${cur_ai_out} != ${gui_out} ]]; then sleep ${s}; fi
 
             t=${next_ai_in}
@@ -233,14 +228,33 @@ while kill -0 ${gui_pid} &>/dev/null && \
     fi
 done
 
-read -t 1 line <&${cur_ai_out};
-if [[ -n ${line} ]]; then
-    echo ${line} >&${next_ai_in}
-    if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
+while read -t 1 line <&${cur_ai_out}; do
+    if [[ -n ${line} ]]; then
+        echo ${line} >&${next_ai_in}
+        if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
+    fi
+done
+
+if (( ai1_pid != 0 )); then kill ${ai1_pid} &>/dev/null; fi
+if (( ai2_pid != 0 )); then kill ${ai2_pid} &>/dev/null; fi
+kill ${gui_pid} &>/dev/null
+
+ok=1
+wait ${gui_pid}; if (( $? != 0 )); then ok=0; fi
+
+if (( ai1_pid != 0 )); then
+    wait ${ai1_pid};
+    if (( $? == 42 )); then
+        ok=0
+    fi
 fi
 
-kill ${ai1_pid} &>/dev/null
-kill ${ai2_pid} &>/dev/null
-kill ${gui_pid} &>/dev/null
-exit 0
+if (( ai2_pid != 0 )); then
+    wait ${ai2_pid};
+    if (( $? == 42 )); then
+        ok=0
+    fi
+fi
+
+if (( ok == 1 )); then exit 0; else exit 1; fi
 
