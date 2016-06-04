@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 readonly distance=8
 readonly unit_number=3
@@ -127,7 +127,74 @@ fi
 
 # End of parsing, start of the game.
 
+if [[ -z ${ai1+x} ]] && [[ -z ${ai2+x} ]]; then
+    echo "opcja 1"
+    make_pipe 3
+    gui_in=3
+    ./sredniowiecze_gui_with_libs.sh -human1 -human2 <&3 &>/dev/null &
+    gui_pid=$!
+
+    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    wait ${gui_pid}
+    exit 0
+fi
+
+if [[ -n ${ai1+x} ]] && [[ -z ${ai2+x} ]]; then
+    echo "opcja 2"
+    for i in `seq 3 6`; do make_pipe ${i}; done
+    gui_in=3
+    gui_out=4
+    ai1_in=5
+    ai1_out=6
+
+    cur_ai_in=5
+    cur_ai_out=6
+    next_ai_in=3
+    next_ai_out=4
+
+    ${ai1} <&5 >&6 &
+    ai1_pid=$!
+
+    ./sredniowiecze_gui_with_libs.sh -human2 <&3 >&4 &
+    gui_pid=$!
+
+    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${ai1_in}
+
+    while kill -0 ${gui_pid} &>/dev/null && \
+          kill -0 ${ai1_pid} &>/dev/null ; do
+        read line <&${cur_ai_out}
+        if [[ -n ${line} ]]; then
+            echo ${line} >&${next_ai_in}
+
+            if [[ ${line} == "END_TURN" ]]; then
+                t=${next_ai_in}
+                next_ai_in=${cur_ai_in}
+                cur_ai_in=${t}
+
+                t=${next_ai_out}
+                next_ai_out=${cur_ai_out}
+                cur_ai_out=${t}
+
+                if [[ ${cur_ai_out} == ${gui_out} ]]; then sleep ${s}; fi
+            fi
+        fi
+    done
+
+    while read -t 1 line <&${cur_ai_out}; do
+        echo ${line} >&${next_ai_in}
+    done
+
+    kill ${gui_pid} &>/dev/null
+    kill ${ai1_pid} &>/dev/null
+    kill ${ai1_pid} &>/dev/null
+    exit 0
+fi
+
 if [[ -n ${ai1+x} ]] && [[ -n ${ai2+x} ]]; then
+    echo "opcja 4"
     make_pipe 3
     gui_in=3
     for i in `seq 5 8`; do make_pipe ${i}; done
@@ -150,9 +217,9 @@ if [[ -n ${ai1+x} ]] && [[ -n ${ai2+x} ]]; then
     echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
     echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${next_ai_in}
 
-    while kill -0 ${gui_pid} && \
-          kill -0 ${ai1_pid} && \
-          kill -0 ${ai2_pid}; do
+    while kill -0 ${gui_pid} &>/dev/null && \
+          kill -0 ${ai1_pid} &>/dev/null && \
+          kill -0 ${ai2_pid} &>/dev/null ; do
         read line <&${cur_ai_out}
         if [[ -n ${line} ]]; then
             echo ${line} >&${gui_in}
@@ -177,9 +244,9 @@ if [[ -n ${ai1+x} ]] && [[ -n ${ai2+x} ]]; then
         echo ${line} >&${next_ai_in}
     done
 
-    kill ${gui_pid}
-    kill ${ai1_pid}
-    kill ${ai1_pid}
+    kill ${gui_pid} &>/dev/null
+    kill ${ai1_pid} &>/dev/null
+    kill ${ai1_pid} &>/dev/null
     exit 0
 fi
 
