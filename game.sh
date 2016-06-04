@@ -61,17 +61,17 @@ while (( "$#" )); do
     esac
 done
 
-if [ -z ${n+x} ]; then n=10; fi
-if (( ${n} <= ${distance} )); then echo "too small n"; exit 1; fi
+if [ -z ${n} ]; then n=10; fi
+if (( n <= distance )); then echo "too small n"; exit 1; fi
 
-if [ -z ${k+x} ]; then k=100; fi
-if [ -z ${s+x} ]; then s=1; fi
+if [ -z ${k} ]; then k=100; fi
+if [ -z ${s} ]; then s=1; fi
 
 # Coordinates randomization.
 
 # If only second pair of coordinates is given, set it as first
 swap_1_and_2=0
-if [[ -z ${x1+x} && -n ${x2+x} ]]; then
+if [[ -z ${x1} && -n ${x2} ]]; then
     x1=${x2}; unset x2
     y1=${y2}; unset y2
     swap_1_and_2=1
@@ -95,7 +95,7 @@ if [[ -z ${x1+x} ]]; then
 fi
 
 # If only one pair of coordinates is given, look for second one
-if [[ -z ${x2+x} ]]; then
+if [[ -z ${x2} ]]; then
     (( y2_top_range = y1 > distance ? y1 - distance : 0 ))
     (( y2_bottom_range = y1 + distance <= n ? n + 1 - y1 - distance : 0))
     (( y2_range = y2_top_range + y2_bottom_range ))
@@ -125,9 +125,13 @@ if (( swap_1_and_2 == 1 )); then
     (( y1 = y1 + y2 )); (( y2 = y1 - y2 )); (( y1 = y1 - y2 ))
 fi
 
-# End of parsing, start of the game.
+echo `pgrep -o -x game.sh`
+echo "${n} ${k} ${s} ${x1} ${y1} ${x2} ${y2}"
 
-if [[ -z ${ai1+x} ]] && [[ -z ${ai2+x} ]]; then
+# End of parsing, start of the game.
+# Human vs Human game
+
+if [[ -z ${ai1} ]] && [[ -z ${ai2} ]]; then
     echo "opcja 1"
     make_pipe 3
     gui_in=3
@@ -140,113 +144,103 @@ if [[ -z ${ai1+x} ]] && [[ -z ${ai2+x} ]]; then
     exit 0
 fi
 
-if [[ -n ${ai1+x} ]] && [[ -z ${ai2+x} ]]; then
-    echo "opcja 2"
-    for i in `seq 3 6`; do make_pipe ${i}; done
-    gui_in=3
-    gui_out=4
-    ai1_in=5
-    ai1_out=6
+# At least one AI games
 
-    cur_ai_in=5
-    cur_ai_out=6
-    next_ai_in=3
-    next_ai_out=4
+gui_arguments=""
 
-    ${ai1} <&5 >&6 &
+readonly gui_in=3
+readonly gui_out=4
+readonly ai1_in=5
+readonly ai1_out=6
+readonly ai2_in=7
+readonly ai2_out=8
+
+cur_ai_in=0
+cur_ai_out=0
+next_ai_in=0
+next_ai_out=0
+
+ai1_pid=0
+ai2_pid=0
+
+if [[ -n ${ai1} ]]; then
+    make_pipe ${ai1_in}
+    make_pipe ${ai1_out}
+    ${ai1} <&${ai1_in} >&${ai1_out} &
     ai1_pid=$!
-
-    ./sredniowiecze_gui_with_libs.sh -human2 <&3 >&4 &
-    gui_pid=$!
-
-    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
-    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
     echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${ai1_in}
-
-    while kill -0 ${gui_pid} &>/dev/null && \
-          kill -0 ${ai1_pid} &>/dev/null ; do
-        read line <&${cur_ai_out}
-        if [[ -n ${line} ]]; then
-            echo ${line} >&${next_ai_in}
-
-            if [[ ${line} == "END_TURN" ]]; then
-                t=${next_ai_in}
-                next_ai_in=${cur_ai_in}
-                cur_ai_in=${t}
-
-                t=${next_ai_out}
-                next_ai_out=${cur_ai_out}
-                cur_ai_out=${t}
-
-                if [[ ${cur_ai_out} == ${gui_out} ]]; then sleep ${s}; fi
-            fi
-        fi
-    done
-
-    while read -t 1 line <&${cur_ai_out}; do
-        echo ${line} >&${next_ai_in}
-    done
-
-    kill ${gui_pid} &>/dev/null
-    kill ${ai1_pid} &>/dev/null
-    kill ${ai1_pid} &>/dev/null
-    exit 0
+    cur_ai_in=${ai1_in}
+    cur_ai_out=${ai1_out}
+else
+    cur_ai_in=${gui_in}
+    cur_ai_out=${gui_out}
+    gui_arguments="${gui_arguments} -human1"
 fi
 
-if [[ -n ${ai1+x} ]] && [[ -n ${ai2+x} ]]; then
-    echo "opcja 4"
-    make_pipe 3
-    gui_in=3
-    for i in `seq 5 8`; do make_pipe ${i}; done
-    cur_ai_in=5
-    cur_ai_out=6
-    next_ai_in=7
-    next_ai_out=8
-
-    ${ai1} <&5 >&6 &
-    ai1_pid=$!
-
-    ${ai2} <&7 >&8 &
+if [[ -n ${ai2} ]]; then
+    make_pipe ${ai2_in}
+    make_pipe ${ai2_out}
+    ${ai2} <&${ai2_in} >&${ai2_out} &
     ai2_pid=$!
-
-    ./sredniowiecze_gui_with_libs.sh <&3 &>/dev/null &
-    gui_pid=$!
-
-    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
-    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${cur_ai_in}
-    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
-    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${next_ai_in}
-
-    while kill -0 ${gui_pid} &>/dev/null && \
-          kill -0 ${ai1_pid} &>/dev/null && \
-          kill -0 ${ai2_pid} &>/dev/null ; do
-        read line <&${cur_ai_out}
-        if [[ -n ${line} ]]; then
-            echo ${line} >&${gui_in}
-            echo ${line} >&${next_ai_in}
-
-            if [[ ${line} == "END_TURN" ]]; then
-                t=${next_ai_in}
-                next_ai_in=${cur_ai_in}
-                cur_ai_in=${t}
-
-                t=${next_ai_out}
-                next_ai_out=${cur_ai_out}
-                cur_ai_out=${t}
-
-                sleep ${s}
-            fi
-        fi
-    done
-
-    while read -t 1 line <&${cur_ai_out}; do
-        echo ${line} >&${gui_in}
-        echo ${line} >&${next_ai_in}
-    done
-
-    kill ${gui_pid} &>/dev/null
-    kill ${ai1_pid} &>/dev/null
-    kill ${ai1_pid} &>/dev/null
-    exit 0
+    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${ai2_in}
+    next_ai_in=${ai2_in}
+    next_ai_out=${ai2_out}
+else
+    next_ai_in=${gui_in}
+    next_ai_out=${gui_out}
+    gui_arguments="${gui_arguments} -human2"
 fi
+
+make_pipe ${gui_in}
+if [[ -z ${ai1} ]] || [[ -z ${ai2} ]]; then
+    make_pipe ${gui_out}
+    ./sredniowiecze_gui_with_libs.sh ${gui_arguments} <&${gui_in} >&${gui_out} &
+    notify_gui=0
+    gui_pid=$!
+    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+else
+    ./sredniowiecze_gui_with_libs.sh ${gui_arguments} <&${gui_in} &>/dev/null &
+    notify_gui=1
+    gui_pid=$!
+    echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+    echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
+fi
+
+r=0
+while kill -0 ${gui_pid} &>/dev/null && \
+      ( [[ ${ai1_pid} == 0 ]] || kill -0 ${ai1_pid} &>/dev/null )  && \
+      ( [[ ${ai2_pid} == 0 ]] || kill -0 ${ai2_pid} &>/dev/null ) &&
+      (( r == 0 )); do
+    read -t 1 line <&${cur_ai_out}
+    r=$?
+    echo ${r}
+    if [[ -n ${line} ]]; then
+        echo ${line} >&${next_ai_in}
+        if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
+
+        if [[ ${line} == "END_TURN" ]] || (( r != 0 )); then
+            if [[ ${cur_ai_out} != ${gui_out} ]]; then sleep ${s}; fi
+
+            t=${next_ai_in}
+            next_ai_in=${cur_ai_in}
+            cur_ai_in=${t}
+
+            t=${next_ai_out}
+            next_ai_out=${cur_ai_out}
+            cur_ai_out=${t}
+        fi
+    fi
+done
+
+read -t 1 line <&${cur_ai_out};
+if [[ -n ${line} ]]; then
+    echo ${line} >&${next_ai_in}
+    if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
+fi
+
+kill ${ai1_pid} &>/dev/null
+kill ${ai2_pid} &>/dev/null
+kill ${gui_pid} &>/dev/null
+exit 0
 
