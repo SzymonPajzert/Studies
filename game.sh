@@ -4,7 +4,7 @@ readonly distance=8
 readonly unit_number=3
 
 function validate_int {
-    if [[ $1 == *[^0-9]* ]]; then echo "invalid int $1"; exit 1; fi
+    if [[ $1 == *[^0-9]* ]]; then exit 1; fi
 }
 
 extract_result_1=0
@@ -55,14 +55,13 @@ while (( "$#" )); do
         if (( $# >= 2 )); then shift 2; else exit 1; fi
         ;;
     *)
-        echo "wrong argument"
         exit 1
         ;;
     esac
 done
 
 if [ -z ${n} ]; then n=10; fi
-if (( n <= distance )) || (( n >= 2147483648)); then echo "too small n"; exit 1; fi
+if (( n <= distance )) || (( n >= 2147483648)); then exit 1; fi
 
 if [ -z ${k} ]; then k=100; fi
 if [ -z ${s} ]; then s=1; fi
@@ -125,13 +124,10 @@ if (( swap_1_and_2 == 1 )); then
     (( t = y1 )); (( y1 = y2 )); (( y2 = t ))
 fi
 
-echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}"
-
 # End of parsing, start of the game.
 # Human vs Human game
 
 if [[ -z ${ai1} ]] && [[ -z ${ai2} ]]; then
-    echo "opcja 1"
     make_pipe 3
     gui_in=3
     ./sredniowiecze_gui_with_libs.sh -human1 -human2 <&3 &>/dev/null &
@@ -209,7 +205,6 @@ fi
 while kill -0 ${gui_pid} &>/dev/null && \
       ( [[ ${ai1_pid} == 0 ]] || kill -0 ${ai1_pid} &>/dev/null )  && \
       ( [[ ${ai2_pid} == 0 ]] || kill -0 ${ai2_pid} &>/dev/null ); do
-      echo "wczytano"
     read -t 1 line <&${cur_ai_out}
     if [[ -n ${line} ]]; then
         echo ${line} >&${next_ai_in}
@@ -232,8 +227,6 @@ done
 iteration=0
 while kill -0 ${gui_pid} &>/dev/null || (( iteration < 2 )) && \
     read -t 1 line <&${cur_ai_out}; do
-
-    echo "oprozniony bufor" ${cur_ai_out}
     echo ${line} >&${next_ai_in}
     if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
 
