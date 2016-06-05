@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 readonly distance=8
 readonly unit_number=3
@@ -109,20 +109,20 @@ if [[ -z ${x2} ]]; then
         else
             x2=`shuf -i 1-${x2_range} -n 1`
             if (( x2 > x2_left_range ));
-                then (( x2 +=  n - x2_right_range - unit_number));
+                then (( x2 +=  n - x2_range ));
             fi
             y2=`shuf -i 1-${n} -n 1`
         fi
     else
         y2=`shuf -i 1-${y2_range} -n 1`
-        if (( y2 > y2_top_range )); then (( y2 +=  n - y2_bottom_range)); fi
+        if (( y2 > y2_top_range )); then (( y2 +=  n - y2_range )); fi
         x2=`shuf -i 1-${x_safe_range} -n 1`
     fi
 fi
 
 if (( swap_1_and_2 == 1 )); then
-    (( x1 = x1 + x2 )); (( x2 = x1 - x2 )); (( x1 = x1 - x2 ))
-    (( y1 = y1 + y2 )); (( y2 = y1 - y2 )); (( y1 = y1 - y2 ))
+    (( t = x1 )); (( x1 = x2 )); (( x2 = t ))
+    (( t = y1 )); (( y1 = y2 )); (( y2 = t ))
 fi
 
 echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}"
@@ -140,7 +140,7 @@ if [[ -z ${ai1} ]] && [[ -z ${ai2} ]]; then
     echo "INIT ${n} ${k} 1 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
     echo "INIT ${n} ${k} 2 ${x1} ${y1} ${x2} ${y2}" >&${gui_in}
     wait ${gui_pid}
-    exit 0
+    if (( $? != 0 )); then exit 1; else exit 0; fi
 fi
 
 # At least one AI games
@@ -209,6 +209,7 @@ fi
 while kill -0 ${gui_pid} &>/dev/null && \
       ( [[ ${ai1_pid} == 0 ]] || kill -0 ${ai1_pid} &>/dev/null )  && \
       ( [[ ${ai2_pid} == 0 ]] || kill -0 ${ai2_pid} &>/dev/null ); do
+      echo "wczytano"
     read -t 1 line <&${cur_ai_out}
     if [[ -n ${line} ]]; then
         echo ${line} >&${next_ai_in}
@@ -228,10 +229,23 @@ while kill -0 ${gui_pid} &>/dev/null && \
     fi
 done
 
-while read -t 1 line <&${cur_ai_out}; do
-    if [[ -n ${line} ]]; then
-        echo ${line} >&${next_ai_in}
-        if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
+iteration=0
+while kill -0 ${gui_pid} &>/dev/null || (( iteration < 2 )) && \
+    read -t 1 line <&${cur_ai_out}; do
+
+    echo "oprozniony bufor" ${cur_ai_out}
+    echo ${line} >&${next_ai_in}
+    if (( notify_gui == 1 )); then echo ${line} >&${gui_in}; fi
+
+    if [[ ${line} == "END_TURN" ]]; then
+        t=${next_ai_in}
+        next_ai_in=${cur_ai_in}
+        cur_ai_in=${t}
+
+        t=${next_ai_out}
+        next_ai_out=${cur_ai_out}
+        cur_ai_out=${t}
+        (( iteration = iteration + 1 ))
     fi
 done
 
@@ -244,14 +258,16 @@ wait ${gui_pid}; if (( $? != 0 )); then ok=0; fi
 
 if (( ai1_pid != 0 )); then
     wait ${ai1_pid};
-    if (( $? == 42 )); then
+    res=$?
+    if (( res != 0 )) && (( res != 1 )) && (( res != 2 )); then
         ok=0
     fi
 fi
 
 if (( ai2_pid != 0 )); then
     wait ${ai2_pid};
-    if (( $? == 42 )); then
+    res=$?
+    if (( res != 0 )) && (( res != 1 )) && (( res != 2 )); then
         ok=0
     fi
 fi
