@@ -22,6 +22,7 @@ import pl.edu.mimuw.forum.ui.helpers.DialogHelper;
 import pl.edu.mimuw.forum.ui.models.NodeViewModel;
 import pl.edu.mimuw.forum.ui.tree.ForumTreeItem;
 import pl.edu.mimuw.forum.ui.tree.TreeLabel;
+import serialization.NodeSerialization;
 
 public class MainPaneController implements Initializable {
 
@@ -62,9 +63,7 @@ public class MainPaneController implements Initializable {
 
     public Node open(File file) throws ApplicationException {
         if (file != null) {
-            // TODO Tutaj dodaj obsluge otwierania forum z pliku
-            // Tymczasem tworzone jest przykladowe drzewo w pamieci
-            document = Dummy.Create().getModel();
+            document = NodeSerialization.open(file).getModel();
         } else {
             document = new NodeViewModel("Welcome to a new forum", "Admin");
         }
@@ -75,9 +74,9 @@ public class MainPaneController implements Initializable {
     }
 
     public void save() throws ApplicationException {
-        //TODO Tutaj umiescic wywolanie obslugi zapisu drzewa z widoku do pliku
         if (document != null) {
             System.out.println("On save " + document.toNode());    //Tak tworzymy drzewo do zapisu z modelu aplikacji
+            NodeSerialization.save(document.toNode(), bindings.fileProperty().get());
         }
     }
 
