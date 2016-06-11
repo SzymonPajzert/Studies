@@ -6,7 +6,6 @@ import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.function.Consumer;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
@@ -16,16 +15,16 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
-import memento.AddChildChange;
-import memento.NodeMemento;
-import memento.RemoveChildChange;
+import pl.edu.mimuw.forum.memento.AddChildChange;
+import pl.edu.mimuw.forum.memento.NodeMemento;
+import pl.edu.mimuw.forum.memento.RemoveChildChange;
 import pl.edu.mimuw.forum.exceptions.ApplicationException;
 import pl.edu.mimuw.forum.ui.bindings.MainPaneBindings;
 import pl.edu.mimuw.forum.ui.helpers.DialogHelper;
 import pl.edu.mimuw.forum.ui.models.NodeViewModel;
 import pl.edu.mimuw.forum.ui.tree.ForumTreeItem;
 import pl.edu.mimuw.forum.ui.tree.TreeLabel;
-import serialization.NodeSerialization;
+import pl.edu.mimuw.forum.serialization.NodeSerialization;
 
 public class MainPaneController implements Initializable {
 
@@ -43,7 +42,7 @@ public class MainPaneController implements Initializable {
 
     public MainPaneController() {
         bindings = new MainPaneBindings();
-        history = new NodeMemento(document, bindings.undoAvailableProperty(), bindings.redoAvailableProperty());
+        history = new NodeMemento(document, bindings.undoAvailableProperty(), bindings.redoAvailableProperty(), bindings.hasChangesProperty());
     }
 
     @Override
@@ -55,7 +54,7 @@ public class MainPaneController implements Initializable {
                         Bindings.createBooleanBinding(() -> getCurrentTreeItem().orElse(null) != treePane.getRoot(),
                                 treePane.rootProperty(), nodeSelectedBinding)));
 
-        bindings.hasChangesProperty().set(true);        // TODO Nalezy ustawic na true w przypadku, gdy w widoku sa zmiany do
+        bindings.hasChangesProperty().set(false);
     }
 
     public MainPaneBindings getPaneBindings() {
@@ -82,12 +81,12 @@ public class MainPaneController implements Initializable {
     }
 
     public void undo() throws ApplicationException {
-        System.out.println("On undo");    //TODO Tutaj umiescic obsluge undo
+        System.out.println("On undo");
         history.undo();
     }
 
     public void redo() throws ApplicationException {
-        System.out.println("On redo");    //TODO Tutaj umiescic obsluge redo
+        System.out.println("On redo");
         history.redo();
 
     }
@@ -130,7 +129,6 @@ public class MainPaneController implements Initializable {
 
         ForumTreeItem root = createViewNode(document);
         root.addEventHandler(TreeItem.<NodeViewModel>childrenModificationEvent(), event -> {
-            //TODO Moze przydac sie do wykrywania usuwania/dodawania wezlow w drzewie (widoku)
             if (event.wasAdded()) {
                 System.out.println("Adding to " + event.getSource());
             }
@@ -175,6 +173,8 @@ public class MainPaneController implements Initializable {
     }
 
     private void addToTree(NodeViewModel node, ForumTreeItem parentViewNode, int position) {
+        /* Set history tracking of newly added node */
+        node.setHistory(history);
         ForumTreeItem viewNode = createViewNode(node);
 
         List<TreeItem<NodeViewModel>> siblings = parentViewNode.getChildren();
@@ -209,7 +209,6 @@ public class MainPaneController implements Initializable {
                 if (change.wasAdded()) {
                     int i = change.getFrom();
                     for (NodeViewModel child : change.getAddedSubList()) {
-                        child.setHistory(history);
                         history.change(new AddChildChange(child, node, i));
                         addToTree(child, viewNode, i);    // uwzgledniamy nowy wezel modelu w widoku
                         i++;

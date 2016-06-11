@@ -1,4 +1,4 @@
-package serialization
+package pl.edu.mimuw.forum.serialization
 
 import java.io._
 

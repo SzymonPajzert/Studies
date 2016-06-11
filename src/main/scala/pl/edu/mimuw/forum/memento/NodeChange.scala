@@ -1,4 +1,4 @@
-package memento
+package pl.edu.mimuw.forum.memento
 
 import javafx.beans.property.StringProperty
 import pl.edu.mimuw.forum.ui.models.NodeViewModel

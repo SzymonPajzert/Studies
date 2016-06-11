@@ -8,21 +8,47 @@
 <?import javafx.scene.image.*?>
 <?import javafx.scene.image.Image?>
 
-
 <Dialog fx:id="dialog"
-        fx:controller="???" <!-- TODO: Tutaj wstawic nazwe wlasnej klasy kontrolera okna -->
+        fx:controller="pl.edu.mimuw.forum.ui.controllers.DialogController"
         xmlns:fx="http://javafx.com/fxml">
-<dialogPane>
-<DialogPane prefWidth="400.0" prefHeight="300.0">
-    <stylesheets>
-        <URL value="@/css/styles.css"/>
-    </stylesheets>
-    <content>
-        <VBox>
-            <!-- TODO: Tutaj umiescic zawartosc okna dialogowego -->
-            <Label text="Add some content here..."></Label>
-        </VBox>
-    </content>
-</DialogPane>
-</dialogPane>
-        </Dialog>
+    <dialogPane>
+        <DialogPane prefWidth="400.0" prefHeight="300.0">
+            <stylesheets>
+                <URL value="@/css/styles.css"/>
+            </stylesheets>
+            <content>
+                <VBox>
+                    <Label text="User:">
+                        <graphic>
+                            <ImageView>
+                                <Image url="@../images/user.png"/>
+                            </ImageView>
+                        </graphic>
+                    </Label>
+                    <TextField fx:id="userField" promptText="Enter user name..."/>
+
+                    <Label text="Comment:">
+                        <graphic>
+                            <ImageView>
+                                <Image url="@../images/comment.png"/>
+                            </ImageView>
+                        </graphic>
+                    </Label>
+                    <TextArea fx:id="commentField" promptText="Enter comment..."/>
+
+
+                    <Label text="Choose content type"/>
+                    <fx:define>
+                        <ToggleGroup fx:id="group"/>
+                    </fx:define>
+                    <children>
+                        <RadioButton text="Comment" toggleGroup="$group" fx:id="commentButton"/>
+                        <RadioButton text="Suggestion" toggleGroup="$group" fx:id="suggestionButton"/>
+                        <RadioButton text="Survey" toggleGroup="$group" fx:id="surveyButton"/>
+                        <RadioButton text="Task" toggleGroup="$group" fx:id="taskButton"/>
+                    </children>
+                </VBox>
+            </content>
+        </DialogPane>
+    </dialogPane>
+</Dialog>

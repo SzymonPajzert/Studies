@@ -1,6 +1,7 @@
 package pl.edu.mimuw.forum.ui.controllers;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.value.ObservableBooleanValue;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -59,12 +61,7 @@ public class ApplicationController implements Initializable {
                 .toArray(SimpleBooleanProperty[]::new);
 
         bindings = new ToolbarBindings(this::newPane, this::open, this::save, this::undo, this::redo, this::addNode,
-                this::deleteNode, new SimpleBooleanProperty(true), new SimpleBooleanProperty(true), // przyciski
-                // New
-                // i
-                // Open
-                // zawsze
-                // aktywne
+                this::deleteNode, new SimpleBooleanProperty(true), new SimpleBooleanProperty(true),
                 props[0], props[1], props[2], props[3], props[4]);
 
         toolbarController.bind(bindings);
@@ -220,26 +217,12 @@ public class ApplicationController implements Initializable {
     }
 
     private Dialog<NodeViewModel> createAddDialog() throws ApplicationException {
-
-		/* W ten sposob tworzymy nowe okno dialogowe z pliku fxml ...	
+        /* W ten sposob tworzymy nowe okno dialogowe z pliku fxml ...*/
         try {
 			return FXMLLoader.load(getClass().getResource("/fxml/add_dialog.fxml"));
 		} catch (IOException e) {
 			throw new ApplicationException(e);
 		}
-		*/
-
-        //TODO Tymczasem tworzymy puste (no prawie...) okno dialogowe
-        // Nacisniecie OK spodowoduje dodanie nowego komentarza
-        return new Dialog<NodeViewModel>() {
-            {
-                getDialogPane().setContent(new Label("Dummy content"));
-                getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-                setResultConverter(buttonType ->
-                        buttonType == ButtonType.OK ? new CommentViewModel("Some text", "Anonymous") : null);
-            }
-        };
     }
 
     private Optional<MainPaneController> getPaneController() {

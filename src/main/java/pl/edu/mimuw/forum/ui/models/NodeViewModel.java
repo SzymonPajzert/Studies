@@ -7,9 +7,8 @@ import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
-import memento.NodeMemento;
-import memento.NodeChange;
-import memento.TextFieldChange;
+import pl.edu.mimuw.forum.memento.NodeMemento;
+import pl.edu.mimuw.forum.memento.TextFieldChange;
 import pl.edu.mimuw.forum.data.Node;
 import pl.edu.mimuw.forum.ui.controllers.DetailsPaneController;
 

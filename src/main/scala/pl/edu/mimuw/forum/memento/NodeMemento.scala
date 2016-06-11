@@ -1,11 +1,12 @@
-package memento
+package pl.edu.mimuw.forum.memento
 
 import javafx.beans.property.BooleanProperty
 import pl.edu.mimuw.forum.ui.models.NodeViewModel
 
 class NodeMemento(private val node: NodeViewModel,
 				  private val canUndo: BooleanProperty,
-				  private val canRedo: BooleanProperty) {
+				  private val canRedo: BooleanProperty,
+				  private val changes: BooleanProperty) {
 
 	private var undoHistory: List[NodeChange] = Nil
 	private var redoHistory: List[NodeChange] = Nil
@@ -16,6 +17,7 @@ class NodeMemento(private val node: NodeViewModel,
 	def getNode: NodeViewModel = node
 
 	private def updateProperties(): Unit = {
+		changes.setValue(undoHistory.nonEmpty)
 		canUndo.setValue(undoHistory.nonEmpty)
 		canRedo.setValue(redoHistory.nonEmpty)
 	}
