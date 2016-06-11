@@ -6,6 +6,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
@@ -15,8 +16,9 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import memento.AddChildChange;
 import memento.NodeMemento;
-import pl.edu.mimuw.forum.example.Dummy;
+import memento.RemoveChildChange;
 import pl.edu.mimuw.forum.exceptions.ApplicationException;
 import pl.edu.mimuw.forum.ui.bindings.MainPaneBindings;
 import pl.edu.mimuw.forum.ui.helpers.DialogHelper;
@@ -195,6 +197,11 @@ public class MainPaneController implements Initializable {
         }
     }
 
+    private void removeFromTree(ForumTreeItem viewNode, int position) {
+        removeFromTree((ForumTreeItem) viewNode.getChildren().get(position));
+    }
+
+
     private ForumTreeItem createViewNode(NodeViewModel node) {
         ForumTreeItem viewNode = new ForumTreeItem(node);
         viewNode.setChildListener(change -> {    // wywolywanem, gdy w modelu dla tego wezla zmieni sie zawartosc kolekcji dzieci
@@ -202,8 +209,8 @@ public class MainPaneController implements Initializable {
                 if (change.wasAdded()) {
                     int i = change.getFrom();
                     for (NodeViewModel child : change.getAddedSubList()) {
-                        // TODO Tutaj byc moze nalezy dodac zapisywanie jaka operacja jest wykonywana
-                        // by mozna bylo ja odtworzyc przy undo/redo
+                        child.setHistory(history);
+                        history.change(new AddChildChange(child, node, i));
                         addToTree(child, viewNode, i);    // uwzgledniamy nowy wezel modelu w widoku
                         i++;
                     }
@@ -211,9 +218,9 @@ public class MainPaneController implements Initializable {
 
                 if (change.wasRemoved()) {
                     for (int i = change.getFrom(); i <= change.getTo(); ++i) {
-                        // TODO Tutaj byc moze nalezy dodac zapisywanie jaka operacja jest wykonywana
-                        // by mozna bylo ja odtworzyc przy undo/redo
-                        removeFromTree((ForumTreeItem) viewNode.getChildren().get(i)); // usuwamy wezel modelu z widoku
+                        NodeViewModel removedChild = viewNode.getChildren().get(i).getValue();
+                        history.change(new RemoveChildChange(removedChild, node, i));
+                        removeFromTree(viewNode, i); // usuwamy wezel modelu z widoku
                     }
                 }
             }
