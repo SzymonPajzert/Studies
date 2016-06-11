@@ -18,6 +18,17 @@
             </stylesheets>
             <content>
                 <VBox>
+                    <Label text="Choose content type"/>
+                    <fx:define>
+                        <ToggleGroup fx:id="group"/>
+                    </fx:define>
+                    <children>
+                        <RadioButton text="Comment" toggleGroup="$group"/>
+                        <RadioButton text="Suggestion" toggleGroup="$group"/>
+                        <RadioButton text="Survey" toggleGroup="$group"/>
+                        <RadioButton text="Task" toggleGroup="$group"/>
+                    </children>
+
                     <Label text="User:">
                         <graphic>
                             <ImageView>
@@ -35,18 +46,6 @@
                         </graphic>
                     </Label>
                     <TextArea fx:id="commentField" promptText="Enter comment..."/>
-
-
-                    <Label text="Choose content type"/>
-                    <fx:define>
-                        <ToggleGroup fx:id="group"/>
-                    </fx:define>
-                    <children>
-                        <RadioButton text="Comment" toggleGroup="$group" fx:id="commentButton"/>
-                        <RadioButton text="Suggestion" toggleGroup="$group" fx:id="suggestionButton"/>
-                        <RadioButton text="Survey" toggleGroup="$group" fx:id="surveyButton"/>
-                        <RadioButton text="Task" toggleGroup="$group" fx:id="taskButton"/>
-                    </children>
                 </VBox>
             </content>
         </DialogPane>

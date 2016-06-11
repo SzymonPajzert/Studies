@@ -8,6 +8,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import pl.edu.mimuw.forum.data.Suggestion;
 import pl.edu.mimuw.forum.data.Node;
+import pl.edu.mimuw.forum.memento.NodeChange$;
 import pl.edu.mimuw.forum.ui.controllers.DetailsPaneController;
 
 public class SuggestionViewModel extends NodeViewModel {
@@ -26,6 +27,7 @@ public class SuggestionViewModel extends NodeViewModel {
         super(suggestion);
 
         responseProperty = new SimpleStringProperty(suggestion.getResponse());
+        NodeChange$.MODULE$.setListener(responseProperty, this);
 
         isResponseAccepted = new SimpleBooleanProperty(
                 Optional.ofNullable(suggestion.getIsResponseAccepted()).orElse(false));

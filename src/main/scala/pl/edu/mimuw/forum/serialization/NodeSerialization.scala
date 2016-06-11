@@ -6,8 +6,11 @@ import pl.edu.mimuw.forum.data.Node
 import com.thoughtworks.xstream.XStream
 import com.thoughtworks.xstream.io.xml.DomDriver
 
+/* Reading and writing to given file */
+
 object NodeSerialization {
 	private val xstream: XStream = new XStream(new DomDriver("Unicode"))
+	/* Conforming serialization style with implicit list */
 	xstream.addImplicitCollection(classOf[Node], "children")
 
 	def open(file: File): Node = {

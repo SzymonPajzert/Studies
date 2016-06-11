@@ -8,8 +8,13 @@ class NodeMemento(private val node: NodeViewModel,
 				  private val canRedo: BooleanProperty,
 				  private val changes: BooleanProperty) {
 
+	/* Stack of previous operations */
 	private var undoHistory: List[NodeChange] = Nil
+
+	/* Stack of reverted operations, cleared if new operation is introduced */
 	private var redoHistory: List[NodeChange] = Nil
+
+	/* Flag set to false if undo or redo operation is executed, to make change not listed */
 	private var makeChange = true
 
 	updateProperties()
@@ -22,18 +27,8 @@ class NodeMemento(private val node: NodeViewModel,
 		canRedo.setValue(redoHistory.nonEmpty)
 	}
 
-	def doEveryOther(changeValue: Boolean)(expr: => Unit): Unit = {
-		if (makeChange) {
-			expr
-			makeChange = changeValue
-		}
-		else {
-			makeChange = true
-		}
-	}
 
 	def undo(): Unit = if (makeChange) {
-		println("undo called")
 		undoHistory match {
 			case Nil => ()
 			case curChange :: restUndoHistory =>
@@ -58,7 +53,6 @@ class NodeMemento(private val node: NodeViewModel,
 	} else makeChange = true
 
 	def change(newChange: NodeChange): Unit = if (makeChange) {
-		println("change called")
 		undoHistory = newChange.getInverse :: undoHistory
 		redoHistory = Nil
 		updateProperties()
