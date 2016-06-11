@@ -13,7 +13,7 @@ object NodeSerialization {
 	/* Conforming serialization style with implicit list */
 	xstream.addImplicitCollection(classOf[Node], "children")
 
-	def open(file: File): Node = {
+	def openNode(file: File): Node = {
 		val rdr: Reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))
 		val in: ObjectInputStream = xstream.createObjectInputStream(rdr)
 		val result: Node = in.readObject().asInstanceOf[Node]
@@ -21,7 +21,7 @@ object NodeSerialization {
 		result
 	}
 
-	def save(node: Node, file: File) = {
+	def saveNode(node: Node, file: File) = {
 		val pw: PrintWriter = new PrintWriter(file, "UTF-8")
 		val out: ObjectOutputStream = xstream.createObjectOutputStream(pw, "Forum")
 		out.writeObject(node)

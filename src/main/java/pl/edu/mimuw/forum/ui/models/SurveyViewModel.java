@@ -4,7 +4,7 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import pl.edu.mimuw.forum.data.Survey;
 import pl.edu.mimuw.forum.data.Node;
-import pl.edu.mimuw.forum.memento.NodeChange$;
+import static pl.edu.mimuw.forum.memento.NodeChangeUtilities.setListener;
 import pl.edu.mimuw.forum.ui.controllers.DetailsPaneController;
 
 public class SurveyViewModel extends NodeViewModel {
@@ -22,10 +22,10 @@ public class SurveyViewModel extends NodeViewModel {
         super(survey);
 
         likesProperty = new SimpleIntegerProperty(survey.getLikes());
-        NodeChange$.MODULE$.setListener(likesProperty, this);
+        setListener(likesProperty, this);
 
         dislikesProperty = new SimpleIntegerProperty(survey.getDislikes());
-        NodeChange$.MODULE$.setListener(dislikesProperty, this);
+        setListener(dislikesProperty, this);
     }
 
     public IntegerProperty getLikes() {

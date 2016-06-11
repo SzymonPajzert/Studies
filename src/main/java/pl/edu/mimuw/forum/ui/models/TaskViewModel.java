@@ -5,7 +5,7 @@ import java.util.Date;
 import javafx.beans.property.SimpleObjectProperty;
 import pl.edu.mimuw.forum.data.Node;
 import pl.edu.mimuw.forum.data.Task;
-import pl.edu.mimuw.forum.memento.NodeChange$;
+import static pl.edu.mimuw.forum.memento.NodeChangeUtilities.setListener;
 import pl.edu.mimuw.forum.ui.controllers.DetailsPaneController;
 
 public class TaskViewModel extends NodeViewModel {
@@ -22,7 +22,7 @@ public class TaskViewModel extends NodeViewModel {
         super(task);
 
         dateProperty = new SimpleObjectProperty<>(task.getDueDate());
-        NodeChange$.MODULE$.setListener(dateProperty, this);
+        setListener(dateProperty, this);
     }
 
     public SimpleObjectProperty<Date> getDueDate() {

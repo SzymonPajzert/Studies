@@ -7,7 +7,7 @@ import pl.edu.mimuw.forum.ui.models.NodeViewModel
 /* Trait of available operations on the node */
 /* This trait is basically group acting on the set of nodes */
 
-object NodeChange {
+object NodeChangeUtilities {
 	def setListener[A](property: Property[A], model: NodeViewModel): Unit = {
 		property addListener new ChangeListener[A] {
 			override def changed(observable: ObservableValue[_ <: A], oldValue: A, newValue: A): Unit = {
