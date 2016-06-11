@@ -15,6 +15,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import memento.NodeMemento;
 import pl.edu.mimuw.forum.example.Dummy;
 import pl.edu.mimuw.forum.exceptions.ApplicationException;
 import pl.edu.mimuw.forum.ui.bindings.MainPaneBindings;
@@ -25,6 +26,8 @@ import pl.edu.mimuw.forum.ui.tree.TreeLabel;
 import serialization.NodeSerialization;
 
 public class MainPaneController implements Initializable {
+
+    private NodeMemento history;
 
     private NodeViewModel document;
 
@@ -38,6 +41,7 @@ public class MainPaneController implements Initializable {
 
     public MainPaneController() {
         bindings = new MainPaneBindings();
+        history = new NodeMemento(document, bindings.undoAvailableProperty(), bindings.redoAvailableProperty());
     }
 
     @Override
@@ -50,11 +54,6 @@ public class MainPaneController implements Initializable {
                                 treePane.rootProperty(), nodeSelectedBinding)));
 
         bindings.hasChangesProperty().set(true);        // TODO Nalezy ustawic na true w przypadku, gdy w widoku sa zmiany do
-        // zapisania i false wpp, w odpowiednim miejscu kontrolera (niekoniecznie tutaj)
-        // Spowoduje to dodanie badz usuniecie znaku '*' z tytulu zakladki w ktorej
-        // otwarty jest plik - '*' oznacza niezapisane zmiany
-        bindings.undoAvailableProperty().set(true);
-        bindings.redoAvailableProperty().set(true);        // Podobnie z undo i redo
     }
 
     public MainPaneBindings getPaneBindings() {
@@ -69,7 +68,7 @@ public class MainPaneController implements Initializable {
         }
 
         getPaneBindings().fileProperty().set(file);
-
+        document.setHistory(history);
         return openInView(document);
     }
 
@@ -82,10 +81,13 @@ public class MainPaneController implements Initializable {
 
     public void undo() throws ApplicationException {
         System.out.println("On undo");    //TODO Tutaj umiescic obsluge undo
+        history.undo();
     }
 
     public void redo() throws ApplicationException {
         System.out.println("On redo");    //TODO Tutaj umiescic obsluge redo
+        history.redo();
+
     }
 
     public void addNode(NodeViewModel node) throws ApplicationException {

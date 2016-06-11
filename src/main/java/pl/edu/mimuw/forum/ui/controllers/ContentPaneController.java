@@ -38,14 +38,6 @@ public class ContentPaneController extends BasePaneController {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         super.initialize(location, resources);
-
-        userProperty().addListener((observable, oldValue, newValue) -> {
-            System.out.println("Changing user name: " + oldValue + "->" + newValue);
-        });
-
-        commentProperty().addListener((observable, oldValue, newValue) -> {
-            System.out.println("Changing comment: " + oldValue + "->" + newValue);
-        });
     }
 
     public StringProperty userProperty() {
