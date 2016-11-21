@@ -13,3 +13,9 @@ hs_err_pid*
 
 # IntelliJ production files
 */out/*
+
+# IntelliJ project folder
+*/.idea/workspace.xml
+*/.idea/tasks.xml
+*.iml
+
