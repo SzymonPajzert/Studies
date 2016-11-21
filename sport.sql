@@ -2,24 +2,24 @@ drop table UczestnicyZawodow;
 drop table Zawody;
 drop table Sportowcy;
 
-create table Sportowcy (
-  id number primary key,
+CREATE TABLE Sportowcy (
+  id INT PRIMARY KEY,
   imie varchar(50) NOT NULL,
   nazwisko varchar(50) NOT NULL,
-  trener number references Sportowcy
+  trener INT references Sportowcy
 );
 
 create table Zawody (
-  id number primary key,
-  nazwa varchar(30) not null,
-  poczatek date NOT NULL,
-  koniec date NOT NULL
+  id INT PRIMARY KEY,
+  nazwa VARCHAR(30) not null,
+  poczatek DATE NOT NULL,
+  koniec DATE NOT NULL
 );
 
 create table UczestnicyZawodow (
-  zawody references Zawody not null,
-  zawodnik references Zawodnicy not null,
-  dyscyplina varchar(20),
-  miejsce number,
-  primary key (zawody,zawodnik,dyscyplina)
+  zawody INT REFERENCES Zawody NOT NULL,
+  zawodnik INT REFERENCES Sportowcy not null,
+  dyscyplina VARCHAR(20),
+  miejsce INT,
+  PRIMARY KEY (zawody, zawodnik, dyscyplina)
 );
