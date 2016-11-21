@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="PerfectBalance">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/out/artifacts/PerfectBalance_jar/PerfectBalance.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
