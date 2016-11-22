@@ -7,13 +7,20 @@ import org.apache.hadoop.io.IntWritable;
  *
  */
 public class IntervalTree {
+    private final int[] splitPoints;
+
     /**
      * Creates IntervalTree for given sorted list of splitPoints.
      * @param splitPoints Array of splitPoints in ascending order.
      */
     public IntervalTree(IntWritable[] splitPoints) {
-        // TODO implementation
-        throw new java.lang.UnsupportedOperationException();
+        this.splitPoints = new int[splitPoints.length];
+
+        int counter = 0;
+        for(IntWritable i : splitPoints) {
+            this.splitPoints[counter] = i.get();
+            counter++;
+        }
     }
 
     /**
@@ -24,7 +31,12 @@ public class IntervalTree {
      * @return Number of interval containing value.
      */
     public int getInterval(IntWritable value) {
-        // TODO implementation
-        throw new java.lang.UnsupportedOperationException();
+        int counter = 0;
+        for(int i : splitPoints) {
+            if(value.get() < i) {
+                return counter;
+            }
+            counter++;
+        }
     }
 }
