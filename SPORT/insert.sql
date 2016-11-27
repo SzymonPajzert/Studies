@@ -21,11 +21,11 @@ INSERT INTO Sportowcy VALUES
        (20, 'Longin', 'Dudek', 17);
 
 INSERT INTO Zawody VALUES
-       (1, 'dni ursynowa', '2016-06-01', '2016-06-03'),
-       (2, 'olimpiada', '2016-06-04', '2016-06-12'),
-       (3, 'puste zawody', '2016-06-01', '2016-06-29'),
-       (4, 'puchar dziekana', '2016-06-01', '2016-06-01'),
-       (5, 'potyczki algorytmiczne', '2016-06-25', '2016-06-27');
+       (1, 'dni ursynowa', '2016-06-01', '2016-12-03'),
+       (2, 'olimpiada', '2016-06-04', '2016-12-12'),
+       (3, 'puste zawody', '2016-06-01', '2016-12-29'),
+       (4, 'puchar dziekana', '2016-06-01', '2016-12-01'),
+       (5, 'potyczki algorytmiczne', '2016-06-25', '2016-12-27');
 
 INSERT INTO UczestnicyZawodow VALUES
        (1, 1, 'biegi', 1),
