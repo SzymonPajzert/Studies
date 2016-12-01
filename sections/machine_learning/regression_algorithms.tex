@@ -1,0 +1,30 @@
+\section{Regression Algorithms}
+        \subsection{Gradient descent}
+            Set initial parameters $\theta$. Using partial derivatives iterate to the local minimum. Cost function has to be convex. Learning rate - size of the step, has to be adjusted. Cost function plotted against number of iterations should be decreasing. 
+        
+        \subsection{Feature Scaling}
+            With the bigger number of variables feature scaling is needed to make gradient descent possible. One way of doing it is to set the smallest value of variable to -1 and the biggest to 1.
+        
+        \subsection{Mean Normalization}
+            Function $x \rightarrow \tfrac{x - \mu}{s}$ does feature scaling. ($\mu$ is mean value, $s$ is range of values)
+        
+        \subsection{Normal Equation}
+            Analytical substitute for gradient descent. Minimal $\theta$ where cost function minimizes equals:
+            \begin{equation*}
+                \theta = (X^TX)^{-1}X^Ty
+            \end{equation*}
+            In case of singular $(X^TX)$, sudoinversion does the job most of the time.
+        \subsection{Overfitting and underfitting}
+            To possible consequences of inappropriate models. First is when model is trained too well for the training set and isn't accurate image of reality. Second is when it's not trained enough or it's not possible to train it with too few features.
+        \subsection{Regularization}
+            Way to prevent overfitting, minimizes values of parameters. To the cost function added is convex expression:
+            \begin{equation*}
+                \frac{1}{2m} \cdot \lambda \sum\limits_{j} \theta_j^2  
+            \end{equation*}
+            
+            Change happens also in normal equation:
+            \begin{equation*}
+                \theta = (X^TX + \lambda E_0)^{-1}X^Ty
+            \end{equation*}
+            Where $E_0$ is identity matrix without 1 in the first row.
+        

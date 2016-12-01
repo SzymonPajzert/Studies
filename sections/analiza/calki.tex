@@ -1,0 +1,41 @@
+% {theorem}{Twierdzenie}[section]
+% *{condition}{Kryterium}
+% {corollary}{Wniosek}[theorem]
+% {lemma}{Lemat}[theorem]
+% {statement}{Stwierdzenie}[section]
+% {problem}{Problem}[section]
+% {question}{Pytanie}[section]
+% *{definition}{Definicja}
+% *{note}{Uwaga}
+
+\section{Metody całkowania}
+    \subsection{Funkcje wielomianowe}
+        \begin{enumerate}
+            \item Rozłożenie wielomianu na funckje wymierne proste
+            \item Scałkowanie tych funkcji
+        \end{enumerate}
+        
+    \subsection{Podstawienie uniwersalne}
+        \begin{align*}
+            t = tg \tfrac{x}{2} & &
+            \sin x = \frac{2t}{1 + t^2} \\
+            \cos x = \frac{1 - t^2}{1 + t^2} & &
+            dx = \frac{2dt}{1 + t^2}
+        \end{align*}
+        
+        
+\section{Całka Oznaczona}
+    \begin{definition}[Całka Newtona]
+    Dla $F$ będącego funkcją pierwotną $f$ definiujemy:
+        \begin{equation*}
+            \int_a^b f(x) dx := F(a) - F(b)
+        \end{equation*}
+    \end{definition}
+    
+    \begin{theorem}[monotoniczność całki]
+        \[ \forall_x f(x) \leq g(x) \implies \int_a^b f(x) dx \leq \int_a^b g(x) dx \]
+    \end{theorem}
+    
+    \begin{theorem}[wartość średnia]
+        \[ \exists y \in (a, b)  \int_a^b f(x) dx = f(y)(b-a) \]
+    \end{theorem}

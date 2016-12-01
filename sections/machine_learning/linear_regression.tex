@@ -1,0 +1,15 @@
+\section{Linear Regression}
+Regression of $n+1$ features to one output. First feature is bias and always equals to 1. 
+\begin{definition}[hypothesis]
+    For given $\theta \in \mathbb{R}^{n+1}$ we define $h_\theta(x) = \theta^T x$
+\end{definition}
+
+\begin{definition}[cost function]
+    $J(\theta) = \tfrac{1}{2m}\sum\limits_{i=1}^{m}(h_\theta(x^{(i)}) - y^{(i)})^2$
+\end{definition}
+
+\begin{definition}[partial derivative]
+    \begin{equation*}
+        \frac{\partial}{\partial \theta_j} J(\theta) = \frac{1}{m} \sum\limits_{i=1}^{m} (h_\theta(x^{(i)}) - y^{(i)})x^{(i)}_j
+    \end{equation*}
+\end{definition}

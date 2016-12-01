@@ -1,0 +1,23 @@
+\section{Git}
+
+% {theorem}{Twierdzenie}[section]
+% *{condition}{Kryterium}
+% {corollary}{Wniosek}[theorem]
+% {lemma}{Lemat}[theorem]
+% {statement}{Stwierdzenie}[section]
+% {problem}{Problem}[section]
+% {question}{Pytanie}[section]
+% *{definition}{Definicja}
+% *{note}{Uwaga}
+
+Branches are pointer to commits. There is \verb|HEAD| pointer, indicating currently previewed branch.
+
+\definition \verb|git branch| - create branch
+\definition \verb|git checkout <name>| - change branch with given name
+\definition \verb|git checkout <hash>| - change branch with given hash
+\definition \verb|<hash>^| - hash of parent node
+\definition \verb|<hash>~<number>| - hash of n-th parent node
+\definition \verb|git checkout -b| - create branch and change to it
+\definition \verb|git merge| - merge commits
+\definition \verb|git rebase| - merge commits and create linear shape from their tree
+\definition \verb|git cherry-picking| - copy existing commits as children of given commit
