@@ -1,7 +1,7 @@
 \section*{3 - 4}
 Homeomorfizm pomiędzy
 \begin{itemize}
-  \item[3)] $ X = \R \cup \{\infty\}$
+  \item[3)] $ X = \R^n \cup \{\infty\}$
   \item[4)] $Y = D^n / \sim = D^n \setminus S^{n-1} \cup \{ \delta \}$ - gdzie $\delta$ jest klasą abstrakcji $S^{n-1}$
 \end{itemize}
 Łatwo możemy obrać dwa ciągłe, ściśle monotoniczne i wzajemnie odwrotne przekształcenia pomiędzy $[0, 1)$ a $[0, +\infty)$ które zadają homeomorfizm między tymi przedziałami, zadane wzorami:
@@ -14,18 +14,19 @@ I na ich podstawie tworzymy przekształcenia między $A$ i $B$.
   f(\delta) &= \infty & \text{else} & & f(x) &= x \cdot \tfrac{d_f(||x||)}{||x||} & & f : Y \to X \\
   g(\infty) &= \delta & \text{else} & & g(x) &= x \cdot \tfrac{d_g(||x||)}{||x||} & & g : X \to Y
 \end{align*}
-Które są oczywiście ciągłe odpowiednio dla $ Y \setminus \delta$ oraz $X \setminus \infty$, ponieważ obcięte do tych zbiorów są ich homeomorfizmami, ponieważ $d_f$ i $d_g$ są homeorfizmami długości ich wektorów.
+Które są ciągłe obcięte odpowiednio do $ Y \setminus \delta =  \text{int}{D^n}$ oraz $X \setminus \infty = \R^n$, ponieważ są ich homeomorfizmami - rozciąganie wnętrza kuli do przestrzeni działa tak samo jak udowodnione na wykładzie rozciąganie odcinka otwartego do prostej. \\
+\\
 \subsection*{$g \circ f = id_Y$ oraz $f \circ g = id_X$}
 Ponieważ superpozyca $d_f$ oraz $d_g$ są identycznościami, a $f$ i $g$ zmieniają jedynie za ich pomocą długości wektorów, to ich superpozycje też są identycznościami.
 \subsection*{$f$ jest ciągłe}
 Niech $ U \subset X$ będzie otwarty. Pokażmy że $f^{-1}(U)$ też jest otwarty. Mamy dwie możliwości:
 \begin{itemize}
-  \item $\infty \in U$ - Wtedy $\R^n \setminus U$ jest zwarty. Ponieważ jest on podzbiorem $\R^n$ to wiemy że jest on domknięty i ograniczony. Stąd na mocy ciągłości i monotoniczności $d_f(x)$ wiemy że $f^{-1}(\R^n \setminus U)$ też jest ograniczonym zbiorem, a ponieważ $g$ jest domknięty
+  \item $\infty \in U$ - Wtedy $\R^n \setminus U$ jest zwarty. Ponieważ jest on podzbiorem $\R^n$ to wiemy że jest on domknięty i ograniczony. Stąd na mocy ciągłości i monotoniczności $d_f(x)$ wiemy że $f^{-1}(\R^n \setminus U)$ też jest ograniczonym zbiorem przez promień z przedziału $[0,1)$ więc nie należy do niego $\delta$. Otwartość $f^{-1}(\R^n \setminus U)$ otrzymujemy z ciągłości $d_f$.
   \item $\infty \not \in U$ - Już udowodnione.
 \end{itemize}
 \subsection*{$g$ jest ciągłe}
 Niech $ U \subset Y$ będzie otwarty. Pokażmy że $g^{-1}(U)$ też jest otwarty. Mamy dwie możliwości:
 \begin{itemize}
-  \item $\delta \in U$ - Wtedy $\R^n \setminus U$ jest domknięty, a ponieważ
+  \item $\delta \in U$ - Wtedy $\R^n \setminus U$ jest domknięty, jest też więc ograniczony, ponieważ supremum metryk wektorów z $\R^n \setminus U$ jest ostro mniejsze od 1, w przeciwnym wypadku do tego zbioru należałaby $\delta$. Stąd $g^{-1}(\R^n \setminus U)$ jest domnkięte (ponieważ $d_g$ jest ciągłe) oraz ograniczone czyli zwarte, więc $U$ jest otwarte.
   \item $\infty \not \in U$ - Już udowodnione.
 \end{itemize}
