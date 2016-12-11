@@ -1,5 +1,7 @@
 package gra.util;
 
+import gra.Kierunek;
+
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -11,13 +13,28 @@ public class Prostokąt implements Iterable<Współrzędna> {
         this.prawyDolny = prawyDolny;
     }
 
+    public Prostokąt przesuń(Kierunek kierunek) {
+        return new Prostokąt(lewyGórny.przesuń(kierunek), prawyDolny.przesuń(kierunek));
+    }
+
+    public Prostokąt brzeg(Kierunek kierunek) {
+        Prostokąt result;
+        switch (kierunek) {
+            case GÓRA: result = new Prostokąt(lewyGórny, new Współrzędna(lewyGórny.wysokość, prawyDolny.szerokość)); break;
+            case DÓŁ: result = new Prostokąt(new Współrzędna(prawyDolny.szerokość, lewyGórny.szerokość), prawyDolny); break;
+            case LEWO: result = new Prostokąt(lewyGórny, new Współrzędna(prawyDolny.wysokość, lewyGórny.szerokość)); break;
+            case PRAWO: result = new Prostokąt(new Współrzędna(lewyGórny.wysokość, prawyDolny.szerokość), prawyDolny); break;
+            default: throw new IllegalArgumentException();
+        }
+        return result;
+    }
+
     @Override
     public Iterator<Współrzędna> iterator() {
         return new ProstokątIterator(lewyGórny, prawyDolny);
     }
 
-    /** Iteruje po prostokącie w taki sposób, że dla dowolnych dwóch
-     * prostokątów ich wspólne elementy będą iterowane w tej samej kolejności.
+    /** Iteruje po prostokącie po kolejnych wierszach kolejnych kolumn
      *
      */
     class ProstokątIterator implements Iterator<Współrzędna> {
@@ -57,6 +74,11 @@ public class Prostokąt implements Iterable<Współrzędna> {
             } else {
                 throw new NoSuchElementException();
             }
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
         }
     }
 }
