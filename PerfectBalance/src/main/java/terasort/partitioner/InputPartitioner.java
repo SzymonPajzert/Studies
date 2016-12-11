@@ -1,26 +1,21 @@
 package terasort.partitioner;
 
+import org.apache.hadoop.fs.*;
+import terasort.SlidingAggregation;
 import terasort.models.IntervalTree;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocalFileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Partitioner;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 public class InputPartitioner extends Partitioner<IntWritable, IntWritable> implements Configurable {
     private int numPartitions;
-    private static Path splitPointsPath;
     private Configuration conf = null;
     private IntervalTree tree;
-
-    public static void setSplitPointsPath(Path splitPointsPath) {
-        InputPartitioner.splitPointsPath = splitPointsPath;
-    }
 
     @Override
     public int getPartition(IntWritable key, IntWritable value, int numPartitions) {
@@ -42,15 +37,42 @@ public class InputPartitioner extends Partitioner<IntWritable, IntWritable> impl
     }
 
     public void setConf(Configuration conf) {
+        FileSystem ie = null;
         try {
-            LocalFileSystem ie = FileSystem.getLocal(conf);
-            this.conf = conf;
-            this.numPartitions = this.conf.getInt("mapreduce.job.reduces", 5);
-            int[] splitPoints = readSplitPoints(ie, splitPointsPath, conf);
-            this.tree = new IntervalTree(splitPoints);
+            ie = FileSystem.get(conf);
         } catch (IOException e) {
-            throw new IllegalArgumentException("can't read partitions file", e);
+            e.printStackTrace();
         }
+        this.conf = conf;
+        this.numPartitions = this.conf.getInt("mapreduce.job.reduces", 5);
+
+        String root = this.conf.get("fs.default.name");
+        String path = root + "/user/szymonpajzert/" + this.conf.get("partition.location");
+        System.out.println("Partition location: " + path);
+
+        List<FileStatus> statuses = null;
+        try {
+            statuses = Arrays.asList(ie.listStatus(new Path(path)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        FileStatus status = statuses.stream()
+                .filter(x -> x.getLen() > 0)
+                .findFirst()
+                .get();
+
+
+        int[] splitPoints = null;
+        try {
+            splitPoints = readSplitPoints(ie, status.getPath(), conf);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        this.tree = new IntervalTree(splitPoints);
+        /*} catch (IOException e) {
+            throw new IllegalArgumentException("can't read partitions file", e);
+        } */
     }
 
     public Configuration getConf() {

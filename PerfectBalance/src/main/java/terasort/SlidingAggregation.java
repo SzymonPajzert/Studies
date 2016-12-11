@@ -12,12 +12,13 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import terasort.mapper.IntMapper;
 import terasort.mapper.SamplingIntMapper;
 import terasort.partitioner.InputPartitioner;
+import terasort.reducer.RankingCounter;
 import terasort.reducer.RankingReducer;
 import terasort.reducer.SplitPointsReducer;
 
 
-public class TeraSort {
-    private static Path splitPointsPath = new Path("_partition.lst");
+public class SlidingAggregation {
+    private static Path rankingReducerWindowSize = new Path("reducerWindowSize");
 
     /** Samples available data to one reducer, the reducer then writes data in splitPointsPath.
      *
@@ -29,34 +30,33 @@ public class TeraSort {
     private static boolean createSplitPoints(Configuration conf, Path inputPath) throws Exception {
         Job job = Job.getInstance(conf, "Split points creation");
 
-        job.setJarByClass(TeraSort.class);
+        job.setJarByClass(SlidingAggregation.class);
 
         job.setMapperClass(SamplingIntMapper.class);
         job.setMapOutputKeyClass(IntWritable.class);
         job.setMapOutputValueClass(IntWritable.class);
+
+        job.setReducerClass(SplitPointsReducer.class);
+        // job.setNumReduceTasks(1);
         job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(IntWritable.class);
 
-        job.setReducerClass(SplitPointsReducer.class);
-
         FileInputFormat.addInputPath(job, inputPath);
-        FileOutputFormat.setOutputPath(job, splitPointsPath);
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("partition.location")));
 
         return job.waitForCompletion(true);
     }
 
-    private static boolean makeTeraSort(Configuration conf, Path inputPath, Path outputPath) throws Exception {
-        int reduces = conf.getInt("mapreduce.job.reduces", 1);
-        InputPartitioner.setSplitPointsPath(splitPointsPath);
+    private static boolean countWindowSize(Configuration conf, Path inputPath) throws Exception {
+        Job job = Job.getInstance(conf, "Count Window Size");
 
-        Job job = Job.getInstance(conf, "TeraSort");
-        job.setJarByClass(TeraSort.class);
+        job.setJarByClass(SlidingAggregation.class);
         job.setMapperClass(IntMapper.class);
         job.setPartitionerClass(InputPartitioner.class);
-        job.setReducerClass(RankingReducer.class);
+        job.setReducerClass(RankingCounter.class);
 
         FileInputFormat.addInputPath(job, inputPath);
-        FileOutputFormat.setOutputPath(job, outputPath);
+        FileOutputFormat.setOutputPath(job, rankingReducerWindowSize);
 
         return job.waitForCompletion(true);
     }
@@ -68,7 +68,6 @@ public class TeraSort {
         Configuration conf = new Configuration();
 
         createSplitPoints(conf, inputPath);
-        // makeTeraSort(conf, inputPath, outputPath);
-
+        countWindowSize(conf, inputPath);
     }
 }

@@ -10,7 +10,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.Reducer;
-
+import terasort.SlidingAggregation;
 
 
 public class SplitPointsReducer extends Reducer<IntWritable, IntWritable, NullWritable, IntWritable> implements Configurable {
@@ -19,7 +19,7 @@ public class SplitPointsReducer extends Reducer<IntWritable, IntWritable, NullWr
 
     public void setConf(Configuration conf) {
         this.conf = conf;
-        numPartition = this.conf.getInt("mapreduce.job.reduces", 5);
+        numPartition = this.conf.getInt("mapred.reduce.tasks", 5);
     }
 
     public Configuration getConf() {

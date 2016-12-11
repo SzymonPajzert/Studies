@@ -29,4 +29,12 @@
   <name>mapreduce.jobhistory.webapp.address</name>
   <value>localhost:19888</value> 
 </property>
+<property>
+  <name>mapred.reduce.tasks</name>
+  <value>13</value>
+</property>
+<property>
+  <name>partition.location</name>
+  <value>partition.lst</value>
+</property>
 </configuration>
