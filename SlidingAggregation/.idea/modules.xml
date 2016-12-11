@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/PerfectBalance.iml" filepath="$PROJECT_DIR$/PerfectBalance.iml" />
+      <module fileurl="file://$PROJECT_DIR$/SlidingAggregation.iml" filepath="$PROJECT_DIR$/SlidingAggregation.iml" />
     </modules>
   </component>
 </project>

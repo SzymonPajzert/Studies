@@ -2,7 +2,7 @@
   <artifact type="jar" name="PerfectBalance:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/PerfectBalance_jar</output-path>
     <root id="archive" name="PerfectBalance.jar">
-      <element id="module-output" name="PerfectBalance" />
+      <element id="module-output" name="SlidingAggregation" />
       <element id="extracted-dir" path="$PROJECT_DIR$/../PDD/hadoop-2.7.2/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.7.2.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/hadoop/hadoop-mapreduce-client-app/2.7.2/hadoop-mapreduce-client-app-2.7.2.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/hadoop/hadoop-yarn-api/2.7.2/hadoop-yarn-api-2.7.2.jar" path-in-jar="/" />
