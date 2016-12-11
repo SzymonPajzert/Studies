@@ -13,12 +13,12 @@ public class IntervalTree {
      * Creates IntervalTree for given sorted list of splitPoints.
      * @param splitPoints Array of splitPoints in ascending order.
      */
-    public IntervalTree(IntWritable[] splitPoints) {
+    public IntervalTree(int[] splitPoints) {
         this.splitPoints = new int[splitPoints.length];
 
         int counter = 0;
-        for(IntWritable i : splitPoints) {
-            this.splitPoints[counter] = i.get();
+        for(int i : splitPoints) {
+            this.splitPoints[counter] = i;
             counter++;
         }
     }
@@ -30,13 +30,14 @@ public class IntervalTree {
      * @param value Value we're asking for
      * @return Number of interval containing value.
      */
-    public int getInterval(IntWritable value) {
+    public int getInterval(int value) {
         int counter = 0;
         for(int i : splitPoints) {
-            if(value.get() < i) {
+            if(value < i) {
                 return counter;
             }
             counter++;
         }
+        return counter;
     }
 }

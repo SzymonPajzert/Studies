@@ -19,7 +19,7 @@ public class SplitPointsReducer extends Reducer<IntWritable, IntWritable, NullWr
 
     public void setConf(Configuration conf) {
         this.conf = conf;
-        numPartition = 5; //this.conf.getInt("mapreduce.job.reduces", 1);
+        numPartition = this.conf.getInt("mapreduce.job.reduces", 5);
     }
 
     public Configuration getConf() {

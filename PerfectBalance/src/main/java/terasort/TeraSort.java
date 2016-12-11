@@ -28,6 +28,7 @@ public class TeraSort {
      */
     private static boolean createSplitPoints(Configuration conf, Path inputPath) throws Exception {
         Job job = Job.getInstance(conf, "Split points creation");
+
         job.setJarByClass(TeraSort.class);
 
         job.setMapperClass(SamplingIntMapper.class);
@@ -46,12 +47,12 @@ public class TeraSort {
 
     private static boolean makeTeraSort(Configuration conf, Path inputPath, Path outputPath) throws Exception {
         int reduces = conf.getInt("mapreduce.job.reduces", 1);
-        InputPartitioner.setNumPartitions(5);
         InputPartitioner.setSplitPointsPath(splitPointsPath);
 
         Job job = Job.getInstance(conf, "TeraSort");
         job.setJarByClass(TeraSort.class);
         job.setMapperClass(IntMapper.class);
+        job.setPartitionerClass(InputPartitioner.class);
         job.setReducerClass(RankingReducer.class);
 
         FileInputFormat.addInputPath(job, inputPath);

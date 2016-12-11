@@ -13,7 +13,7 @@ import org.apache.hadoop.mapreduce.Partitioner;
 import java.io.IOException;
 
 public class InputPartitioner extends Partitioner<IntWritable, IntWritable> implements Configurable {
-    private static int numPartitions;
+    private int numPartitions;
     private static Path splitPointsPath;
     private Configuration conf = null;
     private IntervalTree tree;
@@ -22,22 +22,19 @@ public class InputPartitioner extends Partitioner<IntWritable, IntWritable> impl
         InputPartitioner.splitPointsPath = splitPointsPath;
     }
 
-    public static void setNumPartitions(int numPartitions) {
-        InputPartitioner.numPartitions = numPartitions;
-    }
-
     @Override
     public int getPartition(IntWritable key, IntWritable value, int numPartitions) {
-        return tree.getInterval(key);
+        return tree.getInterval(key.get());
     }
 
-    private static IntWritable[] readSplitPoints(FileSystem fs, Path p, Configuration conf) throws IOException {
-        IntWritable[] result = new IntWritable[numPartitions- 1];
+    private int[] readSplitPoints(FileSystem fs, Path p, Configuration conf) throws IOException {
+        int[] result = new int[numPartitions- 1];
         FSDataInputStream reader = fs.open(p);
 
         for(int i = 0; i < numPartitions - 1; ++i) {
-            result[i] = new IntWritable();
-            result[i].readFields(reader);
+            IntWritable value = new IntWritable();
+            value.readFields(reader);
+            result[i] = value.get();
         }
 
         reader.close();
@@ -48,8 +45,8 @@ public class InputPartitioner extends Partitioner<IntWritable, IntWritable> impl
         try {
             LocalFileSystem ie = FileSystem.getLocal(conf);
             this.conf = conf;
-
-            IntWritable[] splitPoints = readSplitPoints(ie, splitPointsPath, conf);
+            this.numPartitions = this.conf.getInt("mapreduce.job.reduces", 5);
+            int[] splitPoints = readSplitPoints(ie, splitPointsPath, conf);
             this.tree = new IntervalTree(splitPoints);
         } catch (IOException e) {
             throw new IllegalArgumentException("can't read partitions file", e);
