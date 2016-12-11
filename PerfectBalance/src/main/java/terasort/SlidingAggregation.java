@@ -51,8 +51,13 @@ public class SlidingAggregation {
         Job job = Job.getInstance(conf, "Count Window Size");
 
         job.setJarByClass(SlidingAggregation.class);
+
         job.setMapperClass(IntMapper.class);
+        job.setMapOutputKeyClass(IntWritable.class);
+        job.setMapOutputValueClass(IntWritable.class);
+
         job.setPartitionerClass(InputPartitioner.class);
+
         job.setReducerClass(RankingCounter.class);
 
         FileInputFormat.addInputPath(job, inputPath);

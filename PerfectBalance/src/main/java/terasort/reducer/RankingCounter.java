@@ -9,7 +9,7 @@ public class RankingCounter extends Reducer<IntWritable, IntWritable, IntWritabl
     @Override
     public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws InterruptedException, IOException {
         int size = 0;
-        for (IntWritable i : values) {
+        for (IntWritable ignored : values) {
             size++;
         }
         context.write(key, new IntWritable(size));

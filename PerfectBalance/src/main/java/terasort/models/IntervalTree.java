@@ -8,6 +8,7 @@ import org.apache.hadoop.io.IntWritable;
  */
 public class IntervalTree {
     private final int[] splitPoints;
+    private final String string;
 
     /**
      * Creates IntervalTree for given sorted list of splitPoints.
@@ -15,12 +16,19 @@ public class IntervalTree {
      */
     public IntervalTree(int[] splitPoints) {
         this.splitPoints = new int[splitPoints.length];
+        StringBuilder stringBuilder = new StringBuilder("IntervalTree(");
 
         int counter = 0;
         for(int i : splitPoints) {
             this.splitPoints[counter] = i;
             counter++;
+            stringBuilder.append(i);
+            stringBuilder.append(", ");
         }
+        stringBuilder.append(")");
+        string = stringBuilder.toString();
+
+        System.out.println("Created split points of length " + counter);
     }
 
     /**
@@ -39,5 +47,10 @@ public class IntervalTree {
             counter++;
         }
         return counter;
+    }
+
+    @Override
+    public String toString() {
+        return string;
     }
 }
