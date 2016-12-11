@@ -18,7 +18,6 @@ import terasort.reducer.SplitPointsReducer;
 
 
 public class SlidingAggregation {
-    private static Path rankingReducerWindowSize = new Path("reducerWindowSize");
 
     /** Samples available data to one reducer, the reducer then writes data in splitPointsPath.
      *
@@ -61,7 +60,7 @@ public class SlidingAggregation {
         job.setReducerClass(RankingCounter.class);
 
         FileInputFormat.addInputPath(job, inputPath);
-        FileOutputFormat.setOutputPath(job, rankingReducerWindowSize);
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("window.sizes.location")));
 
         return job.waitForCompletion(true);
     }

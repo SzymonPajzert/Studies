@@ -37,4 +37,8 @@
   <name>partition.location</name>
   <value>partition.lst</value>
 </property>
+<property>
+  <name>window.sizes.location</name>
+  <value>reducerWindowSize</value>
+</property>
 </configuration>
