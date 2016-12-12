@@ -23,15 +23,19 @@ $$ g: S^n \rightarrow \mathbb{R}^{n+1} \backslash \{0\} / \sim $$
 Jest ono ciągłe, ponieważ jest złożeniem $f$ i $p$ - przekształcenia ilorazowego z przekształceniem ciągłym\\
 \end{itemize}
 
-Weźmy dwa różne elementy $ a, b \in X $ i wprowadźmy nowy układ współrzędnych - niech pierwsza będzie promieniem sfery o środku w $0$, na której leży punkt, a pozostałe $n$ będzie współrzędnymi biegunowymi punktu na tej sferze. Wtedy ich współrzędne to:
+Wprowadźmy nowy układ współrzędnych, naturalnie związany z homeomorfizmem 
 $$
-a = (a_1, ... a_n, r_a)
+\eta : \mathbb{R}^n \rightarrow S^{n-1} \times \mathbb{R}
+$$
+Niech pierwsza współrzędna będzie promieniem sfery o środku w $0$, na której leży punkt, a druga położeniem na tej sferze. \\
+Weźmy dwa różne elementy $ a, b \in X $, wtedy ich współrzędne to:
+$$
+a = (a_r, a_s)
 $$
 $$
-b = (b_1, ... b_n, r_b)
+b = (b_r, b_s)
 $$
-gdzie $ r_x $ wyznacza promień sfery, na której leży punkt $ x $, $ (a x_1, ... x_n) $ to współrzędne biegunowe punktu na tej sferze.\\
-Przekształcenie $p$ jest utożsamieniem punktów o tej samej ostatniej współrzędnej.
+Przekształcenie $p$ jest utożsamieniem punktów o tej samej pierwszej współrzędnej.
 \begin{itemize}
 \item \textbf{(bijektywność $g$)} Reprezentantami warstw w $X$ mogą być więc wektory należące do sfery jednostkowej $S^n$ - to pokazuje, że $g$ jest bijekcją (każdej warstwie odpowiada jeden wektor na sferze jednostkowej).
 \item \textbf{(hausdorffowość przeciwdziedziny)} Sfera $S^n$ jest Hausdorfa, można dla dwóch wektorów do niej należących można wybrać rozłączne otoczenia otwarte $U_a$ i $U_b$.
@@ -45,7 +49,7 @@ $$
 są rozłączne w $X$. Załóżmy że nie. Wtedy istnieją $ \alpha \in U_a, \beta \in U_b $ takie, że $ p(\alpha) = p(\beta) $, czyli $\alpha * t = \beta$ dla jakiegoś $t > 0$, ale oba należą do sfery jednostkowej, więc sprzeczność.\\
 Pozostaje jedynie sprawdzić, że $V_a$ i $V_b$ są otwarte w $X$.
 
-Weźmy $ W = p^{-1}[V_a] $ oraz $ x = (x_1, ... x_n, 1) \in W $. Zrzutujmy $W$ na sferę o promieniu $1$ i weźmy otwartą kulę wokół punktu $x$ na tej sferze zawierającą się w rzucie $W$ o promieniu $r_x$ - można to zrobić, bo ten rzut jest otwarty. \\
+Weźmy $ W = p^{-1}[V_a] $ oraz $ x = (1, x_s) \in W $. Zrzutujmy $W$ na sferę o promieniu $1$ i weźmy otwartą kulę wokół punktu $x$ na tej sferze zawierającą się w rzucie $W$ o promieniu $r_x$ - można to zrobić, bo ten rzut jest otwarty. \\
 Weźmy teraz kulę o promieniu $min(1, r_x)$ - jest ona zawarta w zbiorze $W$, bo punkty do niej należące po zrzutowaniu na sferę $S^n$ zawierają się w rzucie $W$. Wobec tego $W$ jest otwarty i przestrzeń  $\mathbb{R}^{n+1} \backslash \{0\} / \sim$  jest przestrzenią Hausdorffa.
 \end{itemize}
 
