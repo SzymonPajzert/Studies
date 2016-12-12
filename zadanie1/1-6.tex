@@ -5,9 +5,6 @@ Homeomorfizm pomiędzy
   \item[1)] Sferą $S^n$
   \item[6)] $A = (D^p \times S^q) \cup (S^{p-1} \times D^{q+1})$ gdzie $p+q = n$
 \end{itemize}
-% todo - dodaj strzałki nad x oraz y
-Ustalmy dla $ z \in \mathbb{R}^{n+1}$ notację: $  z = (x(z), y(z)) = (x_1, ..., x_p, y_1, ..., y_{q+1}) $ gdzie jak łatwo zauważyć $x \in \mathbb{R}^p$ oraz $y \in \mathbb{R}^{q+1} $. \\
-\\
 Zauważmy, że dla $z \in A$ zachodzi:
 \begin{align*}
   z \in A & \implies z \in (D^p \times S^q) \lor z \in (S^{p-1} \times D^{q+1}) \\
@@ -15,15 +12,8 @@ Zauważmy, że dla $z \in A$ zachodzi:
   z \in (S^{p-1} \times D^{q+1}) & \implies \sum x_i^2 = 1 \land \sum y_i^2 \leq 1 \\
   z \in A & \implies 1 \leq ||z|| \leq \sqrt{2}
 \end{align*}
-Obierzmy teraz przekształcenie $ f : A \to S^n $ dane wzorem:
-\begin{equation*}
-  f((x_1, ..., x_p, y_1, ..., y_{q+1}) = z) = z \cdot \tfrac{1}{\sqrt{||x(z)||^2 + ||y(z)||^2}}
-\end{equation*}
-Ponieważ $ ||z|| = \sqrt{||x(z)||^2 + ||y(z)||^2} $\\
-\\
-Łatwo znależć dla niego przekształcenie odwrotne $ g : S^n \to A $ dane wzorem:
-\begin{equation*}
-  g((x(z), y(z)) = z) = z \cdot \tfrac{1}{\rm max(||x(z)||, ||y(z)||)}
-\end{equation*}
-\\
-Przekształcenia $f$ oraz $g$ są wzajemnie odwrotne i przekształcają punkty z jednego zbioru na wspóliniowe z nimi i początkiem układu współrzędnych punkty drugiego zbioru. Ciągłość tych przekształceń wynika z ciągłości przekształceń modyfikujących długość wektora.
+oraz
+\begin{align*}
+  z \in (D^p \times S^q) \land z \in (S^{p-1} \times D^{q+1})  & \implies z \in (S^{p-1} \times S^q)
+\end{align*}
+Stąd widzimy że zbiór A jest sumą dwóch rozmaitości, przecinających się w $S^{p-1} \times S^q$. Jest także prawdą, że zbiór punktów A jest izomorficzny ze zbiorem półprostych o środku w początku układu współrzędnych. Stąd istnieje projekcja punktów ze zbioru A na sferę $S^n$ przeprowadzająca punkty na przecięcia odpowiadających im półprostych ze sferą. Przekształcenie to jest bijekcją i na podobnie jak w dowodzie homeomorfizmu pomiędzy sferą a sześcianem \cite{hom-cube-sphere} jest homeomorfizem.
