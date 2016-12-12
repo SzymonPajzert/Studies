@@ -41,4 +41,8 @@
   <name>window.sizes.location</name>
   <value>reducerWindowSize</value>
 </property>
+<property>
+  <name>ranking.result</name>
+  <value>ranking</value>
+</property>
 </configuration>

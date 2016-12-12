@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+// TODO add setting output directory to allow having multiple results
 public class ConfigurationWrap {
     public final Configuration conf;
     public final FileSystem fileSystem;

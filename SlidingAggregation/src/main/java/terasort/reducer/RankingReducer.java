@@ -12,8 +12,7 @@ import terasort.util.ConfigurationWrap;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.HashMap;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class RankingReducer extends Reducer<IntWritable, IntWritable, IntWritable, IntWritable> implements Configurable {
@@ -27,12 +26,10 @@ public class RankingReducer extends Reducer<IntWritable, IntWritable, IntWritabl
             FSDataInputStream reader = conf.fileSystem.open(p);
             Scanner scanner = new Scanner(new InputStreamReader(reader));
 
-            for(int i = 0; i < conf.numPartitions; ++i) {
-                int partition, size;
-                partition = scanner.nextInt();
-                size = scanner.nextInt();
-                result.put(partition, size);
-            }
+            int partition, size;
+            partition = scanner.nextInt();
+            size = scanner.nextInt();
+            result.put(partition, size);
 
             scanner.close();
             reader.close();
@@ -54,12 +51,28 @@ public class RankingReducer extends Reducer<IntWritable, IntWritable, IntWritabl
         return conf.conf;
     }
 
+    private int getPrefixRanking(int key) {
+        int result = 0;
+        for(Map.Entry<Integer, Integer> entry : windowSizes.entrySet()) {
+            if(entry.getKey() < key) {
+                result += entry.getValue();
+            }
+        }
+        return result;
+    }
+
     @Override
     public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws InterruptedException, IOException {
-        int size = 0;
-        for (IntWritable ignored : values) {
-            size++;
+        List<Integer> sortedList = new ArrayList<>();
+        for (IntWritable i : values) {
+            sortedList.add(i.get());
         }
-        context.write(key, new IntWritable(size));
+        Collections.sort(sortedList);
+
+        int prefix = getPrefixRanking(key.get());
+        for(Integer i : sortedList) {
+            prefix++;
+            context.write(new IntWritable(prefix), new IntWritable(i));
+        }
     }
 }

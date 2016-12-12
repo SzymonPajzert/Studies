@@ -65,6 +65,25 @@ public class SlidingAggregation {
         return job.waitForCompletion(true);
     }
 
+    private static boolean countRanking(Configuration conf, Path inputPath) throws Exception {
+        Job job = Job.getInstance(conf, "Count Ranking");
+
+        job.setJarByClass(SlidingAggregation.class);
+
+        job.setMapperClass(IntMapper.class);
+        job.setMapOutputKeyClass(IntWritable.class);
+        job.setMapOutputValueClass(IntWritable.class);
+
+        job.setPartitionerClass(InputPartitioner.class);
+
+        job.setReducerClass(RankingReducer.class);
+
+        FileInputFormat.addInputPath(job, inputPath);
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("ranking.result")));
+
+        return job.waitForCompletion(true);
+    }
+
     public static void main(String[] args) throws Exception {
         Path inputPath = new Path(args[0]);
         Path outputPath = new Path(args[1]);
@@ -73,5 +92,6 @@ public class SlidingAggregation {
 
         createSplitPoints(conf, inputPath);
         countWindowSize(conf, inputPath);
+        countRanking(conf, inputPath);
     }
 }
