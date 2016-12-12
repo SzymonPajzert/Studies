@@ -19,29 +19,10 @@ public class RankingReducer extends Reducer<IntWritable, IntWritable, IntWritabl
     private ConfigurationWrap conf;
     private HashMap<Integer, Integer> windowSizes;
 
-    private HashMap<Integer, Integer> getWindowSizes(Stream<Path> ps) throws IOException {
-        HashMap<Integer, Integer> result = new HashMap<>();
-
-        for(Path p : ps.toArray(Path[]::new)) {
-            FSDataInputStream reader = conf.fileSystem.open(p);
-            Scanner scanner = new Scanner(new InputStreamReader(reader));
-
-            int partition, size;
-            partition = scanner.nextInt();
-            size = scanner.nextInt();
-            result.put(partition, size);
-
-            scanner.close();
-            reader.close();
-        }
-
-        return result;
-    }
-
     public void setConf(Configuration _conf) {
         try {
             this.conf = new ConfigurationWrap(_conf);
-            windowSizes = getWindowSizes(conf.getPaths("window.sizes.location"));
+            windowSizes = conf.getWindowSizes();
         } catch (IOException e) {
             throw new IllegalArgumentException("can't read partitions file", e);
         }

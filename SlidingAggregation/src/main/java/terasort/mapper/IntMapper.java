@@ -4,8 +4,6 @@ package terasort.mapper;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
@@ -23,29 +21,10 @@ public class IntMapper extends Mapper<Object, Text, IntWritable, IntWritable> im
     private ConfigurationWrap conf;
     private IntWritable key = new IntWritable();
 
-    private int[] readSplitPoints(Path p) throws IOException {
-        int[] result = new int[conf.numPartitions- 1];
-        FSDataInputStream reader = conf.fileSystem.open(p);
-
-        Scanner scanner = new Scanner(new InputStreamReader(reader));
-        for(int i = 0; i < conf.numPartitions - 1; ++i) {
-            result[i] = scanner.nextInt();
-            System.out.println("Read " + result[i]);
-        }
-
-        scanner.close();
-        reader.close();
-        return result;
-    }
-
-    private Path getSplitPath() throws IOException {
-        return this.conf.getPath("partition.location");
-    }
-
     public void setConf(Configuration _conf) {
         try {
             this.conf = new ConfigurationWrap(_conf);
-            this.tree = new IntervalTree(readSplitPoints(getSplitPath()));
+            this.tree = new IntervalTree(conf.readSplitPoints());
         } catch (IOException e) {
             throw new IllegalArgumentException("can't read partitions file", e);
         }
