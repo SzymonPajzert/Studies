@@ -5,29 +5,6 @@ Homeomorfizm pomiędzy
   \item[3)] $(\R^n)^+$ - sferą Riemanna
   \item[4)] $D ^ {n} / \sim $ gdzie $ x \sim y \iff x = y $ lub $ x, y \in S^{n-1} $
 \end{itemize}
-Łatwo możemy obrać dwa ciągłe, ściśle monotoniczne i wzajemnie odwrotne przekształcenia pomiędzy $[0, 1)$ a $[0, +\infty)$ które zadają homeomorfizm między tymi przedziałami, zadane wzorami:
-\begin{align*}
-  d_f(x) = \tfrac{x}{1 - x} & & d_f : [0, 1) \to [0, +\infty) \\
-  d_g(x) = \tfrac{x}{1 + x} & & d_g : [0, +\infty) \to [0, 1)
-\end{align*}
-I na ich podstawie tworzymy przekształcenia między $A$ i $B$.
-\begin{align*}
-  f(\delta) &= \infty & \text{else} & & f(x) &= x \cdot \tfrac{d_f(||x||)}{||x||} & & f : Y \to X \\
-  g(\infty) &= \delta & \text{else} & & g(x) &= x \cdot \tfrac{d_g(||x||)}{||x||} & & g : X \to Y
-\end{align*}
-Które są ciągłe obcięte odpowiednio do $ Y \setminus \delta =  \text{int}{D^n}$ oraz $X \setminus \infty = \R^n$, ponieważ są ich homeomorfizmami - rozciąganie wnętrza kuli do przestrzeni działa tak samo jak udowodnione na wykładzie rozciąganie odcinka otwartego do prostej. \\
+Łatwo możemy obrać homeomorficzne przekształcenie z $D^n \setminus S^{n-1}$ do $R^n$ - rozciągając punkty na odcinku $[0, 1)$ w $[0, +\infty)$ dla każdej półprostej o początku w początku układu współrzędnych.\\
 \\
-\subsection*{$g \circ f = id_Y$ oraz $f \circ g = id_X$}
-Ponieważ superpozyca $d_f$ oraz $d_g$ są identycznościami, a $f$ i $g$ zmieniają jedynie za ich pomocą długości wektorów, to ich superpozycje też są identycznościami.
-\subsection*{$f$ jest ciągłe}
-Niech $ U \subset X$ będzie otwarty. Pokażmy że $f^{-1}(U)$ też jest otwarty. Mamy dwie możliwości:
-\begin{itemize}
-  \item $\infty \in U$ - Wtedy $\R^n \setminus U$ jest zwarty. Ponieważ jest on podzbiorem $\R^n$ to wiemy że jest on domknięty i ograniczony. Stąd na mocy ciągłości i monotoniczności $d_f(x)$ wiemy że $f^{-1}(\R^n \setminus U)$ też jest ograniczonym zbiorem przez promień z przedziału $[0,1)$ więc nie należy do niego $\delta$. Otwartość $f^{-1}(\R^n \setminus U)$ otrzymujemy z ciągłości $d_f$.
-  \item $\infty \not \in U$ - Już udowodnione.
-\end{itemize}
-\subsection*{$g$ jest ciągłe}
-Niech $ U \subset Y$ będzie otwarty. Pokażmy że $g^{-1}(U)$ też jest otwarty. Mamy dwie możliwości:
-\begin{itemize}
-  \item $\delta \in U$ - Wtedy $\R^n \setminus U$ jest domknięty, jest też więc ograniczony, ponieważ supremum metryk wektorów z $\R^n \setminus U$ jest ostro mniejsze od 1, w przeciwnym wypadku do tego zbioru należałaby $\delta$. Stąd $g^{-1}(\R^n \setminus U)$ jest domnkięte (ponieważ $d_g$ jest ciągłe) oraz ograniczone czyli zwarte, więc $U$ jest otwarte.
-  \item $\infty \not \in U$ - Już udowodnione.
-\end{itemize}
+Sfera Riemanna jest uzwarceniem $R^n$ a $D ^ {n} / \sim $ jest uzwarceniem $D^n \setminus S^{n-1}$. Pierwsze uzwarcenie wynika wprost z definicji. W drugim dopełnienie każdego zbioru otwartego zawierającego klasę abstrakcji brzegu jest zbiorem domkniętym. Ponieważ $D ^ {n} / \sim $ jest Hausdorffowskim obrazem zwartej przestrzeni w przekształceniu ilorazowym, to sama jest zwarta. Stąd dopełnienie każdego zbioru otwartego zawierającego brzeg jest zwarte, stąd $D ^ {n} / \sim $ jest rzeczywiście uzwarceniem. Ponieważ są to jednopunktowe uzwarcenia homeomorficznych lokalnie zwartych przestrzeni to na mocy Twierdzenia Aleksandrowa są one homeomorficzne.
