@@ -139,10 +139,10 @@ public class SlidingAggregation {
         Configuration conf = new Configuration();
         conf.setInt("window.size", windowSize);
 
-        // createSplitPoints(conf, inputPath);
-        // countWindowSize(conf, inputPath);
-        // countRanking(conf, inputPath);
-        // aggregateWindows(conf);
+        createSplitPoints(conf, inputPath);
+        countWindowSize(conf, inputPath);
+        countRanking(conf, inputPath);
+        aggregateWindows(conf);
         slidingAggregation(conf, outputPath);
     }
 }
