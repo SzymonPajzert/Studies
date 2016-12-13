@@ -18,6 +18,7 @@ public class ConfigurationWrap {
     public final Configuration conf;
     private final FileSystem fileSystem;
     private final int numPartitions;
+    private int numberOfElements = 0;
 
     public ConfigurationWrap(Configuration conf) throws IOException {
         this.conf = conf;
@@ -40,8 +41,8 @@ public class ConfigurationWrap {
         return getPaths(property).findFirst().get();
     }
 
-    public HashMap<Integer, Integer> getWindowSizes() throws IOException {
-        Stream<Path> ps = getPaths("window.sizes.location");
+    private HashMap<Integer, Integer> getHashMapFromProperty(String property) throws IOException {
+        Stream<Path> ps = getPaths(property);
         HashMap<Integer, Integer> result = new HashMap<>();
 
         for(Path p : ps.toArray(Path[]::new)) {
@@ -58,6 +59,31 @@ public class ConfigurationWrap {
         }
 
         return result;
+    }
+
+    public HashMap<Integer, Integer> getWindowSizes() throws IOException {
+        return getHashMapFromProperty("window.sizes.location");
+    }
+
+    public HashMap<Integer, Integer> getWindowAggregate() throws IOException {
+        return getHashMapFromProperty("windows.aggregate");
+    }
+
+    public int getStep() throws IOException {
+        if(numberOfElements == 0) {
+            HashMap<Integer, Integer> windowSizes = getWindowSizes();
+            for(Integer windowSize : windowSizes.values()) {
+                numberOfElements += windowSize;
+            }
+        }
+
+        return numberOfElements / numPartitions;
+    }
+
+    public int getReducer(int ranking) throws IOException {
+        int step = getStep();
+        int possibleReducer = ranking / step;
+        return possibleReducer == numPartitions ? numPartitions - 1 : possibleReducer;
     }
 
     public int[] readSplitPoints() throws IOException {

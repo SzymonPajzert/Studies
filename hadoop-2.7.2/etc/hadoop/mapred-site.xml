@@ -45,4 +45,8 @@
   <name>ranking.result</name>
   <value>ranking</value>
 </property>
+<property>
+  <name>windows.aggregate</name>
+  <value>windowsaggregate</value>
+</property>
 </configuration>

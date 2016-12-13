@@ -3,8 +3,6 @@ package terasort.mapper;
 
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -12,8 +10,6 @@ import terasort.models.IntervalTree;
 import terasort.util.ConfigurationWrap;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Scanner;
 import java.util.StringTokenizer;
 
 public class IntMapper extends Mapper<Object, Text, IntWritable, IntWritable> implements Configurable {
