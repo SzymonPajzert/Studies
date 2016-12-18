@@ -12,22 +12,21 @@
 
 using namespace std;
 
+void calculate(const Graph<int> & graph, const Graph<int>::node_id s, std::vector<std::atomic<int> > & BC) {
+    using node_id = Graph<int>::node_id;
 
-void calculate(const Graph & graph, const Graph::node_id s, std::vector<std::atomic<int> > & BC) {
-    const size_t nodeNumber = graph.nodeNumber();
+    const size_t nodeNumber = graph.node_number();
 
-    auto stack = std::stack();
-
-    std::allocator<std::list> listAllocator;
-    std::vector<std::list<int> > P(nodeNumber, listAllocator);
+    std::stack<node_id> stack;
+    std::vector<std::list<node_id > > P(nodeNumber, std::list<node_id>());
     std::vector<int> sigma(nodeNumber, 0);
     std::vector<int> d(nodeNumber, -1);
-    std::vector<int> delta(nodeNumber, 0)
+    std::vector<int> delta(nodeNumber, 0);
 
     sigma[s] = 1;
     d[s] = 0;
 
-    auto queue = std::queue(); // FIFO
+    std::queue<node_id> queue; // FIFO
     queue.push(s);
 
     while (!queue.empty()) {
@@ -48,11 +47,11 @@ void calculate(const Graph & graph, const Graph::node_id s, std::vector<std::ato
     }
 
     while (!stack.empty()) {
-        auto w = stack.top()
+        auto w = stack.top();
         stack.pop();
 
         for(auto v : P[w]) {
-            delta[v] += (sigma[v] / sigma[w])(1 + delta[w]);
+            delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w]);
         }
 
         if (w != s) {
@@ -62,24 +61,27 @@ void calculate(const Graph & graph, const Graph::node_id s, std::vector<std::ato
 }
 
 int main() {
-    int threadNumber;
+    int thread_number;
     std::string inputFileName, outputFileName;
-    std::cin >> threadNumber >> inputFileName >> outputFileName;
+    std::cin >> thread_number >> inputFileName >> outputFileName;
 
     std::fstream inputFile;
     inputFile.open(inputFileName, ios_base::in);
-    const auto graph = Graph(inputFile, threadNumber);
+    const auto graph = Graph<int>(inputFile, thread_number);
     inputFile.close();
 
-    std::vector<std::atomic<int> > BC(graph.nodeNumber(), 0);
+    std::vector<std::atomic<int> > BC(graph.node_number());
+    for(Graph<int>::node_id v = 0; v < graph.node_number(); v++) {
+        BC[v] = 0;
+    }
 
-    for(Graph::node_id v = 0; v < graph.nodeNumber(); v++) {
+    for(Graph<int>::node_id v = 0; v < graph.node_number(); v++) {
         calculate(graph, v, BC);
     }
 
     std::fstream outputFile;
     outputFile.open(inputFileName, ios_base::out);
-    for(Graph::node_id v = 0; v < graph.nodeNumber(); v++) {
+    for(Graph<int>::node_id v = 0; v < graph.node_number(); v++) {
         calculate(graph, v, BC);
     }
     outputFile.close();
