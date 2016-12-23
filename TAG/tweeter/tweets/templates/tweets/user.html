@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}User information{% endblock %}
+
+{% block content %}
+
+    You're looking at the details of user {{ user.username }}
+
+    {% if request.user != user %}
+
+        {% if following %}
+            <form action="{%  url 'tweets:user_unfollow' user.pk %}" method="post">
+            {% csrf_token %}
+            <input type="submit" value="Unfollow" />
+        {% else %}
+            <form action="{%  url 'tweets:user_follow' user.pk %}" method="post">
+            {% csrf_token %}
+            <input type="submit" value="Follow" />
+        {% endif %}
+
+    </form>
+    {% endif %}
+
+{% endblock %}

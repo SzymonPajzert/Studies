@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "tweets/css/login_signup.css" %}" />
+{% endblock %}
+
+{% block content %}
+    You're logged out.
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create tweet{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "tweets/css/base.css" %}" />
+    <link rel="stylesheet" type="text/css" href="{% static "tweets/css/create_tweet.css" %}" />
+{% endblock %}
+
+{% block content %}
+    <div class="block" id="create_tweet">
+        <form action="{% url 'tweets:create_tweet' %}" method="post">
+            {% csrf_token %}
+
+            {{ form.text }}
+
+            <input id="submit_button" type="submit" value="Create" />
+        </form>
+    </div>
+{% endblock %}

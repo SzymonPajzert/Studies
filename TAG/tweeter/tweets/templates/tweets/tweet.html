@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Tweet information{% endblock %}
+
+{% block content %}
+You're looking at tweet {{ tweet.id }} with text {{ tweet.text }} from user <a href="{% url 'tweets:user_detail' tweet.owner.pk %}">{{ tweet.owner.username }}</a>
+{% endblock %}
+

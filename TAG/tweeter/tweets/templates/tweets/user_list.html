@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}User list{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "tweets/css/base.css" %}" />
+    <link rel="stylesheet" type="text/css" href="{% static "tweets/css/user_list.css" %}" />
+{% endblock %}
+
+{% block content %}
+
+    {% if user_list %}
+        {% for user in user_list %}
+            <div class="block user_list_elt">
+                <a href="{% url 'tweets:user_detail' user.pk %}">{{ user.username }}</a>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No tweets are available.</p>
+    {% endif %}
+
+{% endblock %}

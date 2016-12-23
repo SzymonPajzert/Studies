@@ -1,0 +1,17 @@
+.block {
+
+    border: 1px solid gainsboro;
+    margin: 10px auto auto;
+
+    background: #ffffff;
+
+    text-align: center;
+}
+
+.invisible {
+    margin: 10px auto auto;
+
+    text-align: center;
+
+    color: #ff6b5b;
+}

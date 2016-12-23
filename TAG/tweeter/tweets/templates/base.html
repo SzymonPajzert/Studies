@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{% static "images/favicon.ico" %}" />
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" type="text/css" href="{% block stylesheet %}{% static "css/base.css" %}{% endblock %}" />
+
+    {% block extrastyle %}{% endblock %}
+</head>
+<body>
+    <div id="banner">
+        <a href="{% url 'tweets:index' %}">
+            <img src="{% static "images/sitelogo.png" %}" alt="Logo"/>
+        </a>
+
+        <div id="links">
+            <a href="{% url 'tweets:user_list' %}">All users</a><br/>
+            <a href="{% url 'tweets:create_tweet' %}">Create tweet</a>
+            {% if request.user.is_authenticated %}
+                You're logged as <a href="{% url 'tweets:user_me' %}">{{ request.user.username }}</a>
+                <a href="{% url 'tweets:logout' %}">Log out</a>
+            {% else %}
+                <a href="{% url 'tweets:login' %}">Log in</a>
+                <a href="{% url 'tweets:signup' %}">Sign up</a>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <div id="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

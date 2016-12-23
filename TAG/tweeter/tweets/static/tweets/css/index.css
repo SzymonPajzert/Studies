@@ -1,0 +1,13 @@
+#no_tweet_list {
+    width: 400px;
+    height: 200px;
+}
+
+.block {
+    width: 500px;
+    height: 150px;
+}
+
+.domestic {
+    background: #dfdfdf;
+}
