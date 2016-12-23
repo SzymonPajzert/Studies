@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.image.Image?>
+
+<Dialog fx:id="dialog"
+        fx:controller="pl.edu.mimuw.forum.ui.controllers.DialogController"
+        xmlns:fx="http://javafx.com/fxml">
+    <dialogPane>
+        <DialogPane prefWidth="400.0" prefHeight="300.0">
+            <stylesheets>
+                <URL value="@/css/styles.css"/>
+            </stylesheets>
+            <content>
+                <VBox>
+                    <Label text="Choose content type"/>
+                    <fx:define>
+                        <ToggleGroup fx:id="group"/>
+                    </fx:define>
+                    <children>
+                        <RadioButton text="Comment" toggleGroup="$group"/>
+                        <RadioButton text="Suggestion" toggleGroup="$group"/>
+                        <RadioButton text="Survey" toggleGroup="$group"/>
+                        <RadioButton text="Task" toggleGroup="$group"/>
+                    </children>
+
+                    <Label text="User:">
+                        <graphic>
+                            <ImageView>
+                                <Image url="@../images/user.png"/>
+                            </ImageView>
+                        </graphic>
+                    </Label>
+                    <TextField fx:id="userField" promptText="Enter user name..."/>
+
+                    <Label text="Comment:">
+                        <graphic>
+                            <ImageView>
+                                <Image url="@../images/comment.png"/>
+                            </ImageView>
+                        </graphic>
+                    </Label>
+                    <TextArea fx:id="commentField" promptText="Enter comment..."/>
+                </VBox>
+            </content>
+        </DialogPane>
+    </dialogPane>
+</Dialog>
