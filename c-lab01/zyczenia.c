@@ -41,9 +41,6 @@ int main() {
     }
 
     if(proc_number == n-1) {
-	// Jeśli wpiszę tutaj 0 to wszystko działa
-	// Jeśli jednak zmienię je na 1 to dodają mi się d
-	// czyli znaki \000 zamieniają się na coś drukowalnego 
 	child_input = dup(1);
     }
   
