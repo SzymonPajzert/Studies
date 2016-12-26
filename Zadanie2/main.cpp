@@ -1,8 +1,6 @@
 #include <iostream>
 #include <fstream>
 
-#include "graph.h"
-#include "calculate.h"
 #include "brandes.h"
 
 int main() {
