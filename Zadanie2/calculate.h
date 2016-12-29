@@ -7,6 +7,6 @@
 #include <list>
 #include <queue>
 
-#include "graph.h"
+#include "old_graph.h"
 
 #endif //CALCULATE_H

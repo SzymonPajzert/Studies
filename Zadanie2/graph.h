@@ -3,62 +3,56 @@
 
 #include <cstddef>
 #include <vector>
-#include <map>
 
+#include "map.h"
 #include "model.h"
 
-template<typename external_t>
-class model::old_graph {
-public:
-    using internal_t = size_t;
-
-    old_graph(std::istream &input) : next_id(0) {
-        external_t a, b;
-        while (input >> a >> b) {
-            internal_t a = imp(a);
-            internal_t b = imp(b);
-            add_edge(a, b);
-        }
-    }
-
-    std::vector<internal_t> neighbours(internal_t node) const {
-        return descendants.at(node);
-    }
-
-    external_t exp(internal_t node) const {
-        return representation.at(node);
-    }
-
-    size_t node_number() const {
-        return next_id;
-    }
-
+class model::graph {
 private:
-    internal_t imp(external_t input) {
-        size_t result;
+    using map_type = map_t<size_t, std::vector<size_t> >;
 
-        auto pair = representation.find(input);
-        if (pair == representation.end()) {
-            result = next_id++;
-            representation.emplace(input, result);
-        } else {
-            result = pair->second;
+    static map_type create_map(std::istream &input) {
+        map_type result;
+        size_t a, b;
+        while (input >> a >> b) {
+            if (result.find(a) == result.end()) {
+                result[a] = {b};
+            } else {
+                result[a].push_back(b);
+            }
         }
-
         return result;
     }
 
-    internal_t next_id;
-    std::map<size_t, std::vector<size_t> > descendants;
-    std::map<size_t, size_t> representation;
-
-    void add_edge(size_t a, size_t b) {
-        if (descendants.find(a) == descendants.end()) {
-            descendants[a] = {b};
-        } else {
-            descendants[a].push_back(b);
+    static std::vector<size_t> get_ids(const map_type & map) {
+        std::vector<size_t> result;
+        for (auto &&kv : map) {
+            result.push_back(kv.first);
         }
     }
+
+public:
+
+    /// Instantiates map to contain keys as keys in this graph with values set to @param value
+    template<typename K, typename V>
+    void instantiate_map(map_t<K, V> & map, V value) const {
+        map.clear();
+        for(auto key : node_ids) {
+            map[key] = value;
+        }
+    };
+
+    graph(std::istream &input) :
+            descendants(create_map(input)),
+            node_ids(get_ids(descendants))
+    {}
+
+    size_t node_number() const {
+        return node_ids.size();
+    }
+
+    const map_type descendants;
+    const std::vector<size_t> node_ids;
 };
 
 #endif //GRAPH_H

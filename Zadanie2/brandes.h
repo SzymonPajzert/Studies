@@ -1,14 +1,15 @@
 #ifndef BRANDES_H
 #define BRANDES_H
 
-#include "graph.h"
-
 #include <iostream>
 #include <fstream>
 #include <atomic>
 #include <stack>
 #include <queue>
 #include <list>
+
+#include "map.h"
+#include "graph.h"
 
 class brandes {
 public:
@@ -21,25 +22,26 @@ public:
 private:
     int thread_number;
     std::string output_file_name;
-    const model::graph<size_t> graph;
-    std::vector<std::atomic<int> > BC;
+    const model::graph graph;
+    map_t<size_t, std::atomic<int> > BC;
 
-    model::graph<size_t> read_graph(std::string input_file_name);
+    model::graph read_graph(std::string input_file_name);
 
     class vertex_calculation {
     public:
-        using node_id = model::graph<size_t>::internal_t;
         vertex_calculation(brandes &upper, size_t s);
         void run();
 
     private:
+        const model::graph & graph;
+        map_t<size_t, std::atomic<int> > & BC;
         const size_t node_number;
         const size_t s;
-        brandes & upper;
-        std::stack<node_id> stack;
-        std::queue<node_id> queue; // FIFO
-        std::vector<std::list<node_id > > P;
-        std::vector<int> sigma, d, delta;
+        std::stack<size_t> stack;
+        std::queue<size_t> queue;
+
+        map_t<size_t, std::list<size_t > > P;
+        map_t<size_t, int> sigma, d, delta;
 
         void empty_queue();
         void empty_stack();
