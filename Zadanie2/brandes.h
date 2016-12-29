@@ -15,7 +15,6 @@ public:
     brandes(int thread_number, const std::string &input_file_name, const std::string &output_file_name);
 
     void run();
-
     void save();
 
 

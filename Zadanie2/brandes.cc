@@ -71,6 +71,7 @@ brandes::brandes(int thread_number, const std::string &input_file_name, const st
         output_file_name(output_file_name),
         graph(read_graph(input_file_name)),
         BC(graph.node_number()) {
+    std::cout << "Brandes instance created succesfully for";
     for(size_t i = 0; i < BC.size(); i++) {
         BC[i] = 0;
     }

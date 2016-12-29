@@ -5,17 +5,14 @@
 #include <vector>
 #include <map>
 
-namespace model {
-    template<typename external_t>
-    class graph;
-}
+#include "model.h"
 
 template<typename external_t>
-class model::graph {
+class model::old_graph {
 public:
     using internal_t = size_t;
 
-    graph(std::istream &input) : next_id(0) {
+    old_graph(std::istream &input) : next_id(0) {
         external_t a, b;
         while (input >> a >> b) {
             internal_t a = imp(a);
