@@ -5,9 +5,7 @@
 #include <vector>
 #include <algorithm>
 
-// TODO create set.h
-#include <set>
-
+#include "set.h"
 #include "logger.h"
 #include "map.h"
 #include "model.h"
@@ -18,7 +16,7 @@ public:
 
 private:
     using map_type = map_t<node_t , std::vector<node_t> >;
-    using set_type = std::set<node_t>;
+    using set_type = set_t<node_t>;
 
     map_type create_map(std::istream &input) {
         logger::print_open("model::graph::create_map started");
