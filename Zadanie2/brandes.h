@@ -23,25 +23,27 @@ private:
     int thread_number;
     std::string output_file_name;
     const model::graph graph;
-    map_t<size_t, std::atomic<int> > BC;
+    map_t<size_t, std::atomic<double> > BC;
 
     model::graph read_graph(std::string input_file_name);
 
     class vertex_calculation {
     public:
-        vertex_calculation(brandes &upper, size_t s);
+        using node_t = model::graph::node_t;
+        vertex_calculation(brandes &upper, node_t s);
         void run();
 
     private:
         const model::graph & graph;
-        map_t<size_t, std::atomic<int> > & BC;
+        map_t<size_t, std::atomic<double> > & BC;
         const size_t node_number;
-        const size_t s;
-        std::stack<size_t> stack;
-        std::queue<size_t> queue;
+        const node_t s;
+        std::stack<node_t> stack;
+        std::queue<node_t> queue;
 
-        map_t<size_t, std::list<size_t > > P;
-        map_t<size_t, int> sigma, d, delta;
+        map_t<node_t, std::list<node_t > > P;
+        map_t<node_t, double> delta;
+        map_t<node_t, int> d, sigma;
 
         void empty_queue();
         void empty_stack();

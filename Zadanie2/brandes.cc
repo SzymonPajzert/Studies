@@ -1,4 +1,5 @@
 #include "brandes.h"
+#include "logger.h"
 
 #include <algorithm>
 
@@ -7,14 +8,14 @@ brandes::vertex_calculation::vertex_calculation(brandes &upper, size_t s) :
         BC(upper.BC),
         node_number(upper.graph.node_ids.size()),
         s(s) {
-    sigma[s] = 1;
-    d[s] = 0;
-    queue.push(s);
-
     graph.instantiate_map(P, std::list<size_t>());
     graph.instantiate_map(sigma, 0);
     graph.instantiate_map(d, -1);
-    graph.instantiate_map(delta, 0);
+    graph.instantiate_map(delta, 0.0);
+
+    sigma[s] = 1;
+    d[s] = 0;
+    queue.push(s);
 }
 
 void
@@ -45,11 +46,12 @@ brandes::vertex_calculation::empty_stack() {
         stack.pop();
 
         for(auto v : P[w]) {
-            delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w]);
+            delta[v] += ((double)sigma[v] / sigma[w]) * (1 + delta[w]);
         }
 
         if (w != s) {
-            BC[w] += delta[w];
+            auto current = BC[w].load();
+            while (!BC[w].compare_exchange_weak(current, current + delta[w]));
         }
     }
 }
@@ -63,10 +65,13 @@ brandes::vertex_calculation::run() {
 
 model::graph
 brandes::read_graph(std::string input_file_name) {
-    std::fstream inputFile;
-    inputFile.open(input_file_name, std::ios_base::in);
-    const auto graph = model::graph(inputFile);
-    inputFile.close();
+    logger::print_open("brandes::read_graph started");
+    std::ifstream input_file;
+    input_file.open(input_file_name, std::ios_base::in);
+    if(input_file.bad()) logger::print("input_file bad");
+    const auto graph = model::graph(input_file);
+    input_file.close();
+    logger::print_end("brandes::read_graph finished");
     return graph;
 }
 
@@ -74,11 +79,11 @@ brandes::brandes(int thread_number, const std::string &input_file_name, const st
         thread_number(thread_number),
         output_file_name(output_file_name),
         graph(read_graph(input_file_name)) {
-    std::cout << "Brandes instance created successfully for";
+    logger::print("Successfully created fields of brandes");
     for(auto v : graph.node_ids) {
         BC[v] = 0;
     }
-    std::cout << "BC in brandes instance has been instantiated";
+    logger::print("BC in brandes instance has been instantiated");
 }
 
 void
