@@ -23,14 +23,18 @@ brandes::vertex_calculation::empty_queue() {
         queue.pop();
 
         stack.push(v);
-        for(auto w : graph.descendants.at(v)) {
-            if(d[w] < 0) {
-                queue.push(w);
-                d[w] = d[v] + 1;
-            }
-            if (d[w] == d[v] + 1) {
-                sigma[w] += sigma[v];
-                P[w].push_back(v);
+
+        auto query = graph.descendants.find(v);
+        if(query != graph.descendants.end()) {
+            for(auto w : query->second) {
+                if(d[w] < 0) {
+                    queue.push(w);
+                    d[w] = d[v] + 1;
+                }
+                if (d[w] == d[v] + 1) {
+                    sigma[w] += sigma[v];
+                    P[w].push_back(v);
+                }
             }
         }
     }
@@ -47,8 +51,10 @@ brandes::vertex_calculation::empty_stack() {
             delta[v] += ((double)sigma[v] / sigma[w]) * (1 + delta[w]);
         }
 
-        if (w != s) {
-            auto id = graph.represent.at(w);
+        // Increase BC only if node has descendants.
+        auto query_id = graph.represent.find(w);
+        if (w != s && query_id != graph.represent.end()) {
+            auto id = query_id->second;
             auto current = BC[id].load();
             while (!BC[id].compare_exchange_weak(current, current + delta[w]));
         }

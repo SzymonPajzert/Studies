@@ -5,6 +5,9 @@
 #include <vector>
 #include <algorithm>
 
+// TODO create set.h
+#include <set>
+
 #include "logger.h"
 #include "map.h"
 #include "model.h"
@@ -15,21 +18,24 @@ public:
 
 private:
     using map_type = map_t<node_t , std::vector<node_t> >;
+    using set_type = std::set<node_t>;
 
     map_type create_map(std::istream &input) {
         logger::print_open("model::graph::create_map started");
-        map_type result;
+        map_type map;
         size_t a, b;
         while (input >> a >> b) {
             logger::print("model::graph::create_map read input");
-            if (result.find(a) == result.end()) {
-                result[a] = {b};
+            all_node_ids.insert(a);
+            all_node_ids.insert(b);
+            if (map.find(a) == map.end()) {
+                map[a] = {b};
             } else {
-                result[a].push_back(b);
+                map[a].push_back(b);
             }
         }
         logger::print_end("model::graph::create_map finished");
-        return result;
+        return map;
     }
 
     std::vector<node_t> get_ids() const {
@@ -49,13 +55,16 @@ private:
         return result;
     }
 
+    set_type all_node_ids;
+
 public:
 
+    // TODO create lazy maps with default values.
     /// Instantiates map to contain keys as keys in this graph with values set to @param value
-    template<typename K, typename V>
-    void instantiate_map(map_t<K, V> & map, V value) const {
+    template<typename V>
+    void instantiate_map(map_t<node_t, V> & map, V value) const {
         map.clear();
-        for(auto key : node_ids) {
+        for(auto key : all_node_ids) {
             map[key] = value;
         }
     };
