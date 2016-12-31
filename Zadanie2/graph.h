@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <algorithm>
 
 #include "logger.h"
 #include "map.h"
@@ -15,7 +16,7 @@ public:
 private:
     using map_type = map_t<node_t , std::vector<node_t> >;
 
-    static map_type create_map(std::istream &input) {
+    map_type create_map(std::istream &input) {
         logger::print_open("model::graph::create_map started");
         map_type result;
         size_t a, b;
@@ -31,10 +32,19 @@ private:
         return result;
     }
 
-    static std::vector<node_t> get_ids(const map_type & map) {
+    std::vector<node_t> get_ids() const {
         std::vector<node_t> result;
-        for (auto &&kv : map) {
+        for (auto &&kv : descendants) {
             result.push_back(kv.first);
+        }
+        sort(result.begin(), result.end());
+        return result;
+    }
+
+    std::map<node_t, size_t> get_representation() const {
+        std::map<node_t, size_t> result;
+        for(size_t i=0; i<node_ids.size(); i++) {
+            result[node_ids[i]] = i;
         }
         return result;
     }
@@ -52,7 +62,8 @@ public:
 
     graph(std::istream &input) :
             descendants(create_map(input)),
-            node_ids(get_ids(descendants))
+            node_ids(get_ids()),
+            represent(get_representation())
     {}
 
     size_t node_number() const {
@@ -61,6 +72,7 @@ public:
 
     const map_type descendants;
     const std::vector<node_t> node_ids;
+    const map_t<node_t, size_t> represent;
 };
 
 #endif //GRAPH_H

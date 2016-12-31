@@ -1,7 +1,5 @@
-#include "brandes.h"
 #include "logger.h"
-
-#include <algorithm>
+#include "brandes.h"
 
 brandes::vertex_calculation::vertex_calculation(brandes &upper, size_t s) :
         graph(upper.graph),
@@ -50,8 +48,9 @@ brandes::vertex_calculation::empty_stack() {
         }
 
         if (w != s) {
-            auto current = BC[w].load();
-            while (!BC[w].compare_exchange_weak(current, current + delta[w]));
+            auto id = graph.represent.at(w);
+            auto current = BC[id].load();
+            while (!BC[id].compare_exchange_weak(current, current + delta[w]));
         }
     }
 }
@@ -78,10 +77,11 @@ brandes::read_graph(std::string input_file_name) {
 brandes::brandes(int thread_number, const std::string &input_file_name, const std::string &output_file_name) :
         thread_number(thread_number),
         output_file_name(output_file_name),
-        graph(read_graph(input_file_name)) {
+        graph(read_graph(input_file_name)),
+        BC(graph.node_ids.size()){
     logger::print("Successfully created fields of brandes");
-    for(auto v : graph.node_ids) {
-        BC[v] = 0;
+    for(size_t i=0; i<BC.size(); i++) {
+        BC[i] = 0;
     }
     logger::print("BC in brandes instance has been instantiated");
 }
@@ -98,11 +98,8 @@ void brandes::save() {
     std::fstream output_file;
     output_file.open(output_file_name, std::ios_base::out);
 
-    auto node_ids = graph.node_ids;
-    sort(node_ids.begin(), node_ids.end());
-
-    for(auto v : node_ids) {
-        output_file << v << " " << BC[v] << std::endl;
+    for(size_t i=0; i<BC.size(); i++) {
+        output_file << graph.node_ids[i] << " " << BC[i] << std::endl;
     }
     output_file.close();
 }

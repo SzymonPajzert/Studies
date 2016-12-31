@@ -23,7 +23,9 @@ private:
     int thread_number;
     std::string output_file_name;
     const model::graph graph;
-    map_t<size_t, std::atomic<double> > BC;
+
+    using bc_t = std::vector<std::atomic<double> >;
+    bc_t BC;
 
     model::graph read_graph(std::string input_file_name);
 
@@ -35,7 +37,7 @@ private:
 
     private:
         const model::graph & graph;
-        map_t<size_t, std::atomic<double> > & BC;
+        bc_t & BC;
         const size_t node_number;
         const node_t s;
         std::stack<node_t> stack;
