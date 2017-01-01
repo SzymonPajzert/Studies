@@ -13,16 +13,18 @@
 
 class brandes {
 public:
-    brandes(int thread_number, const std::string &input_file_name, const std::string &output_file_name);
+    brandes(size_t thread_number, const std::string &input_file_name, const std::string &output_file_name);
 
     void run();
     void save();
 
 
 private:
-    int thread_number;
+    size_t thread_number;
     std::string output_file_name;
     const model::graph graph;
+
+    void calculate(size_t mod);
 
     using bc_t = std::vector<std::atomic<double> >;
     bc_t BC;

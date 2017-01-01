@@ -1,3 +1,4 @@
+#include <thread>
 #include "logger.h"
 #include "brandes.h"
 
@@ -80,7 +81,7 @@ brandes::read_graph(std::string input_file_name) {
     return graph;
 }
 
-brandes::brandes(int thread_number, const std::string &input_file_name, const std::string &output_file_name) :
+brandes::brandes(size_t thread_number, const std::string &input_file_name, const std::string &output_file_name) :
         thread_number(thread_number),
         output_file_name(output_file_name),
         graph(read_graph(input_file_name)),
@@ -93,9 +94,24 @@ brandes::brandes(int thread_number, const std::string &input_file_name, const st
 }
 
 void
+brandes::calculate(size_t mod) {
+    for(size_t i = mod; i < graph.node_ids.size(); i += thread_number) {
+        vertex_calculation(*this, graph.node_ids[i]).run();
+    }
+}
+
+void
 brandes::run() {
-    for(const auto & v : graph.node_ids) {
-        vertex_calculation(*this, v).run();
+    std::vector<std::thread> threads(thread_number);
+
+    for(size_t mod = 0; mod<thread_number; mod++) {
+        threads[mod] = std::thread{[this, mod] {
+            this->calculate(mod);
+        }};
+    }
+
+    for(auto & thread : threads) {
+        thread.join();
     }
 }
 
