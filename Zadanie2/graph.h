@@ -45,8 +45,8 @@ private:
         return result;
     }
 
-    std::map<node_t, size_t> get_representation() const {
-        std::map<node_t, size_t> result;
+    map_t<node_t, size_t> get_representation() const {
+        map_t<node_t, size_t> result;
         for(size_t i=0; i<node_ids.size(); i++) {
             result[node_ids[i]] = i;
         }
