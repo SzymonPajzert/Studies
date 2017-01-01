@@ -4,7 +4,16 @@
 #include <iostream>
 #include <mutex>
 
-class logger {
+template <bool debug>
+class _logger {
+public:
+    static void print(std::string message);
+    static void print_open(std::string message);
+    static void print_end(std::string message);
+};
+
+template <>
+class _logger<true> {
 public:
     static void print(std::string message) {
         guard lock(mutex);
@@ -33,5 +42,15 @@ private:
     static std::mutex mutex;
     static std::string spaces;
 };
+
+template <>
+class _logger<false> {
+public:
+    static void print(std::string message) {}
+    static void print_open(std::string message) {}
+    static void print_end(std::string message) {}
+};
+
+using logger = _logger<false>;
 
 #endif //LOGGER_H

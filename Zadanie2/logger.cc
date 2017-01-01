@@ -1,4 +1,4 @@
 #include "logger.h"
 
-std::mutex logger::mutex;
-std::string logger::spaces;
+std::mutex _logger<true>::mutex;
+std::string _logger<true>::spaces;
