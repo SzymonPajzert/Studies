@@ -1,0 +1,299 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% University/School Laboratory Report
+% LaTeX Template
+% Version 3.1 (25/3/14)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Original author:
+% Linux and Unix Users Group at Virginia Tech Wiki 
+% (https://vtluug.org/wiki/Example_LaTeX_chem_lab_report)
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass{article}
+
+\usepackage{pgfplots}
+\usepackage{hyperref}
+\usepackage{polski}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}	
+\usepackage[version=3]{mhchem} % Package for chemical equation typesetting
+\usepackage{siunitx} % Provides the \SI{}{} and \si{} command for typesetting SI units
+\usepackage{graphicx} % Required for the inclusion of images
+\usepackage{natbib} % Required to change bibliography style to APA
+\usepackage{amsmath} % Required for some math elements 
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\renewcommand{\labelenumi}{\alph{enumi}.} % Make numbering in the enumerate environment by letter rather than number (e.g. section 6)
+
+%\usepackage{times} % Uncomment to use the Times New Roman font
+
+%----------------------------------------------------------------------------------------
+%	DOCUMENT INFORMATION
+%----------------------------------------------------------------------------------------
+
+\title{Optymalizacja Algorytmu Brandesa \\ Programowanie Współbieżne } % Title
+
+\author{Szymon \textsc{Pajzert}} % Author name
+
+\date{\today} % Date for the report
+
+\begin{document}
+
+\maketitle % Insert the title, author and date
+
+% If you wish to include an abstract, uncomment the lines below
+% \begin{abstract}
+% Abstract text
+% \end{abstract}
+
+%----------------------------------------------------------------------------------------
+%	SECTION 1
+%----------------------------------------------------------------------------------------
+
+\section*{Cel}
+
+Dokonanie optymalizacji współbieżnej implementacji algorytmu Brandesa, przedstawionego dokładniej \href{http://www.algo.uni-konstanz.de/publications/b-fabc-01.pdf}{tutaj}
+ 
+%----------------------------------------------------------------------------------------
+%	SECTION 2
+%----------------------------------------------------------------------------------------
+
+\section*{Dane testowe}
+Do testowania wydajności użyte zostały dane wiki-vote-sort.txt powstałe z posortowania po pierwszej i drugiej kolumnie danych \href{http://snap.stanford.edu/data/wiki-Vote.html}{wiki-vote.txt}. \\
+
+\begin{tabular}{ll}
+Wierzchołki & 7115 \\
+Krawędzie & 103689 \\
+Wierzchołki w największym WCC & 7066 (0.993) \\
+Krawędzie w największym WCC & 103663 (1.000) \\
+Wierzchołki w największym SCC & 1300 (0.183) \\ 
+Krawędzie w największym & 39456 (0.381) \\
+Średni clustering coefficient & 0.1409 \\
+Liczba trójkątów & 608389 \\
+Średnica & 7
+\end{tabular}
+
+%----------------------------------------------------------------------------------------
+%	SECTION 3
+%----------------------------------------------------------------------------------------
+
+\section*{Dokonane optymalizacje}
+\begin{enumerate}
+\item Nieużywanie mutexów - są drogie oraz istnieją inne metody synchronizacji - w tym wypadku atomics. 
+Do incrementowania ich wartości użyłem \verb|compare_exchange_weak| - ale tylko jeśli wynik w \verb+delta+ jest dodatni. 
+\item Zamiana numerów wierzchołków - pozwala na przetrzymywanie grafu w wektorze, dając mu stały lookup, przy stosunkowo znikomym narzucie wczytywania
+\item Używanie \verb|unordered_map| - w testach wydajnościowych hashmapy dawały 3 razy większą wydajność w porównaniu z mapami opartymi o drzewa.
+\item Użycie flagi \verb|gcc -O3|
+\end{enumerate}
+
+\section*{Benchmark}
+Testy zostały wykonane na serwerze students.mimuw.edu.pl.
+
+\begin{tikzpicture}
+\begin{axis}[
+    title={Czas działania bez -O3},
+    xlabel={Liczba wątków},
+    ylabel={Czas [s]},
+    xmin=1, xmax=8,
+    ymin=0, ymax=90,
+    xtick={1,2,3,4,5, 6, 7, 8},
+    ytick={0,10,20,40,60,80},
+    legend pos=north east,
+    ymajorgrids=true,
+    grid style=dashed,
+]
+ 
+\addplot[
+    color=blue,
+    mark=square,
+    ]
+    coordinates {
+    (1,77.7)(2,38)(3,26.6)(4,20.2)(5,15.9)(6,13.8)(7,12.1)(8,10.6)
+    };
+    \addlegendentry{Średni}
+    
+\addplot[
+    color=red,
+    mark=square,
+    ]
+    coordinates {
+    (1, 81.849)(2, 40.771)(3, 28.105)(4, 21.704)(5, 17.344)(6, 14.296)(7, 12.292)(8, 10.772)
+    };
+    \addlegendentry{Najgorszy}
+    
+\addplot[
+    color=green,
+    mark=square,
+    ]
+    coordinates {
+    (1, 74.606)(2, 36.301)(3, 24.721)(4, 17.805)(5, 13.622)(6, 13.573)(7, 11.523)(8, 10.432)
+    };
+    \addlegendentry{Najlepszy}
+\end{axis}
+
+\end{tikzpicture} \\
+\begin{tikzpicture}
+
+\begin{axis}[
+    title={Przyspieszenie bez -O3},
+    xlabel={Liczba wątków},
+    ylabel={Wynik},
+    xmin=0, xmax=8,
+    ymin=0, ymax=8,
+    xtick={1,2,3,4,5, 6, 7, 8},
+    ytick={0,2,4,6,8},
+    legend pos=north west,
+    ymajorgrids=true,
+    grid style=dashed,
+]
+ 
+\addplot[
+    color=blue,
+    mark=square,
+    ]
+    coordinates {
+    (0, 0)(1, 1)
+(2, 2.0466331129)
+(3, 2.9229511586)
+(4, 3.8557015369)
+(5, 4.8829484986)
+(6, 5.6317981027)
+(7, 6.4537665194)
+(8, 7.3270)
+    };
+    \addlegendentry{Średnie przyspieszenie}
+    
+\addplot[
+    color=black,
+    mark=square,
+    dashed
+    ]
+    coordinates {
+    (0, 0)(8, 8)
+    };
+    \addlegendentry{Idealne przyspieszenie}
+    
+\end{axis}
+\end{tikzpicture} \\
+\begin{tikzpicture}
+\begin{axis}[
+    title={Czas działania z -O3},
+    xlabel={Liczba wątków},
+    ylabel={Czas [s]},
+    xmin=1, xmax=8,
+    ymin=0, ymax=40,
+    xtick={1,2,3,4,5, 6, 7, 8},
+    ytick={0,10,20,30,40},
+    legend pos=north east,
+    ymajorgrids=true,
+    grid style=dashed,
+]
+ 
+\addplot[
+    color=blue,
+    mark=square,
+    ]
+    coordinates {
+(1, 32.6066666667)
+(2, 16.607)
+(3, 11.462)
+(4, 9.122)
+(5, 7.0143333333)
+(6, 5.9993333333)
+(7, 5.3576666667)
+(8, 4.776)
+    };
+    \addlegendentry{Średni}
+    
+\addplot[
+    color=red,
+    mark=square,
+    ]
+    coordinates {
+    (1, 34.007)
+(2, 18.912)
+(3, 11.674)
+(4, 9.766)
+(5, 7.339)
+(6, 6.122)
+(7, 5.378)
+(8, 5.009)
+    };
+    \addlegendentry{Najgorszy}
+    
+\addplot[
+    color=green,
+    mark=square,
+    ]
+    coordinates {
+(1, 31.109)
+(2, 13.496)
+(3, 11.081)
+(4, 8.72)
+(5, 6.661)
+(6, 5.819)
+(7, 5.341)
+(8, 4.534)
+};
+    \addlegendentry{Najlepszy}
+\end{axis}
+
+\end{tikzpicture} \\
+\begin{tikzpicture}
+
+\begin{axis}[
+    title={Przyspieszenie z -O3},
+    xlabel={Liczba wątków},
+    ylabel={Wynik},
+    xmin=0, xmax=8,
+    ymin=0, ymax=8,
+    xtick={1,2,3,4,5, 6, 7, 8},
+    ytick={0,2,4,6,8},
+    legend pos=north west,
+    ymajorgrids=true,
+    grid style=dashed,
+]
+ 
+\addplot[
+    color=blue,
+    mark=square,
+    ]
+    coordinates {
+(0, 0)
+(1, 1)
+(2, 1.9634290761)
+(3, 2.8447624033)
+(4, 3.5745085142)
+(5, 4.6485767239)
+(6, 5.4350483387)
+(7, 6.0859827039)
+(8, 6.8271915131)
+
+    };
+    \addlegendentry{Średnie przyspieszenie}
+    
+\addplot[
+    color=black,
+    mark=square,
+    dashed
+    ]
+    coordinates {
+    (0, 0)(8, 8)
+    };
+    \addlegendentry{Idealne przyspieszenie}
+    
+\end{axis}
+\end{tikzpicture}
+
+\end{document}
