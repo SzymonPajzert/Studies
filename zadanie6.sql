@@ -69,22 +69,27 @@ RETURNS FLOAT64 AS (
 		END
 );
 
-WITH 
-  sun_dates AS (
-  SELECT DISTINCT
-    DATE(starttime) as d, 
-    sunrise(DATE(starttime)) as sunrise, 
-    sunset(DATE(starttime)) as sunset 
-  FROM `tag2016-bd.new_york.citibike_trips`),
-  
+WITH   
   times AS (
   SELECT * FROM 
-    (SELECT DATE(starttime) as d, starttime as timestamp, time_to_float(TIME(starttime, "America/New_York")) as time FROM `tag2016-bd.new_york.citibike_trips`)
+    (SELECT DATE(starttime) as d, starttime as timestamp, time_to_float(TIME(starttime, "America/New_York")) as time FROM `bigquery-public-data.new_york.citibike_trips`)
     UNION ALL
-    (SELECT DATE(starttime) as d, stoptime as timestamp, time_to_float(TIME(stoptime, "America/New_York")) as time FROM `tag2016-bd.new_york.citibike_trips`))
+    (SELECT DATE(starttime) as d, stoptime as timestamp, time_to_float(TIME(stoptime, "America/New_York")) as time FROM `bigquery-public-data.new_york.citibike_trips`)),
   
-SELECT * FROM (
-  SELECT times.d, times.timestamp, times.time, sun_dates.sunrise, sun_dates.sunset,
-  6 * closest(times.time, sun_dates.sunrise, sun_dates.sunset)
-  FROM times JOIN sun_dates ON sun_dates.d = times.d
-)
+  data AS (
+  SELECT d, timestamp, time, CAST(TRUNC(12 * closest(time, sunrise(d), sunset(d))) AS INT64) as offset
+  FROM times),
+  
+  offsets AS (
+  SELECT count(*) as number, offset FROM data
+  GROUP by offset),
+  
+  gradation AS ( 
+  SELECT offset, CAST(offset > 0 AS INT64) * number as day, CAST(offset <= 0 AS INT64) * number as night
+  FROM offsets)
+    
+  SELECT sum(day), sum(night) from gradation;
+
+
+--  Result
+-- day: 48142817, night: 18495221
