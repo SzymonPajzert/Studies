@@ -1,14 +1,16 @@
 #standardSQL
 WITH 
-  times AS (
-    (SELECT starttime as t, DATE(starttime) as day, 1 as c FROM `bigquery-public-data.new_york.citibike_trips`)
+	times AS (
+		(SELECT starttime as t, DATE(starttime) as day, 1 as c FROM `bigquery-public-data.new_york.citibike_trips`)
     UNION ALL
     (SELECT stoptime as t, DATE(stoptime) as day, -1 as c FROM `bigquery-public-data.new_york.citibike_trips`)),
   
   day_accum AS (
-    SELECT day, sum(c) as s
-    from times
-    group by day),
+    SELECT day, sum(c2) over (order by day) as s
+    FROM (
+      SELECT day, sum(c) as c2
+      from times
+      group by day)),
   
   daily_accum AS (
     SELECT t, day, SUM(c) OVER (partition by day ORDER BY t) as s
