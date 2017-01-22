@@ -5,12 +5,15 @@ typedef struct tree *tree_ptr;
 
 typedef struct operation {
     char operand;
+    int left_first_parent;
     tree_ptr left;
+    int right_first_parent;
     tree_ptr right;
 } *op_ptr;
 
 typedef struct variable {
     int var_num;
+    int first_parent;
     tree_ptr value;
 } *var_ptr;
 

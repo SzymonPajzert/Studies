@@ -8,13 +8,16 @@
 
 tree_ptr alloc_tree() {
     tree_ptr result  = (tree_ptr) malloc(sizeof(struct tree));
+    result->parents = NULL;
     result->parent_number = 0;
+    result->id = -1;
     return result;
 }
 
 tree_ptr create_variable(int var_num, tree_ptr value) {
     var_ptr variable = (var_ptr) malloc(sizeof(struct variable));
     variable->value = value;
+    variable->first_parent = 0;
     variable->var_num = var_num;
     tree_ptr result = alloc_tree();
     result->node.variable = variable;
@@ -32,14 +35,23 @@ tree_ptr create_number(int number) {
 }
 
 tree_ptr create_operation(char operand, tree_ptr left, tree_ptr right) {
-    op_ptr operation = (op_ptr) malloc(sizeof(struct operation));
-    operation->left = left;
-    operation->right = right;
-    operation->operand = operand;
-    tree_ptr result = alloc_tree();
-    result->node.operation = operation;
-    result->type = OPERATION;
-    return result;
+    if(left == NULL || right == NULL) {
+        fprintf(stderr, "Creating operation with empty subtree: %s %s",
+                left == NULL ? "left" : " ",
+                right == NULL ? "right" : " ");
+        return NULL;
+    } else {
+        op_ptr operation = (op_ptr) malloc(sizeof(struct operation));
+        operation->left_first_parent = 0;
+        operation->left = left;
+        operation->right_first_parent = 0;
+        operation->right = right;
+        operation->operand = operand;
+        tree_ptr result = alloc_tree();
+        result->node.operation = operation;
+        result->type = OPERATION;
+        return result;
+    }
 }
 
 // ---------------------------- DESTRUCTORS ----------------------------
@@ -48,12 +60,12 @@ void remove_tree(tree_ptr tree) {
     free(tree->parents);
     switch(tree->type) {
         case OPERATION:
-            remove_tree(tree->node.operation->left);
-            remove_tree(tree->node.operation->right);
+            if(tree->node.operation->left_first_parent) remove_tree(tree->node.operation->left);
+            if(tree->node.operation->right_first_parent) remove_tree(tree->node.operation->right);
             free(tree->node.operation);
             break;
         case VARIABLE:
-            remove_tree(tree->node.variable->value);
+            if(tree->node.variable->first_parent) remove_tree(tree->node.variable->value);
             free(tree->node.variable);
             break;
         case NUMBER:
@@ -74,11 +86,14 @@ void remove_tree(tree_ptr tree) {
 int set_ids(tree_ptr tree, int first_id) {
     switch (tree->type) {
         case OPERATION:
+            if(tree->node.operation->left->id == -1) tree->node.operation->left_first_parent = 1;
             first_id = set_ids(tree->node.operation->left, first_id);
+            if(tree->node.operation->right->id == -1) tree->node.operation->right_first_parent = 1;
             first_id = set_ids(tree->node.operation->right, first_id);
             break;
         case VARIABLE:
             if(tree->node.variable->value) {
+                if(tree->node.variable->value->id == -1) tree->node.variable->first_parent = 1;
                 first_id = set_ids(tree->node.variable->value, first_id);
             }
             break;
@@ -109,8 +124,11 @@ void notify_children(tree_ptr tree) {
 
 /// allocate parent to sizeof(int) * parent_num, set parent_num to 0;
 void allocate_parent_space(tree_ptr tree) {
-    tree->parents = malloc(sizeof(int) * tree->parent_number);
+    if(tree->parent_number > 0) {
+        tree->parents = malloc(sizeof(int) * tree->parent_number);
+    }
     tree->parent_number = 0;
+
     switch (tree->type) {
         case OPERATION:
             allocate_parent_space(tree->node.operation->right);
@@ -337,7 +355,6 @@ void helper_print_tree(tree_ptr tree, int indentation) {
             printf("as number: %ld\n\n", tree->node.number->value);
             break;
     }
-
 }
 
 void print_tree(tree_ptr tree) {
