@@ -45,6 +45,7 @@ tree_ptr create_operation(char operand, tree_ptr left, tree_ptr right) {
 // ---------------------------- DESTRUCTORS ----------------------------
 
 void remove_tree(tree_ptr tree) {
+    free(tree->parents);
     switch(tree->type) {
         case OPERATION:
             remove_tree(tree->node.operation->left);
@@ -134,88 +135,140 @@ void insert_parents(tree_ptr tree) {
         case OPERATION:
             set_parent(tree->node.operation->right, tree->id);
             set_parent(tree->node.operation->left, tree->id);
+            insert_parents(tree->node.operation->right);
+            insert_parents(tree->node.operation->left);
             break;
         case VARIABLE:
             if(tree->node.variable->value) {
                 set_parent(tree->node.variable->value, tree->id);
+                insert_parents(tree->node.variable->value);
             }
             break;
         case NUMBER: break;
     }
 }
 
-// ---------------------------- PARSING ----------------------------
+// ---------------------------- parsing ----------------------------
 
-void trim(char ** start, char ** end) {
-    while(isspace(**start)) (*start)++;
-    while(isspace(**end)) (*end)--;
-
-    // delete parenthesis if they're the only ones
-    if(strchr(*start, ')') == *end) {
-        (*start)++;
-        (*end)--;
-    }
-
-    while(isspace(**start)) (*start)++;
-    while(isspace(**end)) (*end)--;
-
-    **(++end) = '\0';
+char peek(char **expr) {
+    while(isspace(**expr)) (*expr)++;
+    return **expr;
 }
 
-tree_ptr parse_right_hand(char * right_side, tree_ptr variables[], int V) {
-    // trimming of the string
-    char * start = right_side;
-    char * end = strchr(right_side, '\0') - 1;
-    trim(&start, &end);
+char get(char **expr) {
+    char result = *((*expr)++);
+    while(isspace(**expr)) (*expr)++;
+    return result;
+}
 
-    if(*start == '-') {
-        tree_ptr minus_one = create_number(-1);
-        tree_ptr result = create_operation('*', minus_one, parse_right_hand(start++, variables, V));
+tree_ptr expression(char ** expr, tree_ptr variables[], int V);
+
+/** Parse number
+ *
+ * @param expr Modifiable pointer to untouched part of the string.
+ * @return Parsed number.
+ */
+int parse_number(char ** expr) {
+    int result = get(expr) - '0';
+    while (peek(expr) >= '0' && peek(expr) <= '9')
+    {
+        result = 10*result + get(expr) - '0';
+    }
+    return result;
+}
+
+/** Parse number
+ *
+ * @param expr Modifiable pointer to untouched part of the string.
+ * @return Parsed tree or NULL in case of error.
+ */
+tree_ptr number(char ** expr)
+{
+    return create_number(parse_number(expr));
+}
+
+/** Parse variable
+ *
+ * @param expr Modifiable pointer to untouched part of the string.
+ * @param variables Array of variable trees.
+ * @param V Maximum number of nodes.
+ * @return Parsed tree or NULL in case of error.
+ */
+tree_ptr variable(char ** expr, tree_ptr variables[], int V) {
+    get(expr); // x
+    get(expr); // [
+    int var_num = parse_number(expr);
+    get(expr); // ]
+    return (var_num >= 0 && var_num < V) ? variables[var_num] : NULL;
+}
+
+/** Parse simple factor
+ *
+ * @param expr Modifiable pointer to untouched part of the string.
+ * @param variables Array of variable trees.
+ * @param V Maximum number of nodes.
+ * @return Parsed tree or NULL in case of error.
+ */
+tree_ptr factor(char ** expr, tree_ptr variables[], int V)
+{
+    if (peek(expr) >= '0' && peek(expr) <= '9') {
+        return number(expr);
+    } else if (peek(expr) == 'x') {
+        return variable(expr, variables, V);
+    } else if (peek(expr) == '(') {
+        get(expr); // '('
+        tree_ptr result = expression(expr, variables, V);
+        get(expr); // ')'
         return result;
+    } else if (peek(expr) == '-') {
+        get(expr);
+        tree_ptr fact = factor(expr, variables, V);
+        return fact != NULL ? create_operation('*', create_number(-1), fact) : NULL;
     }
-
-    switch (*start) {
-        case '(': break;
-        case '-': break;
-    }
-
-    int counter = 1;
-    char * iter = start + 1;
-    for(; iter != end && counter > 0; iter++) {
-        if(*iter == '(') counter++;
-        if(*iter == ')') counter--;
-    }
-
-    // We have operand expression with subtrees
-    if(iter != end) {
-        char operand = *(++iter);
-        *(iter) = '\0';
-        tree_ptr left_expr = parse_right_hand(start, variables, V);
-        tree_ptr right_expr = parse_right_hand(++iter, variables, V);
-    } else {
-
-    }
+    return NULL; // error
 }
 
-tree_ptr parse_line(const char * line, tree_ptr variables[], int V) {
+tree_ptr expression(char ** expr, tree_ptr variables[], int V)
+{
+    tree_ptr left = factor(expr, variables, V);
+    tree_ptr result = NULL;
+    if (peek(expr) == '+' || peek(expr) == '*') {
+        char op = get(expr);
+        tree_ptr right = factor(expr, variables, V);
+        result = right != NULL ? create_operation(op, left, right) : NULL;
+    } else {
+        result = left;
+    }
+    return result;
+}
+
+typedef struct {
+    int var_num;
+    tree_ptr value;
+} parse_result;
+
+parse_result parse_line(const char * line, tree_ptr variables[], int V) {
     char * eq_sign = strchr(line, '=');
-    char * right_hand = eq_sign+1;
+    char * expr = eq_sign+1;
     *eq_sign = '\0';
 
-    tree_ptr right_hand_expr = parse_right_hand(right_hand, variables, V);
+    tree_ptr right_hand_expr = expression(&expr, variables, V);
 
     *strchr(line, ']') = '\0';
-    int var_num = atoi(strchr(line, '['));
-    return create_variable(var_num, right_hand_expr);
+    int var_num = atoi(strchr(line, '[')+1);
+
+    parse_result result;
+    result.value = right_hand_expr;
+    result.var_num = var_num;
+    return result;
 }
 
 int transform(const char * line, tree_ptr variables[], int V) {
-    tree_ptr expr = parse_line(line, variables, V);
-    int var_num = expr->node.variable->var_num;
-    if(variables[var_num]->node.variable->value) {
+    parse_result result = parse_line(line, variables, V);
+    if(variables[result.var_num]->node.variable->value) {
         return 0;
     } else {
-        variables[var_num]->node.variable->value = expr;
+        variables[result.var_num]->node.variable->value = result.value;
         return 1;
     }
 }
@@ -229,8 +282,10 @@ tree_ptr parse_tree(int lines, int V) {
 
     for(int i=1; i<=lines; i++) {
         char * line = NULL;
-        getline(&line, 0, stdin);
-        if(transform(line, variables, V)) {
+        size_t size;
+        getline(&line, &size, stdin);
+        char * equation = strchr(line, ' ') + 1;
+        if(transform(equation, variables, V)) {
             printf("%d P\n", i);
         } else {
             printf("%d F\n", i);
@@ -238,6 +293,7 @@ tree_ptr parse_tree(int lines, int V) {
             remove_tree(result);
             exit(1);
         }
+        print_tree(result);
         free(line);
     }
 
@@ -245,6 +301,7 @@ tree_ptr parse_tree(int lines, int V) {
     notify_children(result);
     allocate_parent_space(result);
     insert_parents(result);
+    return result;
 }
 
 // ---------------------- printing ----------------------
@@ -257,12 +314,13 @@ void helper_print_tree(tree_ptr tree, int indentation) {
     printf("node_id: %d\n", tree->id);
 
     printf("%*s", indentation, "");
-    printf("with parents: ");
+    printf("with %d parents: ", tree->parent_number);
     for(int i=0; i<tree->parent_number; i++) {
         printf("%d, ", tree->parents[i]);
     }
     printf("\n");
 
+    printf("%*s", indentation, "");
     switch (tree->type) {
         case OPERATION:
             printf("as operand: %c\n\n", tree->node.operation->operand);
