@@ -43,4 +43,12 @@ void print_tree(tree_ptr tree);
 
 void remove_tree(tree_ptr tree);
 
+/// Saves pointer to each node in array.
+/// Assumes size of array is big enough.
+void get_vertices(tree_ptr tree, tree_ptr * array);
+
+/// Saves id to each variable in array
+/// Assumes size of array is big enough.
+void get_variables(tree_ptr tree, int * array);
+
 #endif //TREE_H

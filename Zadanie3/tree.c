@@ -1,7 +1,6 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include "tree.h"
 
 // ---------------------------- FACTORY FUNCTIONS ----------------------------
@@ -99,7 +98,8 @@ int set_ids(tree_ptr tree, int first_id) {
             break;
         case NUMBER: break;
     }
-    tree->id = first_id++;
+    printf("Value of first id: %d\n", first_id);
+    if(tree->id == -1) tree->id = first_id++;
     return first_id;
 }
 
@@ -166,43 +166,57 @@ void insert_parents(tree_ptr tree) {
     }
 }
 
+void get_vertices(tree_ptr tree, tree_ptr * array) {
+    array[tree->id] = tree;
+    switch (tree->type) {
+        case OPERATION:
+            get_vertices(tree->node.operation->right, array);
+            get_vertices(tree->node.operation->left, array);
+            break;
+        case VARIABLE:
+            if(tree->node.variable->value) {
+                get_vertices(tree->node.variable->value, array);
+            }
+            break;
+        case NUMBER: break;
+    }
+}
+
+void get_variables(tree_ptr tree, int * array) {
+    switch (tree->type) {
+        case OPERATION:
+            get_variables(tree->node.operation->right, array);
+            get_variables(tree->node.operation->left, array);
+            break;
+        case VARIABLE:
+            array[tree->node.variable->var_num] = tree->id;
+            if(tree->node.variable->value) {
+                get_variables(tree->node.variable->value, array);
+            }
+            break;
+        case NUMBER: break;
+    }
+}
+
 // ---------------------------- parsing ----------------------------
 
-char peek(char **expr) {
-    while(isspace(**expr)) (*expr)++;
-    return **expr;
-}
+#include "parse.h"
 
-char get(char **expr) {
-    char result = *((*expr)++);
-    while(isspace(**expr)) (*expr)++;
-    return result;
-}
-
-tree_ptr expression(char ** expr, tree_ptr variables[], int V);
-
-/** Parse number
- *
- * @param expr Modifiable pointer to untouched part of the string.
- * @return Parsed number.
- */
-int parse_number(char ** expr) {
-    int result = get(expr) - '0';
-    while (peek(expr) >= '0' && peek(expr) <= '9')
-    {
-        result = 10*result + get(expr) - '0';
-    }
-    return result;
-}
+tree_ptr expression(const char ** expr, tree_ptr variables[], int V);
 
 /** Parse number
  *
  * @param expr Modifiable pointer to untouched part of the string.
  * @return Parsed tree or NULL in case of error.
  */
-tree_ptr number(char ** expr)
-{
-    return create_number(parse_number(expr));
+tree_ptr number(const char ** expr) {
+    int * number_ptr = parse_number(expr);
+    tree_ptr result = NULL;
+    if(number_ptr) {
+        result = create_number(*number_ptr);
+        free(number_ptr);
+    }
+    return result;
 }
 
 /** Parse variable
@@ -212,12 +226,14 @@ tree_ptr number(char ** expr)
  * @param V Maximum number of nodes.
  * @return Parsed tree or NULL in case of error.
  */
-tree_ptr variable(char ** expr, tree_ptr variables[], int V) {
-    get(expr); // x
-    get(expr); // [
-    int var_num = parse_number(expr);
-    get(expr); // ]
-    return (var_num >= 0 && var_num < V) ? variables[var_num] : NULL;
+tree_ptr variable(const char ** expr, tree_ptr variables[], int V) {
+    int* var_num = parse_variable(expr);
+    tree_ptr result = NULL;
+    if(var_num) {
+        result = (*var_num >= 0 && *var_num < V) ? variables[*var_num] : NULL;
+        free(var_num);
+    }
+    return result;
 }
 
 /** Parse simple factor
@@ -227,7 +243,7 @@ tree_ptr variable(char ** expr, tree_ptr variables[], int V) {
  * @param V Maximum number of nodes.
  * @return Parsed tree or NULL in case of error.
  */
-tree_ptr factor(char ** expr, tree_ptr variables[], int V)
+tree_ptr factor(const char ** expr, tree_ptr variables[], int V)
 {
     if (peek(expr) >= '0' && peek(expr) <= '9') {
         return number(expr);
@@ -246,7 +262,7 @@ tree_ptr factor(char ** expr, tree_ptr variables[], int V)
     return NULL; // error
 }
 
-tree_ptr expression(char ** expr, tree_ptr variables[], int V)
+tree_ptr expression(const char ** expr, tree_ptr variables[], int V)
 {
     tree_ptr left = factor(expr, variables, V);
     tree_ptr result = NULL;
@@ -267,7 +283,7 @@ typedef struct {
 
 parse_result parse_line(const char * line, tree_ptr variables[], int V) {
     char * eq_sign = strchr(line, '=');
-    char * expr = eq_sign+1;
+    const char * expr = eq_sign+1;
     *eq_sign = '\0';
 
     tree_ptr right_hand_expr = expression(&expr, variables, V);
