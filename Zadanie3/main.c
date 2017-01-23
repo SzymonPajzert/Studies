@@ -4,6 +4,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <sys/wait.h>
+
 #include "tree.h"
 #include "parse.h"
 
@@ -22,7 +24,7 @@ int parent_id;
 tree_ptr * vertices;
 int * variables;
 
-int ** child_input;
+int ** pipes;
 
 /** Create file descriptors
  *
@@ -72,7 +74,7 @@ void send_line(int line_number, const char * line) {
             value_ptr = parse_number(&line);
             input.result = *value_ptr;
             fprintf(logging, "Sending to %d value calc_num: %d of value %ld\n", variables[*variable_ptr], input.calc_num, input.result);
-            write(child_input[variables[*variable_ptr]][1], &input, sizeof(calculation));
+            write(pipes[variables[*variable_ptr]][1], &input, sizeof(calculation));
             free(variable_ptr);
             free(value_ptr);
         }
@@ -80,9 +82,10 @@ void send_line(int line_number, const char * line) {
 }
 
 void parent_start_close_descriptors() {
+    close(pipes[parent_id][1]);
     for(int i=0; i<parent_id; i++) {
         fprintf(logging, "Closing %d %d\n", i, 0);
-        close(child_input[i][0]);
+        close(pipes[i][0]);
     }
 }
 
@@ -104,8 +107,30 @@ void start_parent() {
     end_of_transmission.calc_num = N+1;
     end_of_transmission.result = -69; // TODO remove
     for(int i=0; i<parent_id; i++) {
-        write(child_input[i][1], &end_of_transmission, sizeof(calculation));
-        close(child_input[i][1]);
+        write(pipes[i][1], &end_of_transmission, sizeof(calculation));
+        close(pipes[i][1]);
+    }
+
+    int is_read[N+1];
+    for(int i=0; i<=N; i++) {
+        is_read[i] = 0;
+    }
+
+    int my_input = pipes[parent_id][0];
+    calculation input;
+    int read_result;
+    while ((read_result = read(my_input, &input, sizeof(calculation)) > 0)) {
+        fprintf(logging, "Read calc_num: %d of value %ld\n", input.calc_num, input.result);
+        is_read[input.calc_num] = 1;
+        printf("%d P %ld\n", input.calc_num, input.result);
+    }
+    if(read_result < 0) {
+        fprintf(logging, "Error: %s", strerror(read_result));
+    }
+    for(int line=K+1; line<=N; line++) {
+        if(!is_read[line]) {
+            printf("%d F\n", line);
+        }
     }
 }
 
@@ -117,7 +142,7 @@ void broadcast_parents(calculation input) {
     tree_ptr node = vertices[node_id];
     for(int p = 0; p < node->parent_number; p++) {
         fprintf(logging, "Sending to %d value calc_num: %d of value %ld\n", node->parents[p], input.calc_num, input.result);
-        write(child_input[node->parents[p]][1], &input, sizeof(calculation));
+        write(pipes[node->parents[p]][1], &input, sizeof(calculation));
     }
 }
 
@@ -147,7 +172,7 @@ void start_operation_child() {
         }
     }
 
-    int my_input = child_input[node_id][0];
+    int my_input = pipes[node_id][0];
 
     calculation input;
     int read_result;
@@ -199,7 +224,7 @@ void start_variable_child() {
         sent[i] = 0;
     }
 
-    int my_input = child_input[node_id][0];
+    int my_input = pipes[node_id][0];
 
     calculation input;
     int read_result;
@@ -235,18 +260,18 @@ void start_variable_child() {
 void child_start_close_descriptors() {
     tree_ptr tree = vertices[node_id];
     int p = tree->parent_number-1;
-    for(int i=0; i<parent_id; i++) {
+    for(int i=0; i<parent_id+1; i++) {
         // Closing reading pipes
         if(i != node_id) {
             fprintf(logging, "Closing %d %d\n", i, 0);
-            close(child_input[i][0]);
+            close(pipes[i][0]);
         }
 
         // Closing writing pipes
         // We use fact that ids in parents are sorted in descending order
         if(p < 0 || tree->parents[p] != i) {
             fprintf(logging, "Closing %d %d\n", i, 1);
-            close(child_input[i][1]);
+            close(pipes[i][1]);
         } else {
             p--;
         }
@@ -257,7 +282,7 @@ void close_parent_descriptors() {
     tree_ptr tree = vertices[node_id];
     for(int i=0; i<tree->parent_number; i++) {
         fprintf(logging, "Closing %d %d\n", tree->parents[i], 1);
-        close(child_input[tree->parents[i]][1]);
+        close(pipes[tree->parents[i]][1]);
     }
 }
 
@@ -266,7 +291,7 @@ void start_child() {
     fprintf(logging, "I'm a child\n");
 
     child_start_close_descriptors();
-    int my_input = child_input[node_id][0];
+    int my_input = pipes[node_id][0];
 
     switch (vertices[node_id]->type) {
         case OPERATION:
@@ -291,37 +316,47 @@ int main(int argc, char* argv[]) {
 
     scanf("%d %d %d\n", &N, &K, &V);
     const tree_ptr const tree = parse_tree(K, V);
-    parent_id = tree->id + 1;
+    if(tree) {
+        parent_id = tree->id + 1;
 
-    vertices = malloc(sizeof(tree_ptr) * parent_id);
-    get_vertices(tree, vertices);
+        tree->parent_number=1; // set parent as main process
+        tree->parents = malloc(sizeof(int) * 1);
+        tree->parents[0] = parent_id;
 
-    variables = malloc(sizeof(int) * V);
-    get_variables(tree, variables);
-    print_tree(tree);
+        vertices = malloc(sizeof(tree_ptr) * parent_id);
+        get_vertices(tree, vertices);
 
-    child_input = create_descriptors(parent_id);
+        variables = malloc(sizeof(int) * V);
+        get_variables(tree, variables);
+        // print_tree(tree);
 
-    int am_groot = 1;
-    while(node_id<parent_id && am_groot > 0) {
-        if((am_groot = fork())) node_id++; // exit loop if you're child, otherwise increase counter
+        pipes = create_descriptors(parent_id+1);
+
+        int am_groot = 1;
+        while(node_id<parent_id && am_groot > 0) {
+            if((am_groot = fork())) node_id++; // exit loop if you're child, otherwise increase counter
+        }
+
+        start_logging();
+
+        if(node_id == parent_id) {
+            start_parent();
+            for(int i=0; i<parent_id; i++) {
+                wait(NULL);
+            }
+        } else {
+            start_child();
+        }
+
+        fprintf(logging, "-----------------\n\n");
+        fclose(logging);
+        remove_tree(tree);
+
+        close_descriptors(pipes, parent_id+1);
+        free(vertices);
+        free(variables);
     }
 
-    start_logging();
-
-    if(node_id == parent_id) {
-        start_parent();
-    } else {
-        start_child();
-    }
-
-    fprintf(logging, "-----------------\n\n");
-    fclose(logging);
-    remove_tree(tree);
-
-    close_descriptors(child_input, parent_id);
-    free(vertices);
-    free(variables);
     return 0;
 }
 

@@ -313,20 +313,27 @@ tree_ptr parse_tree(int lines, int V) {
     }
     tree_ptr result = variables[0];
 
-    for(int i=1; i<=lines; i++) {
+    int l=1;
+    for(; l<=lines; l++) {
         char * line = NULL;
         size_t size;
         getline(&line, &size, stdin);
         char * equation = strchr(line, ' ') + 1;
         if(transform(equation, variables, V)) {
-            printf("%d P\n", i);
+            printf("%d P\n", l);
         } else {
-            printf("%d F\n", i);
+            printf("%d F\n", l);
             free(line);
             remove_tree(result);
-            exit(1);
+            return NULL;
         }
         free(line);
+    }
+
+    if(result->node.variable->value == NULL) {
+        printf("%d F\n", l);
+        remove_tree(result);
+        return NULL;
     }
 
     set_ids(result, 0);
