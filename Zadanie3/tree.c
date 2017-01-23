@@ -98,7 +98,6 @@ int set_ids(tree_ptr tree, int first_id) {
             break;
         case NUMBER: break;
     }
-    printf("Value of first id: %d\n", first_id);
     if(tree->id == -1) tree->id = first_id++;
     return first_id;
 }
@@ -327,7 +326,6 @@ tree_ptr parse_tree(int lines, int V) {
             remove_tree(result);
             exit(1);
         }
-        print_tree(result);
         free(line);
     }
 

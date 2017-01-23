@@ -38,6 +38,13 @@ int ** create_descriptors(int n) {
     return array;
 }
 
+void close_descriptors(int ** array, int n) {
+    for(int i=0; i<n; i++) {
+        free(array[i]);
+    }
+    free(array);
+}
+
 /// Starts logging to file ./logging/thread_<<thread_number>>
 void start_logging() {
     char filename[100];
@@ -49,7 +56,9 @@ void start_logging() {
 // --------------------------- parent ---------------------------
 
 void send_line(int line_number, const char * line) {
-    int _line_number = *(parse_number(&line));
+    int * _line_number_ptr = parse_number(&line);
+    int _line_number = *(_line_number_ptr);
+    free(_line_number_ptr);
     assert(line_number == _line_number);
     calculation input;
     input.calc_num = line_number;
@@ -64,6 +73,8 @@ void send_line(int line_number, const char * line) {
             input.result = *value_ptr;
             fprintf(logging, "Sending to %d value calc_num: %d of value %ld\n", variables[*variable_ptr], input.calc_num, input.result);
             write(child_input[variables[*variable_ptr]][1], &input, sizeof(calculation));
+            free(variable_ptr);
+            free(value_ptr);
         }
     } while(variable_ptr);
 }
@@ -91,9 +102,10 @@ void start_parent() {
     calculation end_of_transmission;
     end_of_transmission.from_init = 1;
     end_of_transmission.calc_num = N+1;
+    end_of_transmission.result = -69; // TODO remove
     for(int i=0; i<parent_id; i++) {
-        write(child_input[0][1], &end_of_transmission, sizeof(calculation));
-        close(child_input[i][0]);
+        write(child_input[i][1], &end_of_transmission, sizeof(calculation));
+        close(child_input[i][1]);
     }
 }
 
@@ -101,6 +113,7 @@ void start_parent() {
 // --------------------------- children ------------------------------------
 
 void broadcast_parents(calculation input) {
+    fprintf(logging, "Broadcasting started\n");
     tree_ptr node = vertices[node_id];
     for(int p = 0; p < node->parent_number; p++) {
         fprintf(logging, "Sending to %d value calc_num: %d of value %ld\n", node->parents[p], input.calc_num, input.result);
@@ -125,7 +138,7 @@ void start_operation_child() {
 
     int results[N+1];
     int touched[N+1];           // Contains number of accesses to variable - let us know if it can be send or not.
-    for(int i=K+1; i<=N; i++) {
+    for(int i=0; i<=N; i++) {
         touched[i] = 0;
         switch (node->node.operation->operand) {
             case '+': results[i] = 0; break;
@@ -146,10 +159,9 @@ void start_operation_child() {
             default: exit(2);
         }
 
-        if(touched[input.calc_num] == 2) {
+        if(++touched[input.calc_num] == 2) {
             input.from_init = 0;
             input.result = results[input.calc_num];
-
             broadcast_parents(input);
         }
     }
@@ -159,7 +171,7 @@ void start_operation_child() {
 }
 
 /// Sends awaiting results from variable
-void send_awaiting(int last_from_main, int new_from_main, long * child_results[], int sent[]) {
+void send_awaiting(int last_from_main, int new_from_main, long ** child_results, int * sent) {
     for(int i=last_from_main+1; i<new_from_main; i++) {
         if(child_results[i]) {
             if(!sent[i]) {
@@ -170,6 +182,7 @@ void send_awaiting(int last_from_main, int new_from_main, long * child_results[]
                 broadcast_parents(result);
             }
             free(child_results[i]);
+            child_results[i]=NULL;
             sent[i] = 1;
         }
     }
@@ -177,11 +190,11 @@ void send_awaiting(int last_from_main, int new_from_main, long * child_results[]
 
 /// Starts variable process
 void start_variable_child() {
-    int last_from_main = -1; // Describes last line from initialization list.
-    long* child_results[N+1]; // Contains values received from children
-    int sent[N+1];
+    int last_from_main = K-1; // Describes last line from initialization list.
+    long** child_results = malloc(sizeof(long*) * (N+1)); // Contains values received from children
+    int* sent = malloc(sizeof(int) * (N+1));
 
-    for(int i=K+1; i<=N; i++) {
+    for(int i=0; i<=N; i++) {
         child_results[i] = NULL;
         sent[i] = 0;
     }
@@ -197,16 +210,11 @@ void start_variable_child() {
             send_awaiting(last_from_main, input.calc_num, child_results, sent);
 
             if(input.calc_num <= N) { // Normal message.
-                if(child_results[input.calc_num]) {
-                    free(child_results[input.calc_num]);
-                }
-
                 input.from_init = 0;
                 broadcast_parents(input);
             } // Otherwise it's end of message from parent.
 
             last_from_main = input.calc_num;
-
         } else {
             if(input.calc_num < last_from_main) {
                 broadcast_parents(input);
@@ -219,6 +227,9 @@ void start_variable_child() {
     if(read_result < 0) {
         fprintf(logging, "Error: %s", strerror(read_result));
     }
+
+    free(child_results);
+    free(sent);
 }
 
 void child_start_close_descriptors() {
@@ -245,8 +256,8 @@ void child_start_close_descriptors() {
 void close_parent_descriptors() {
     tree_ptr tree = vertices[node_id];
     for(int i=0; i<tree->parent_number; i++) {
-        fprintf(logging, "Closing %d %d\n", i, 1);
-        close(child_input[i][1]);
+        fprintf(logging, "Closing %d %d\n", tree->parents[i], 1);
+        close(child_input[tree->parents[i]][1]);
     }
 }
 
@@ -307,7 +318,10 @@ int main(int argc, char* argv[]) {
     fprintf(logging, "-----------------\n\n");
     fclose(logging);
     remove_tree(tree);
+
+    close_descriptors(child_input, parent_id);
     free(vertices);
+    free(variables);
     return 0;
 }
 
