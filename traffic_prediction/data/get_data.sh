@@ -30,7 +30,6 @@ tar -zxvf traffic_data.tar.gz
 python extract_train.py "speeds.csv" "train.data" "test.data"
 
 echo "data/train.data" > train.list
-echo "data/test.data" > test.list
-echo "data/speeds.csv" > pred.list
+echo "data/test_input.data" > test.list
 
 echo "Done."
