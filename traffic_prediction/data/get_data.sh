@@ -14,18 +14,22 @@
 # limitations under the License.
 
 set -e
-set -x
 
 DIR="$( cd "$(dirname "$0")" ; pwd -P )"
 cd $DIR
+TAR_NAME=traffic_data.tar.gz
 
-#download the dataset
-echo "Downloading traffic data..."
-wget http://paddlepaddle.cdn.bcebos.com/demo/traffic/traffic_data.tar.gz
-
-#extract package
-echo "Unzipping..."
-tar -zxvf traffic_data.tar.gz
+if [ ! -f $TAR_NAME ]; then
+	#download the dataset
+	echo "Downloading traffic data..."
+	wget http://paddlepaddle.cdn.bcebos.com/demo/traffic/$TAR_NAME
+	
+	#extract package
+	echo "Unzipping..."
+	tar -zxvf $TAR_NAME
+else
+	echo "Package exists"
+fi
 
 python extract_train.py "speeds.csv" "train.data" "test_input.data" "test_output.data"
 
