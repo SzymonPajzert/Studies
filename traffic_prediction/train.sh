@@ -14,7 +14,7 @@
 # limitations under the License.
 set -e
 
-cfg=trainer_config.py
+cfg=${MODIFIER}trainer_config.py
 paddle train \
   --config=$cfg \
   --save_dir=./output \
