@@ -27,8 +27,7 @@ wget http://paddlepaddle.cdn.bcebos.com/demo/traffic/traffic_data.tar.gz
 echo "Unzipping..."
 tar -zxvf traffic_data.tar.gz
 
-python extract_train.py "speeds.csv" 0 > train.data
-python extract_train.py "speeds.csv" 1 > test.data
+python extract_train.py "speeds.csv" "train.data" "test.data"
 
 echo "data/train.data" > train.list
 echo "data/test.data" > test.list
