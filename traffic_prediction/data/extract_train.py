@@ -30,6 +30,8 @@ with open(input_file) as inpt, open(train_file, 'w') as train, open(test_input_f
         if line_num % 10 != 0:
             train.write(line)
         else:
-            input_data, output_data = get(line.split(','))
-            test_input.write(','.join(input_data)+'\n')
-            test_output.write(','.join(output_data) + '\n')     
+            splitted = line.split(',')
+            number = splitted[0]
+            input_data, output_data = get(splitted[1:])
+            test_input.write(str(number) + ',' + ','.join(input_data)+'\n')
+            test_output.write(str(number) + ',' + ','.join(output_data) + '\n')     
