@@ -15,6 +15,8 @@
 set -e
 
 cfg=trainer_config.py
+model="output/pass-00005"
+
 paddle train \
   --config=$cfg \
   --save_dir=./output2 \
@@ -22,4 +24,5 @@ paddle train \
   --job=test \
   --log_period=1000 \
   --use_gpu=false \
+  --init_model_path=$model \ 
   2>&1 | tee 'test.log'
