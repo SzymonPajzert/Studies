@@ -1,6 +1,6 @@
-from paddle.trainer.PyDataProvider2 import *
+# from paddle.trainer.PyDataProvider2 import *
 import sys
-import numpy as np
+# import numpy as np
 
 from consts import *
 
@@ -27,15 +27,15 @@ def sequences(size, array):
 
 def get_samples(line):
     _speeds = map(int, line.rstrip('\r\n').split(",")[1:])
-    speeds  = [j - 1 for j in map(float, _speeds)]
+    speeds  = [j - 1 for j in map(int, _speeds)]
     
     # Scanning and generating samples
     for i in xrange(TERM_NUM):
         for s in sequences(TERM_NUM+1, speeds[i::DATES_IN_DAY]):
-            yield s
+            yield {'data': map(float, s[:-1]), 'label': s[-1]}
     
-@provider(
-    init_hook=initHook, cache=CacheType.CACHE_PASS_IN_MEM, should_shuffle=True)
+#@provider(
+#    init_hook=initHook, cache=CacheType.CACHE_PASS_IN_MEM, should_shuffle=True)
 def process(settings, file_name):
     with open(file_name) as f:
         #abandon fields name
@@ -50,7 +50,7 @@ def predict_initHook(settings, file_list, **kwargs):
     settings.input_types = [dense_vector(TERM_NUM)]
 
 
-@provider(init_hook=predict_initHook, should_shuffle=False)
+# @provider(init_hook=predict_initHook, should_shuffle=False)
 def process_predict(settings, file_name):
     with open(file_name) as f:
         #abandon fields name

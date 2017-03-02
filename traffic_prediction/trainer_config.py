@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.trainer_config_helpers import *
-
+from consts import *
 ################################### DATA Configuration #############################################
 is_predict = get_config_arg('is_predict', bool, False)
 trn = './data/train.list' if not is_predict else None
