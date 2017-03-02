@@ -12,9 +12,9 @@ def initHook(settings, file_list, **kwargs):
     settings.pool_size = sys.maxint
     #Use a time seires of the same time in past as feature.
     #Dense_vector's expression form is [float,float,...,float]
-    settings.input_types = [dense_vector(TERM_NUM)]
-    settings.input_types.append(integer_value(LABEL_VALUE_NUM))
-
+    settings.input_types = {
+        'data': [dense_vector(TERM_NUM)],
+        'label': integer_value(LABEL_VALUE_NUM)}
 
 def sequences(size, array):
     filtered = filter(lambda x: x > -1, array)
@@ -32,6 +32,7 @@ def get_samples(line):
     # Scanning and generating samples
     for i in xrange(TERM_NUM):
         for s in sequences(TERM_NUM+1, speeds[i::DATES_IN_DAY]):
+            print s
             yield {'data': map(float, s[:-1]), 'label': s[-1]}
     
 @provider(
@@ -61,6 +62,6 @@ def process_predict(settings, file_name):
                 pass
 
             # skip first element since 
-            yield line[1:] 
+            yield item['data']
             
             
