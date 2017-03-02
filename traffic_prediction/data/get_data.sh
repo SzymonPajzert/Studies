@@ -35,5 +35,6 @@ python extract_train.py "speeds.csv" "train.data" "test_input.data" "test_output
 
 echo "data/train.data" > train.list
 echo "data/test_input.data" > test.list
+echo "data/test_input.data" > pred.list
 
 echo "Done."

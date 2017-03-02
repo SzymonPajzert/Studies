@@ -19,7 +19,7 @@ trn = './data/train.list' if not is_predict else None
 tst = './data/test.list' if not is_predict else './data/pred.list'
 process = 'process' if not is_predict else 'process_predict'
 define_py_data_sources2(
-    train_list=trn, test_list=tst, module="dataprovider", obj=process)
+    train_list=trn, test_list=tst, module="old_dataprovider", obj=process)
 ################################### Parameter Configuaration #######################################
 TERM_NUM = 24
 FORECASTING_NUM = 24

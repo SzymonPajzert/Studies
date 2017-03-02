@@ -14,9 +14,9 @@
 # limitations under the License.
 set -e
 
-cfg=trainer_config.py
+cfg=${MODIFIER}trainer_config.py
 # pass choice 
-model="output/pass-00000"
+model="${DIR}/pass-${NUMBER}"
 paddle train \
     --config=$cfg \
     --use_gpu=false \

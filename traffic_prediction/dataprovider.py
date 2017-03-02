@@ -1,6 +1,6 @@
-# from paddle.trainer.PyDataProvider2 import *
+from paddle.trainer.PyDataProvider2 import *
 import sys
-# import numpy as np
+import numpy as np
 
 from consts import *
 
@@ -31,7 +31,7 @@ def get_samples(line):
     
     # Scanning and generating samples
     for i in xrange(TERM_NUM):
-        for s in sequences(TERMNUM+1, speeds[i::DATES_IN_DAY]):
+        for s in sequences(TERM_NUM+1, speeds[i::DATES_IN_DAY]):
             yield s
     
 @provider(
