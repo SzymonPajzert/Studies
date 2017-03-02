@@ -27,19 +27,21 @@ settings(
     learning_rate=1e-3,
     learning_method=RMSPropOptimizer())
 ################################### Algorithm Configuration ########################################
+data = data_layer(name='link_encode', size=TERM_NUM)
 
-link_encode = data_layer(name='link_encode', size=TERM_NUM)
+lstm = simple_lstm(
+    input=data,
+    size=4,
+    lstm_cell_attr=ExtraAttr(drop_rate=0.25))
 
-score = simple_lstm(input=link_encode, size=4, act=SoftmaxActivation())
+lstm_max = pooling_layer(input=lstm, pooling_type=MaxPooling())
+
+output = fc_layer(input=lstm_max, size=4, act=SoftmaxActivation())
 
 if is_predict:
-    maxid = maxid_layer(score)
-    output_label = [maxid]
+    maxid = maxid_layer(output)
+    outputs(maxid)
 else:
-    # Multi-task training.
-    label = data_layer(name='label_%dmin' % ((i + 1) * 5), size=4)
-    cls = classification_cost(
-        input=score, name="cost_%dmin" % ((i + 1) * 5), label=label)
-    output_label = [cls]
-
-outputs(output_label)
+    label = data_layer(name="label", size=4)
+    cls = classification_cost(input=output, label=label)
+    outputs(cls)
