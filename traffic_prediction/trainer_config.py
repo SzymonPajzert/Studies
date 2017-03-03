@@ -29,10 +29,11 @@ settings(
     regularization=L2Regularization(8e-4))
 ################################### Algorithm Configuration ########################################
 data = data_layer(name='data', size=TERM_NUM)
+emb = embedding_layer(input=data, size=2*TERM_NUM)
 
 lstm = simple_lstm(
-    input=data,
-    size=4,
+    input=emb,
+    size=2*TERM_NUM,
     lstm_cell_attr=ExtraAttr(drop_rate=0.25))
 
 lstm_max = pooling_layer(input=lstm, pooling_type=MaxPooling())
