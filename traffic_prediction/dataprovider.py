@@ -58,6 +58,7 @@ def process_predict(settings, file_name):
         #abandon fields name
         f.readline()
         for line in f:
+            print("line\n")
             _speeds = map(int, line.rstrip('\r\n').split(",")[1:])
             speeds  = [j - 1 for j in _speeds]
 
@@ -67,11 +68,11 @@ def process_predict(settings, file_name):
             # Scanning and generating samples
             for i in xrange(PRED_NUM-1, -1, -1):
                 # Get data corresponding to the given date
-                s = speeds[:last_elt+1-i:DATES_IN_DAY])
+                s = filter(lambda x: x!=-1, speeds[:last_elt+1-i:DATES_IN_DAY])
+                print s
 
                 # Get last TERM_NUM elts
                 res = s[-TERM_NUM:]
-                print res
                 yield  {'data': res}
             
             
