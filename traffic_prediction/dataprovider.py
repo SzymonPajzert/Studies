@@ -62,13 +62,10 @@ def process_predict(settings, file_name):
             _speeds = map(int, line.rstrip('\r\n').split(",")[1:])
             speeds  = [j - 1 for j in _speeds]
 
-            # Index of previous element in seqence of last value to predict
-            last_elt = len(speeds) - 1 - DATES_IN_DAY + PRED_NUM
-
             # Scanning and generating samples
-            for i in xrange(PRED_NUM-1, -1, -1):
+            for time in range(8*12+1, 10*12+1):
                 # Get data corresponding to the given date
-                s = filter(lambda x: x!=-1, speeds[:last_elt+1-i:DATES_IN_DAY])
+                s = filter(lambda x: x!=-1, speeds[time::DATES_IN_DAY])
                 print s
 
                 # Get last TERM_NUM elts
