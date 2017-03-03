@@ -31,8 +31,7 @@ def get_samples(line):
     
     # Scanning and generating samples
     for i in xrange(TERM_NUM):
-        for s in sequences(TERM_NUM+1, speeds[i::DATES_IN_DAY]):
-            print s
+        for s in sequences(TERM_NUM+1, speeds[i::DATES_IN_DAY]): 
             yield {'data': s[:-1], 'label': s[-1]}
     
 @provider(
@@ -48,7 +47,9 @@ def process(settings, file_name):
 
 def predict_initHook(settings, file_list, **kwargs):
     settings.pool_size = sys.maxint
-    settings.input_types = [dense_vector(TERM_NUM)]
+    settings.input_types = {
+        'data': integer_value_sequence(TERM_NUM)} 
+
 
 
 @provider(init_hook=predict_initHook, should_shuffle=False)
@@ -60,8 +61,9 @@ def process_predict(settings, file_name):
             item = []
             for item in get_samples(line):
                 pass
-
+		
+            print(item)
             # skip first element since 
-            yield item['data']
+            yield {'data': item['data']}
             
             
