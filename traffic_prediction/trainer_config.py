@@ -25,9 +25,10 @@ batch_size = 128 if not is_predict else 1
 settings(
     batch_size=batch_size,
     learning_rate=1e-3,
-    learning_method=RMSPropOptimizer())
+    learning_method=AdamOptimizer(),
+    regularization=L2Regularization(8e-4))
 ################################### Algorithm Configuration ########################################
-data = data_layer(name='link_encode', size=TERM_NUM)
+data = data_layer(name='data', size=TERM_NUM)
 
 lstm = simple_lstm(
     input=data,

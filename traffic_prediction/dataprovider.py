@@ -13,7 +13,7 @@ def initHook(settings, file_list, **kwargs):
     #Use a time seires of the same time in past as feature.
     #Dense_vector's expression form is [float,float,...,float]
     settings.input_types = {
-        'data': [dense_vector(TERM_NUM)],
+        'data': integer_value_sequence(TERM_NUM),
         'label': integer_value(LABEL_VALUE_NUM)}
 
 def sequences(size, array):
@@ -33,7 +33,7 @@ def get_samples(line):
     for i in xrange(TERM_NUM):
         for s in sequences(TERM_NUM+1, speeds[i::DATES_IN_DAY]):
             print s
-            yield {'data': map(float, s[:-1]), 'label': s[-1]}
+            yield {'data': s[:-1], 'label': s[-1]}
     
 @provider(
     init_hook=initHook, cache=CacheType.CACHE_PASS_IN_MEM, should_shuffle=True)
@@ -51,7 +51,7 @@ def predict_initHook(settings, file_list, **kwargs):
     settings.input_types = [dense_vector(TERM_NUM)]
 
 
- @provider(init_hook=predict_initHook, should_shuffle=False)
+@provider(init_hook=predict_initHook, should_shuffle=False)
 def process_predict(settings, file_name):
     with open(file_name) as f:
         #abandon fields name
