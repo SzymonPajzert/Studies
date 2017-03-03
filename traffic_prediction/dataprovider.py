@@ -32,7 +32,7 @@ def get_samples(line):
     # Scanning and generating samples
     for i in xrange(TERM_NUM):
         for s in sequences(TERM_NUM+1, speeds[i::DATES_IN_DAY]): 
-            yield {'data': s[:-1], 'label': s[-1]}
+            yield s
     
 @provider(
     init_hook=initHook, cache=CacheType.CACHE_PASS_IN_MEM, should_shuffle=True)
@@ -42,7 +42,7 @@ def process(settings, file_name):
         f.readline()
         for line in f:
             for sample in get_samples(line):
-                yield sample
+                yield {'data': sample[:-1], 'label': sample[-1]}
             
 
 def predict_initHook(settings, file_list, **kwargs):
@@ -58,12 +58,20 @@ def process_predict(settings, file_name):
         #abandon fields name
         f.readline()
         for line in f:
-            item = []
-            for item in get_samples(line):
-                pass
-		
-            print(item)
-            # skip first element since 
-            yield {'data': item['data']}
+            _speeds = map(int, line.rstrip('\r\n').split(",")[1:])
+            speeds  = [j - 1 for j in _speeds]
+
+            # Index of previous element in seqence of last value to predict
+            last_elt = len(speeds) - 1 - DATES_IN_DAY + PRED_NUM
+
+            # Scanning and generating samples
+            for i in xrange(PRED_NUM-1, -1, -1):
+                # Get data corresponding to the given date
+                s = speeds[:last_elt+1-i:DATES_IN_DAY])
+
+                # Get last TERM_NUM elts
+                res = s[-TERM_NUM:]
+                print res
+                yield  {'data': res}
             
             

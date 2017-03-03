@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from consts import *
+
 res = []
+midres = []
 with open('./rank-00000') as f:
     for line in f:
         pred = map(int, line.strip('\r\n;').split(";"))
         #raw prediction range from 0 to 3
-        res.append([i + 1 for i in pred])
+        midres = midres + [i + 1 for i in pred]
+
+    if len(midres) == PRED_NUM:
+        res.append(midres)
+        midres = []
 
 file_name = open('./data/pred.list').read().strip('\r\n')
 
-FORECASTING_NUM = 24
 header = [
     'id',
     '201604200805',
