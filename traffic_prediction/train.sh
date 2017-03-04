@@ -17,11 +17,11 @@ set -e
 cfg=${MODIFIER}trainer_config.py
 paddle train \
   --config=$cfg \
-  --save_dir=./output \
+  --save_dir=./output_long \
   --trainer_count=8 \
   --log_period=10000 \
   --dot_period=10 \
-  --num_passes=100 \
+  --num_passes=10000000 \
   --use_gpu=false \
   --show_parameter_stats_period=3000 \
   2>&1 | tee 'train.log'

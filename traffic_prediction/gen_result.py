@@ -18,13 +18,14 @@ res = []
 midres = []
 with open('./rank-00000') as f:
     for line in f:
-        pred = map(int, line.strip('\r\n;').split(";"))
+        pred = int(line.strip(';\r\n'))  	
+        
         #raw prediction range from 0 to 3
-        midres = midres + [i + 1 for i in pred]
+        midres.append(pred + 1) 
 
-    if len(midres) == PRED_NUM:
-        res.append(midres)
-        midres = []
+        if len(midres) == PRED_NUM:
+            res.append(midres)
+            midres = []
 
 file_name = open('./data/pred.list').read().strip('\r\n')
 
@@ -63,5 +64,5 @@ with open(file_name) as f:
     print ','.join(header)
     for row_num, line in enumerate(f):
         fields = line.rstrip('\r\n').split(',')
-        linkid = fields[0]
+        linkid = fields[0] 
         print linkid + ',' + ','.join(map(str, res[row_num]))

@@ -57,16 +57,14 @@ def process_predict(settings, file_name):
     with open(file_name) as f:
         #abandon fields name
         f.readline()
-        for line in f:
-            print("line\n")
+        for line in f: 
             _speeds = map(int, line.rstrip('\r\n').split(",")[1:])
             speeds  = [j - 1 for j in _speeds]
 
             # Scanning and generating samples
             for time in range(8*12+1, 10*12+1):
                 # Get data corresponding to the given date
-                s = filter(lambda x: x!=-1, speeds[time::DATES_IN_DAY])
-                print s
+                s = filter(lambda x: x!=-1, speeds[time::DATES_IN_DAY]) 
 
                 # Get last TERM_NUM elts
                 res = s[-TERM_NUM:]
