@@ -19,7 +19,7 @@ midres = []
 with open('./rank-00000') as f:
     for line in f:
         pred = int(line.strip(';\r\n'))  	
-        
+
         #raw prediction range from 0 to 3
         midres.append(pred + 1) 
 
