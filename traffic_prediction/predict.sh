@@ -1,22 +1,9 @@
 #!/bin/bash
-# Copyright (c) 2016 PaddlePaddle Authors, Inc. All Rights Reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 set -e
 
-cfg=${MODIFIER}trainer_config.py
+cfg=graph_trainer_config.py
 # pass choice 
-model="${DIR}/pass-${NUMBER}"
+model="output_new/pass-00009"
 
 for i in `seq 1 $1`; do
 	paddle train \
@@ -26,6 +13,6 @@ for i in `seq 1 $1`; do
 		   --init_model_path=$model \
 		   --config_args=is_predict=1 \
 		   --predict_output_dir=.
-	python ./append.py ./rank-00000 data/train_input.data data/temp.data
-        mv data/temp.data data/train_input.data
+	python ./append.py ./rank-00000 data/speeds.csv data/temp.data
+        mv data/temp.data data/speeds.csv
 done

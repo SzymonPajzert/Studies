@@ -31,10 +31,6 @@ else
 	echo "Package exists"
 fi
 
-python extract_train.py "speeds.csv" "train_input.data" "train_output.data"
-
-echo "data/train_input.data" > train.list
-echo "data/train_input.data" > test.list
-echo "data/train_input.data" > pred.list
+echo "data/speeds.csv" > pred.list
 
 echo "Done."

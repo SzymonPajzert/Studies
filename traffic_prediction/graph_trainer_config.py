@@ -1,6 +1,7 @@
 from paddle.trainer_config_helpers import *
 from consts import * 
 
+# Read graph topology
 father = dict()
 child = dict()
 
@@ -13,13 +14,12 @@ with open('data/graph.csv') as graph_file:
 
 ################################### DATA Configuration #############################################
 is_predict = get_config_arg('is_predict', bool, False)
-trn = './data/train.list' if not is_predict else None
-tst = './data/test.list' if not is_predict else './data/pred.list'
+data = './data/pred.list'
 process = 'process' if not is_predict else 'process_predict'
 
 define_py_data_sources2(
-    train_list=trn,
-    test_list=tst,
+    train_list=data if not is_predict else None,
+    test_list=data if is_predict else None,
     module="graph_dataprovider",
     obj=process,
     args={"father_graph": father, "child_graph": child})
@@ -50,7 +50,9 @@ neighbour_input = concat_layer(name='neighbour', input=[father_prev, child_prev]
 neighbour_emb_layer = fc_layer(input=neighbour_input, size=NEIGHBOUR_EMB_SIZE, act=LinearActivation())
 neighbour_output = fc_layer(input=neighbour_emb_layer, size=2, act=LinearActivation())
 
-neural_input = concat_layer(name='neural_input', input=[neighbour_output, long_prev, short_prev, time])
+time_input = fc_layer(input=time, size=4, act=LinearActivation())
+
+neural_input = concat_layer(name='neural_input', input=[neighbour_output, long_prev, short_prev, time_input])
 link_vec = fc_layer(input=neural_input, size=EMB_SIZE)
 score = fc_layer(input=neural_input, size=4, act=SoftmaxActivation())
 

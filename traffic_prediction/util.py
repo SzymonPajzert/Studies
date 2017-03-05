@@ -56,7 +56,7 @@ def calculate_square(first_file_name, second_file_name):
             counter += subcounter
             squares += subsquares
 
-            print("%d, %d, %d" % (i, sqrt(subsquares / subcounter), sqrt(squares / counter)))
+            print("%d, %d, %d, %f, %f" % (i, subsquares, subcounter, sqrt(subsquares / subcounter), sqrt(squares / counter)))
                 
         del results
 

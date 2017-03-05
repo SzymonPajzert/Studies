@@ -14,14 +14,14 @@
 # limitations under the License.
 set -e
 
-cfg=${MODIFIER}trainer_config.py
+cfg=graph_trainer_config.py
 paddle train \
   --config=$cfg \
   --save_dir=./output_new \
   --trainer_count=8 \
   --log_period=10000 \
   --dot_period=10 \
-  --num_passes=10000000 \
+  --num_passes=10 \
   --use_gpu=false \
   --show_parameter_stats_period=300000 \
   2>&1 | tee 'train.log'
