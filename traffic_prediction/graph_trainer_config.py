@@ -1,6 +1,5 @@
 from paddle.trainer_config_helpers import *
-from consts import *
-from pprint import pp
+from consts import * 
 
 father = dict()
 child = dict()
@@ -22,7 +21,7 @@ define_py_data_sources2(
     train_list=trn,
     test_list=tst,
     module="graph_dataprovider",
-    obj=process
+    obj=process,
     args={"father_graph": father, "child_graph": child})
 
 ################################### Parameter Configuaration #######################################
@@ -49,7 +48,7 @@ father_prev = data_layer(name='father_prev', size=NEIGH_PREV)
 
 neighbour_input = concat_layer(name='neighbour', input=[father_prev, child_prev])
 neighbour_emb_layer = fc_layer(input=neighbour_input, size=NEIGHBOUR_EMB_SIZE, act=LinearActivation())
-neighbout_output = fc_layer(input=neighbour_output, size=2, act=LinearActivation())
+neighbour_output = fc_layer(input=neighbour_emb_layer, size=2, act=LinearActivation())
 
 neural_input = concat_layer(name='neural_input', input=[neighbour_output, long_prev, short_prev, time])
 link_vec = fc_layer(input=neural_input, size=EMB_SIZE)

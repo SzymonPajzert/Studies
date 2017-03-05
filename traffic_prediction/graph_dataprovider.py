@@ -15,10 +15,11 @@ def initHook(settings, father_graph, child_graph, **kwargs):
     settings.child = child_graph
 
     settings.input_types = {
-        'long_prev': dense_vector(LONG_TERM_NUM).
-        'short_prev', dense_vector(SHORT_TERM_NUM),
-        'child_prev', dense_vector(CHILD_PREV),
-        'father_prev' : dense_vector(FATHER_PREV),
+        'long_prev': dense_vector(LONG_TERM_NUM),
+        'short_prev': dense_vector(SHORT_TERM_NUM),
+        'child_prev': dense_vector(NEIGH_PREV),
+        'father_prev': dense_vector(NEIGH_PREV),
+        'time': integer_value(DATES_IN_DAY),
         'label': integer_value(LABEL_VALUE_NUM)}
 
 
@@ -78,6 +79,7 @@ def process(settings, file_name):
                 speeds[identifier][i//DATES_IN_DAY][i % DATES_IN_DAY] = _speeds[i]    
 
     for identifier in speeds:
+        print("New identifier read")
         for day in speeds[identifier]:
             for time in speeds[identifier][day]:
                 if day > 0 and speeds[identifier][day][time] != -1:
