@@ -38,14 +38,26 @@ def calculate_square(first_file_name, second_file_name):
 
         # pprint(results)
 
-        counter = 0
-        squares = 0
         for line in results.values():
             print(line)
-            counter += len(line)
-            for value in line:
-               squares += value * value
 
+        counter = 0
+        squares = 0
+       
+        for i in range(len(list(results.values())[0])):
+            subcounter = 0
+            subsquares = 0
+
+            for line in results.values():
+                value = line[i]
+                subsquares += value * value
+                subcounter += 1
+
+            counter += subcounter
+            squares += subsquares
+
+            print("%d, %d, %d" % (i, sqrt(subsquares / subcounter), sqrt(squares / counter)))
+                
         del results
 
         return sqrt(squares / counter)
