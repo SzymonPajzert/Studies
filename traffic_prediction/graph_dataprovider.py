@@ -19,7 +19,7 @@ def initHook(settings, father_graph, child_graph, **kwargs):
         'short_prev': dense_vector(SHORT_TERM_NUM),
         'child_prev': dense_vector(NEIGH_PREV),
         'father_prev': dense_vector(NEIGH_PREV),
-        'time': integer_value(DATES_IN_DAY),
+        'time': dense_vector(1),
         'label': integer_value(LABEL_VALUE_NUM)}
 
 
@@ -95,18 +95,19 @@ def process(settings, file_name):
                             prev_time = prev_time + DATES_IN_DAY
                             prev_day = day - 1
                         
-                        child_prev = filter(lambda x: x != -1, map(lambda ide: speeds[ide][prev_day][prev_time], child))
-                        father_prev = filter(lambda x: x != -1, map(lambda ide: speeds[ide][prev_day][prev_time], father))
+                        child_prev = adjust_len(filter(lambda x: x != -1, map(lambda ide: speeds[ide][prev_day][prev_time], child)))
+                        father_prev = adjust_len(filter(lambda x: x != -1, map(lambda ide: speeds[ide][prev_day][prev_time], father)))
 
-                        res = {
-                            'time': time,
-                            'long_prev': long_prev,
-                            'short_prev': short_prev,
-                            'child_prev': adjust_len(child_prev),
-                            'father_prev': adjust_len(father_prev),
-                            'label': speeds[identifier][day][time]}
+			if child_prev and father_prev:
+                            res = {
+                                'time': [time],
+                                'long_prev': long_prev,
+                                'short_prev': short_prev,
+                                'child_prev': child_prev if child_prev else father_prev,
+                                'father_prev': father_prev if father_prev else chilf_prev,
+                                'label': speeds[identifier][day][time]}
 
-                        yield res
+                            yield res
             
 
 def predict_initHook(settings, file_list, **kwargs):

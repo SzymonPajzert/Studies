@@ -23,5 +23,5 @@ paddle train \
   --dot_period=10 \
   --num_passes=10000000 \
   --use_gpu=false \
-  --show_parameter_stats_period=3000 \
+  --show_parameter_stats_period=300000 \
   2>&1 | tee 'train.log'
