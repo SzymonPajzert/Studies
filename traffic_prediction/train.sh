@@ -17,7 +17,7 @@ set -e
 cfg=${MODIFIER}trainer_config.py
 paddle train \
   --config=$cfg \
-  --save_dir=./output_long \
+  --save_dir=./output_new \
   --trainer_count=8 \
   --log_period=10000 \
   --dot_period=10 \
