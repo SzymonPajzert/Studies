@@ -17,6 +17,7 @@ set -e
 cfg=${MODIFIER}trainer_config.py
 # pass choice 
 model="${DIR}/pass-${NUMBER}"
+
 paddle train \
     --config=$cfg \
     --use_gpu=false \
@@ -24,7 +25,3 @@ paddle train \
     --init_model_path=$model \
     --config_args=is_predict=1 \
     --predict_output_dir=. 
-
-python gen_result.py > result.csv
-
-rm -rf rank-00000
