@@ -73,14 +73,13 @@ def read_file(file_name):
                 speeds[identifier][i//DATES_IN_DAY][i % DATES_IN_DAY] = _speeds[i]
 
 # Generate data from generator outputing identifier, day, time
-def yield_data(spec_gen, add_label):
-    for identifier, day, time in spec_gen:
-        if day > 0 and speeds[identifier][day][time] != -1:
-
+def yield_data(settings, spec_gen, add_label):
+    for identifier, day, time in spec_gen(): 
+	if day > 0 and (not add_label or speeds[identifier][day][time] != -1): 
             long_prev = get_prev_days(LONG_TERM_NUM, identifier, day-1, time)
             short_prev = get_prev_times(SHORT_TERM_NUM, identifier, day, time-1)
 
-            if len(long_prev) == LONG_TERM_NUM and len(short_prev) == SHORT_TERM_NUM:
+            if len(long_prev) == LONG_TERM_NUM and len(short_prev) == SHORT_TERM_NUM: 
                 child = settings.child.get(identifier, [])
                 father = settings.father.get(identifier, [])
 
@@ -93,35 +92,41 @@ def yield_data(spec_gen, add_label):
                 child_prev = adjust_len(filter(lambda x: x != -1, map(lambda ide: speeds[ide][prev_day][prev_time], child)))
                 father_prev = adjust_len(filter(lambda x: x != -1, map(lambda ide: speeds[ide][prev_day][prev_time], father)))
 
-		if child_prev and father_prev:
-                    res = {
-                        'time': [time],
-                        'long_prev': long_prev,
-                        'short_prev': short_prev,
-                        'child_prev': child_prev if child_prev else father_prev,
-                        'father_prev': father_prev if father_prev else chilf_prev}
+		if child_prev or father_prev:
+                    child_prev = child_prev if child_prev else father_prev
+                    father_prev = father_prev if father_prev else child_prev
+                else:
+                    child_prev = [0] * NEIGH_PREV
+                    father_prev = [0] * NEIGH_PREV
 
-                    if add_label:
-                        res['label'] = speeds[identifier][day][time]
-                    
-                yield res
+
+                res = {
+                    'time': [time],
+                    'long_prev': long_prev,
+                    'short_prev': short_prev,
+                    'child_prev': child_prev,
+                    'father_prev': father_prev}
+
+                if add_label:
+                    res['label'] = speeds[identifier][day][time]
+
+                yield res 
                 
 @provider(
     init_hook=initHook,
     cache=CacheType.CACHE_PASS_IN_MEM,
     should_shuffle=True)
 def process(settings, file_name):
-
-    read_file(file_name)
-
-    def generator:
-        for identifier in speeds:
-            print("New identifier read")
+    def generator():
+        for identifier in speeds: 
             for day in speeds[identifier]:
                 for time in speeds[identifier][day]:
                     yield (identifier, day, time)
 
-    return yield_data(generator, True)
+    read_file(file_name)
+
+    for sample in yield_data(settings, generator, True):
+        yield sample
 
 def predict_initHook(settings, father_graph, child_graph, **kwargs):
     initHook(settings, father_graph, child_graph)
@@ -133,15 +138,16 @@ def process_predict(settings, file_name):
 
     with open(file_name) as f:
         #abandon fields name
-        new_column_id = len(f.readline()) - 1
+        new_column_id = len(f.readline().split(',')) - 1
         day = new_column_id // DATES_IN_DAY
         time = new_column_id % DATES_IN_DAY
 
-        def generator:
-            for line in f:
-                identifier = int(line.split(',')[0])
+        def generator():
+            for line_number, line in enumerate(f):
+                identifier = int(line.split(',')[0]) 
                 yield (identifier, day, time)
 
-        return yield_data(generator, False)
+        for sample in yield_data(settings, generator, False):
+            yield sample
             
             

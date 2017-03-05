@@ -27,5 +27,5 @@ for i in `seq 1 $1`; do
 		   --config_args=is_predict=1 \
 		   --predict_output_dir=.
 	python ./append.py ./rank-00000 data/train_input.data data/temp.data
-	mv data/temp.data
+        mv data/temp.data data/train_input.data
 done
