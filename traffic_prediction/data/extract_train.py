@@ -2,7 +2,7 @@
 
 from sys import argv
 
-script, input_file, train_file, test_input_file, test_output_file = argv
+script, input_file, train_input_file, train_output_file = argv
 
 def split(array):
     input_data = array[0:-24]
@@ -16,22 +16,17 @@ def get(array):
     array2 = cut(array)
     return split(array2)
 
-with open(input_file) as inpt, open(train_file, 'w') as train, open(test_input_file, 'w') as test_input, open(test_output_file, 'w') as test_output:
+with open(input_file) as inpt, open(train_input_file, 'w') as train_input, open(train_output_file, 'w') as train_output:
     header = inpt.readline()
     spl = header.split(',')[1:]
     input_data, output_data = get(spl)
     
-    test_input.write('id,' + ','.join(input_data) + '\n')
-    test_output.write('id,' + ','.join(output_data) + '\n')
+    train_input.write('id,' + ','.join(input_data) + '\n')
+    train_output.write('id,' + ','.join(output_data) + '\n')
     
-    train.write(header)
-    
-    for line_num, line in enumerate(inpt):
-        if line_num % 10 != 0:
-            train.write(line)
-        else:
-            splitted = line.split(',')
-            number = splitted[0]
-            input_data, output_data = get(splitted[1:])
-            test_input.write(str(number) + ',' + ','.join(input_data)+'\n')
-            test_output.write(str(number) + ',' + ','.join(output_data) + '\n')     
+    for line in inpt:
+        splitted = line.split(',')
+        number = splitted[0]
+        input_data, output_data = get(splitted[1:])
+        train_input.write(str(number) + ',' + ','.join(input_data)+'\n')
+        train_output.write(str(number) + ',' + ','.join(output_data) + '\n')     
