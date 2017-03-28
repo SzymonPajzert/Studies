@@ -7,7 +7,7 @@
 
 #include "err.h"
 
-#define BUFFER_SIZE   10
+#define BUFFER_SIZE   1000
 #define PORT_NUM     10001
 
 int main(int argc, char *argv[]) {

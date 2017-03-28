@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 #include "err.h"
 
@@ -22,8 +23,8 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in srvr_address;
   socklen_t rcva_len;
 
-  if (argc < 3) {
-    fatal("Usage: %s host port message ...\n", argv[0]);
+  if (argc < 4) {
+    fatal("Usage: %s host port file portion_size...\n", argv[0]);
   }
 
   // 'converting' host/port in string to struct addrinfo
@@ -51,39 +52,48 @@ int main(int argc, char *argv[]) {
   if (sock < 0)
     syserr("socket");
 
-  for (i = 3; i < argc; i++) {
-    const size_t len = strnlen(argv[i], BUFFER_SIZE);
-    if (len == BUFFER_SIZE) {
-      (void) fprintf(stderr, "ignoring long parameter %d\n", i);
-      continue;
-    }
-	for(int j = 0; j < 1000; j++) { 
-		(void) printf("sending to socket: %s\n", argv[i]);
-		sflags = 0;
-		rcva_len = (socklen_t) sizeof(my_address);
-		snd_len = sendto(sock, argv[i], len, sflags,
-						 (struct sockaddr *) &my_address, rcva_len);
-		if (snd_len != (ssize_t) len) {
-			syserr("partial / failed write");
-		}
-
-		(void) memset(buffer, 0, sizeof(buffer));
-		flags = 0;
-		const size_t buflen = (size_t) sizeof(buffer) - 1;
-		rcva_len = (socklen_t) sizeof(srvr_address);
-		rcv_len = recvfrom(sock, buffer, buflen, flags,
-						   (struct sockaddr *) &srvr_address, &rcva_len);
-
-		if (rcv_len < 0) {
-			syserr("read");
-		}
-		(void) printf("read from socket: %zd bytes: %s\n", rcv_len, buffer);
-	}
-	sleep(3);
+  const size_t portion_size = atoi(argv[4]);
+  if (portion_size >= BUFFER_SIZE) {
+      (void) fprintf(stderr, "ignoring too long portion_size parameter %d\n", i);
+      return 1;
   }
 
+  const int filedesc = open(argv[3], O_RDONLY);
+  if(filedesc < 0) {
+	  (void) fprintf(stderr, "cannot open file %s", argv[3]);
+	  return 1;
+  }
+
+  // size_t offset = 0;
+  size_t read_size;
+  do {
+	  read_size = read(filedesc, buffer, portion_size);
+	  // offset += read_size;
+	  (void) printf("sending to socket: %s\n", buffer);
+	  sflags = 0;
+	  rcva_len = (socklen_t) sizeof(my_address);
+	  snd_len = sendto(sock, buffer, read_size, sflags,
+					   (struct sockaddr *) &my_address, rcva_len);
+	  if (snd_len != (ssize_t) read_size) {
+		  syserr("partial / failed write");
+	  }
+
+	  (void) memset(buffer, 0, sizeof(buffer));
+	  flags = 0;
+	  const size_t buflen = (size_t) sizeof(buffer) - 1;
+	  rcva_len = (socklen_t) sizeof(srvr_address);
+	  rcv_len = recvfrom(sock, buffer, buflen, flags,
+						 (struct sockaddr *) &srvr_address, &rcva_len);
+  
+	  if (rcv_len < 0) {
+		  syserr("read");
+	  }
+	  (void) printf("read from socket: %zd bytes: %s\n", rcv_len, buffer);
+	  
+  } while(read_size > 0);
+
   if (close(sock) == -1) { //very rare errors can occur here, but then
-    syserr("close"); //it's healthy to do the check
+	  syserr("close"); //it's healthy to do the check
   }
 
   return 0;
