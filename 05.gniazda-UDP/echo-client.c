@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
   const size_t portion_size = atoi(argv[4]);
   if (portion_size >= BUFFER_SIZE) {
-      (void) fprintf(stderr, "ignoring too long portion_size parameter %d\n", i);
+      (void) fprintf(stderr, "ignoring too long portion_size parameter %d\n");
       return 1;
   }
 
@@ -68,27 +68,29 @@ int main(int argc, char *argv[]) {
   size_t read_size;
   do {
 	  read_size = read(filedesc, buffer, portion_size);
-	  // offset += read_size;
-	  (void) printf("sending to socket: %s\n", buffer);
-	  sflags = 0;
-	  rcva_len = (socklen_t) sizeof(my_address);
-	  snd_len = sendto(sock, buffer, read_size, sflags,
-					   (struct sockaddr *) &my_address, rcva_len);
-	  if (snd_len != (ssize_t) read_size) {
-		  syserr("partial / failed write");
-	  }
+	  if(read_size > 0) {
+		  // offset += read_size;
+		  (void) printf("sending to socket: %s\n", buffer);
+		  sflags = 0;
+		  rcva_len = (socklen_t) sizeof(my_address);
+		  snd_len = sendto(sock, buffer, read_size, sflags,
+						   (struct sockaddr *) &my_address, rcva_len);
+		  if (snd_len != (ssize_t) read_size) {
+			  syserr("partial / failed write");
+		  }
 
-	  (void) memset(buffer, 0, sizeof(buffer));
-	  flags = 0;
-	  const size_t buflen = (size_t) sizeof(buffer) - 1;
-	  rcva_len = (socklen_t) sizeof(srvr_address);
-	  rcv_len = recvfrom(sock, buffer, buflen, flags,
-						 (struct sockaddr *) &srvr_address, &rcva_len);
+		  (void) memset(buffer, 0, sizeof(buffer));
+		  flags = 0;
+		  const size_t buflen = (size_t) sizeof(buffer) - 1;
+		  rcva_len = (socklen_t) sizeof(srvr_address);
+		  rcv_len = recvfrom(sock, buffer, buflen, flags,
+							 (struct sockaddr *) &srvr_address, &rcva_len);
   
-	  if (rcv_len < 0) {
-		  syserr("read");
+		  if (rcv_len < 0) {
+			  syserr("read");
+		  }
+		  (void) printf("read from socket: %zd bytes: %s\n", rcv_len, buffer);
 	  }
-	  (void) printf("read from socket: %zd bytes: %s\n", rcv_len, buffer);
 	  
   } while(read_size > 0);
 
