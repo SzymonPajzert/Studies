@@ -4,23 +4,23 @@ import java.io._
 
 import org.scalatest._
 
-trait FileMatchers {
+import scala.util.Random
 
+trait FileMatchers {
   import org.scalatest.matchers._
 
-  class FileBePropertyMatcher extends BePropertyMatcher[java.io.File] {
-    def apply(left: File): BePropertyMatchResult = {
-      val fileNonempty = left.length() != 0
-      BePropertyMatchResult(fileNonempty, "nonempty file")
-    }
+  def nonemptyFile: BePropertyMatcher[File] = (left: File) => {
+    val fileNonempty = left.length() != 0
+    BePropertyMatchResult(fileNonempty, "nonempty file")
   }
 
-  def nonemptyFile = new FileBePropertyMatcher
+  def existingFile: BePropertyMatcher[File] = (left: File) => {
+    BePropertyMatchResult(left.exists(), "existing file")
+  }
 }
 
 class FileMatchersTest extends FlatSpec with Matchers with FileMatchers {
-  import java.io.BufferedWriter
-  import java.io.FileWriter
+  import java.io.{BufferedWriter, FileWriter}
 
   behavior of "FileMathchers"
 
@@ -35,12 +35,10 @@ class FileMatchersTest extends FlatSpec with Matchers with FileMatchers {
   }
 }
 
-class JasminRunnerSpec extends FlatSpec with Matchers with FileMatchers {
-  behavior of "JasminRunner"
-
-  val validCode =
+object Definitions {
+  def validCode: String =
     """
-      |.class  public Hello
+      |.class  public Main
       |.super  java/lang/Object
       |
       |; standard initializer
@@ -53,17 +51,34 @@ class JasminRunnerSpec extends FlatSpec with Matchers with FileMatchers {
       |.method public static main([Ljava/lang/String;)V
       |.limit stack 2
       |  getstatic  java/lang/System/out Ljava/io/PrintStream;
-      |  ldc "Hello"
+      |  ldc "Hello world"
       |  invokevirtual  java/io/PrintStream/println(Ljava/lang/String;)V
       |  return
       |.end method
-    """.stripMargin
+      |""".stripMargin
+}
+
+class JasminRunnerSpec extends FlatSpec with Matchers with FileMatchers {
+  import Definitions.validCode
+
+  behavior of "JasminRunner"
 
   it should "compileWithoutErrors" in {
-    val mockFile = File.createTempFile("source", "j")
+    val rand = new Random
+    val directoryCounter = rand.nextInt()
 
-    val result = JasminRunner.compile(validCode, mockFile)
+    val outputDirectory = OutputDirectory.create(new File(s"/tmp/mrjp$directoryCounter"))
 
-    mockFile should be a nonemptyFile
+    val result = JasminRunner.compile(validCode, outputDirectory)
+
+    outputDirectory.sourceFile should be a nonemptyFile
+    assert(outputDirectory.directory.listFiles().length == 2)
+
+    val output = JasminRunner.runJava(outputDirectory)
+    assert(output == "Hello world")
+  }
+
+  it should "be able to just run" in {
+    assert(JasminRunner.run(validCode) == "Hello world")
   }
 }
