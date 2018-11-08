@@ -1,18 +1,14 @@
 package compiler
 
 import arithmetic.StackOps
-import jvm.JVMOp
-import jvm.JVMOp.Block
+import backend.jvm
+import backend.jvm.JVMOp
+import backend.jvm.JVMOp.Block
 
-trait StackOpToJVM {
-  type Program = List[StackOps]
-  def compile(arithmetic: Program): (Int, JVMOp.Block)
-}
-
-class StackOpToJVMDefault extends StackOpToJVM {
-  def compile(arithmetic: Program) = {
-    val jvmOps: JVMOp.Block = arithmetic flatMap translateOperator
-    (4, jvmOps ::: List(JVMOp.Return))
+object StackOpToJVM extends Compiler[StackOps.Code, JVMOp.Code] {
+  def compile(arithmetic: StackOps.Code) = {
+    val jvmOps: JVMOp.Block = arithmetic.code flatMap translateOperator
+    JVMOp.Code(stackSize = arithmetic.stackSize, arithmetic.framesUsed + 1, jvmOps ::: List(JVMOp.Return))
   }
 
   def translateOperator(operator: StackOps): Block = {
@@ -20,15 +16,18 @@ class StackOpToJVMDefault extends StackOpToJVM {
 
     operator match {
       case StackOps.PutPrint => List(GetStatic("java/lang/System/out Ljava/io/PrintStream;"))
-      case StackOps.Print => List(InvokeVirtual("java/io/PrintStream/println(I)V"))
-      case StackOps.Add => List(JVMOp.add[Int])
+      case StackOps.Print => List(
+        InvokeVirtual("java/io/PrintStream/println(I)V")
+      )
+      case StackOps.Operation(op) => op match {
+        case parser.Add => List(JVMOp.add[Int])
+        case parser.Mul => List(JVMOp.mul[Int])
+        case parser.Sub => List(JVMOp.sub[Int])
+        case parser.Div => List(JVMOp.div[Int])
+      }
       case StackOps.Const(value) => List(JVMOp.const[Int](value))
       case StackOps.Load(frame) => List(JVMOp.load[Int](frame))
       case StackOps.Store(frame) => List(JVMOp.store[Int](frame))
     }
   }
-}
-
-object StackOpToJVM {
-  def get: StackOpToJVM = new StackOpToJVMDefault()
 }

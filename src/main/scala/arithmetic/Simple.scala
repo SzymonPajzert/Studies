@@ -4,14 +4,13 @@ package arithmetic
 sealed trait StackOps
 
 object StackOps {
+  case class Code(code: List[StackOps], stackSize: Int, framesUsed: Int)
 
   case object PutPrint extends StackOps
 
   case class Const(const: Int) extends StackOps
 
-  case object Add extends StackOps
-
-  case object Mul extends StackOps
+  case class Operation(operation: parser.Operation) extends StackOps
 
   case class Load(frame: Int) extends StackOps
 
@@ -34,8 +33,18 @@ object StackExecution {
       import StackOps._
       (op, stack) match {
         case (Const(n), s) => n :: s
-        case (Add, a :: b :: s) => (a + b) :: s
-        case (Mul, a :: b :: s) => (a * b) :: s
+        case (Operation(op), a :: b :: s) => {
+          import parser._
+
+          val value = op match {
+            case Add => a + b
+            case Mul => a * b
+            case Div => a / b
+            case Sub => a - b
+          }
+
+          value :: s
+        }
       }
     }
 
@@ -66,10 +75,10 @@ object Compiler {
     highLevel match {
       case HighLevelOp.Const(x) => List(StackOps.Const(x))
       case HighLevelOp.Add(left, right) => {
-        compile(left) ::: compile(right) ::: List(StackOps.Add)
+        compile(left) ::: compile(right) ::: List(StackOps.Operation(parser.Add))
       }
       case HighLevelOp.Mul(left, right) => {
-        compile(left) ::: compile(right) ::: List(StackOps.Mul)
+        compile(left) ::: compile(right) ::: List(StackOps.Operation(parser.Mul))
       }
     }
   }

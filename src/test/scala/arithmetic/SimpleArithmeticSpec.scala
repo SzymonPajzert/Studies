@@ -16,7 +16,7 @@ class SimpleArithmeticSpec extends FlatSpec with Matchers {
     it should "add values on stack" in {
         import StackOps._
         
-        val prog = List(Const(1), Const(2), Add)
+        val prog = List(Const(1), Const(2), StackOps.Operation(parser.Add))
         val executionResult = StackExecution.executeAll(prog)
         executionResult shouldEqual Right(List(3))
     }

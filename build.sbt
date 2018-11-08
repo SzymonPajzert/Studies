@@ -10,3 +10,5 @@ lazy val root = (project in file(".")).
     name := "mrjp",
     libraryDependencies ++= Seq(scalaTest % Test, mockito % Test)
   )
+
+mainClass in assembly := Some("Main")
