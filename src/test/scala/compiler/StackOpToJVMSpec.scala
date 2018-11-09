@@ -1,5 +1,6 @@
 package compiler
 
+import parser.instant
 import arithmetic.StackOps
 import backend.jvm.{JVMOp, JasminRunner}
 import org.scalatest.{FlatSpec, Matchers}
@@ -17,7 +18,7 @@ class StackOpToJVMSpec extends FlatSpec with Matchers {
       StackOps.PutPrint,
       StackOps.Const(1),
       StackOps.Const(2),
-      StackOps.Operation(parser.Add),
+      StackOps.Operation(instant.Add),
       StackOps.Print
     ), 3, 0)
 
@@ -34,7 +35,7 @@ class StackOpToJVMSpec extends FlatSpec with Matchers {
       StackOps.Load(1),
       StackOps.Load(0),
 
-      StackOps.Operation(parser.Add),
+      StackOps.Operation(instant.Add),
       StackOps.Print
     ), 3, 2)
 

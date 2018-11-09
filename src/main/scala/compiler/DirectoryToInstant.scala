@@ -1,7 +1,7 @@
 package compiler
 
 import backend.{Directory, FileUtil}
-import parser.{InstantProg, Parser}
+import parser.instant.{InstantProg, Parser}
 
 object DirectoryToInstant extends Compiler[Directory, InstantProg] {
   override def compile(code: Directory): InstantProg = {

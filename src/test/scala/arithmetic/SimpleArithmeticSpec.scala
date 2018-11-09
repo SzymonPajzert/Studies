@@ -1,5 +1,6 @@
 package arithmetic
 
+import parser.instant
 import scala.util.{Either, Left, Right}
 import org.scalatest._
 
@@ -16,7 +17,7 @@ class SimpleArithmeticSpec extends FlatSpec with Matchers {
     it should "add values on stack" in {
         import StackOps._
         
-        val prog = List(Const(1), Const(2), StackOps.Operation(parser.Add))
+        val prog = List(Const(1), Const(2), StackOps.Operation(instant.Add))
         val executionResult = StackExecution.executeAll(prog)
         executionResult shouldEqual Right(List(3))
     }

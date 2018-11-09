@@ -7,7 +7,6 @@ object JasminRunner extends BackendRunner[String] {
   // Saves to output file
   def compile(assemblyCode: String, outputDirectory: OutputDirectory): CommandResult[String] = {
     FileUtil.saveToFile(assemblyCode, outputDirectory.jasminFile)
-    println(s"Saving to ${outputDirectory.jasminFile}")
 
     FileUtil.runCommand(
       s"""

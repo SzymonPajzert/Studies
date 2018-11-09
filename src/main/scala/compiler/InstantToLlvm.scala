@@ -1,8 +1,9 @@
 package compiler
 
+import parser.instant
 import backend.llvm.LLVM
 import backend.llvm.LLVM.{Expression, Register}
-import parser.{Instant, InstantProg}
+import parser.instant.{Instant, InstantProg}
 
 object InstantToLlvm extends Compiler[InstantProg, LLVM.Code] {
   case class CompilationState(tmpCounter: Int,
@@ -40,9 +41,9 @@ object InstantToLlvm extends Compiler[InstantProg, LLVM.Code] {
   }
 
   def putIntoRegister(state: CompilationState,
-                      expr: parser.Expr,
+                      expr: instant.Expr,
                       register: LLVM.Register): (OneLine, LLVM.Expression) = {
-    val line = compileLine(parser.Assign(register.value, expr), state)
+    val line = compileLine(instant.Assign(register.value, expr), state)
 
     line.state.currentSubstitutions get register.value match {
       case Some(value) => (line, value)
@@ -50,16 +51,16 @@ object InstantToLlvm extends Compiler[InstantProg, LLVM.Code] {
     }
   }
 
-  def convert(op: parser.Operation): LLVM.Operation = op match {
-    case parser.Add => LLVM.Add
-    case parser.Mul => LLVM.Mul
-    case parser.Div => LLVM.Div
-    case parser.Sub => LLVM.Sub
+  def convert(op: instant.Operation): LLVM.Operation = op match {
+    case instant.Add => LLVM.Add
+    case instant.Mul => LLVM.Mul
+    case instant.Div => LLVM.Div
+    case instant.Sub => LLVM.Sub
   }
 
 
   def compileLine(line: Instant, state: CompilationState): OneLine = {
-    import parser._
+    import parser.instant._
 
     line match {
       case Assign(identifier, Integer(value)) =>

@@ -1,5 +1,6 @@
 package arithmetic
 
+import parser.instant
 
 sealed trait StackOps
 
@@ -10,7 +11,7 @@ object StackOps {
 
   case class Const(const: Int) extends StackOps
 
-  case class Operation(operation: parser.Operation) extends StackOps
+  case class Operation(operation: instant.Operation) extends StackOps
 
   case class Load(frame: Int) extends StackOps
 
@@ -34,7 +35,7 @@ object StackExecution {
       (op, stack) match {
         case (Const(n), s) => n :: s
         case (Operation(op), a :: b :: s) => {
-          import parser._
+          import parser.instant._
 
           val value = op match {
             case Add => a + b
@@ -75,10 +76,10 @@ object Compiler {
     highLevel match {
       case HighLevelOp.Const(x) => List(StackOps.Const(x))
       case HighLevelOp.Add(left, right) => {
-        compile(left) ::: compile(right) ::: List(StackOps.Operation(parser.Add))
+        compile(left) ::: compile(right) ::: List(StackOps.Operation(instant.Add))
       }
       case HighLevelOp.Mul(left, right) => {
-        compile(left) ::: compile(right) ::: List(StackOps.Operation(parser.Mul))
+        compile(left) ::: compile(right) ::: List(StackOps.Operation(instant.Mul))
       }
     }
   }

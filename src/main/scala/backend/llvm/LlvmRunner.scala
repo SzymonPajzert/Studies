@@ -3,7 +3,7 @@ package backend.llvm
 import java.io.File
 
 import backend.{BackendRunner, CommandResult, FileUtil, OutputDirectory}
-import parser.Operation
+import parser.instant.Operation
 
 import scala.language.implicitConversions
 

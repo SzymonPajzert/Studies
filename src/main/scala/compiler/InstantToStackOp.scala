@@ -1,8 +1,9 @@
 package compiler
 
+import parser.instant
 import arithmetic.StackOps
 import arithmetic.StackOps.PutPrint
-import parser.{Instant, InstantProg}
+import parser.instant.{Instant, InstantProg}
 
 object InstantToStackOp extends Compiler[InstantProg, StackOps.Code] {
   type Frames = Map[String, Int]
@@ -17,13 +18,13 @@ object InstantToStackOp extends Compiler[InstantProg, StackOps.Code] {
       (frames, frameNumber)
   }
 
-  def getOperator(operation: parser.Operation): StackOps = {
+  def getOperator(operation: instant.Operation): StackOps = {
     StackOps.Operation(operation)
   }
 
-  def getExpression(expr: parser.Expr, frames: Frames): ProgramBuilder = {
+  def getExpression(expr: instant.Expr, frames: Frames): ProgramBuilder = {
     import arithmetic.StackOps._
-    import parser._
+    import parser.instant._
 
     expr match {
       case BinOp(leftExpr, op, rightExpr) => {
@@ -47,7 +48,7 @@ object InstantToStackOp extends Compiler[InstantProg, StackOps.Code] {
   }
 
   def compileLine(code: Instant, frames: Frames): ProgramBuilder = {
-    import parser._
+    import parser.instant._
 
     code match {
       case Print(expr) =>

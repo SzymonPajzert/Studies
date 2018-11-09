@@ -1,5 +1,6 @@
 package compiler
 
+import parser.instant
 import arithmetic.StackOps
 import backend.jvm
 import backend.jvm.JVMOp
@@ -20,10 +21,10 @@ object StackOpToJVM extends Compiler[StackOps.Code, JVMOp.Code] {
         InvokeVirtual("java/io/PrintStream/println(I)V")
       )
       case StackOps.Operation(op) => op match {
-        case parser.Add => List(JVMOp.add[Int])
-        case parser.Mul => List(JVMOp.mul[Int])
-        case parser.Sub => List(JVMOp.sub[Int])
-        case parser.Div => List(JVMOp.div[Int])
+        case instant.Add => List(JVMOp.add[Int])
+        case instant.Mul => List(JVMOp.mul[Int])
+        case instant.Sub => List(JVMOp.sub[Int])
+        case instant.Div => List(JVMOp.div[Int])
       }
       case StackOps.Const(value) => List(JVMOp.const[Int](value))
       case StackOps.Load(frame) => List(JVMOp.load[Int](frame))

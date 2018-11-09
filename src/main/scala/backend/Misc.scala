@@ -1,6 +1,5 @@
 package backend
 
-import collection.JavaConverters._
 import java.io.{BufferedReader, BufferedWriter, File, FileWriter, InputStreamReader, _}
 import java.nio.file.Paths
 import java.util.Scanner
@@ -51,7 +50,6 @@ object FileUtil {
   }
 
   def runCommand(javaCommand: String, maybeWorkingDir: Option[File] = None): CommandResult[String] = {
-    println(s"Running command: $javaCommand")
     val process = maybeWorkingDir match {
       case None =>
         Runtime.getRuntime.exec(javaCommand)
@@ -73,7 +71,7 @@ object FileUtil {
     executor.submit(errorGobbler)
     val exitCode = process.waitFor
 
-    executor.shutdown
+    executor.shutdown()
     executor.awaitTermination(1, TimeUnit.SECONDS)
 
     CommandResult(exitCode == 0, stdout.toString, "")
@@ -114,7 +112,6 @@ class OutputDirectory(val directory: File, val filename: String) {
   }
 
   def filenameTrim: String = {
-    println(filename)
     filename.split("\\.")(0)
   }
 

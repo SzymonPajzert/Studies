@@ -2,7 +2,7 @@ package compiler
 
 import backend.{FileUtil, OutputDirectory}
 import org.scalatest.{FlatSpec, Matchers}
-import parser.FileEnumerator
+import parser.instant.FileEnumerator
 
 class StackOpCompilerSpec extends FlatSpec with Matchers {
   behavior of "Stack of compiler spec"

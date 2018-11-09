@@ -4,7 +4,7 @@ import backend.jvm.{JVMOp, JasminRunner}
 import backend.llvm.LlvmRunner
 import backend.{FileUtil, OutputDirectory}
 import org.scalatest.{FlatSpec, Matchers}
-import parser.FileEnumerator
+import parser.instant.FileEnumerator
 
 class ItegrationTest extends FlatSpec with Matchers {
   behavior of "Integration test"
