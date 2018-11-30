@@ -18,8 +18,14 @@ private class StreamGobbler(val inputStream: InputStream,
 }
 
 object FileUtil {
+  def mkdirRecur(directory: File): Boolean = {
+    if (!directory.exists) {
+      mkdirRecur(directory.getParentFile) && directory.mkdir()
+    } else true
+  }
+
   def saveToFile(content: String, file: File): Unit = {
-    file.getParentFile.mkdir()
+    assert(mkdirRecur(file.getParentFile), s"failed to create: ${file}")
     val writer: BufferedWriter = new BufferedWriter(new FileWriter(file))
     writer.write(content)
     writer.close()
@@ -49,7 +55,7 @@ object FileUtil {
     readFile(file)
   }
 
-  def runCommand(javaCommand: String, maybeWorkingDir: Option[File] = None): CommandResult[String] = {
+  def runCommand(javaCommand: String, directory: OutputDirectory, maybeWorkingDir: Option[File] = None): CommandResult[String] = {
     val process = maybeWorkingDir match {
       case None =>
         Runtime.getRuntime.exec(javaCommand)
@@ -58,35 +64,32 @@ object FileUtil {
     }
 
     val stdout = new StringBuilder
+    val stderr = new StringBuilder
 
     val stdoutGobbler = new StreamGobbler(process.getInputStream,
       (input) => stdout ++= "\n" + input)
 
     val errorGobbler = new StreamGobbler(process.getErrorStream,
-      (input) => System.err.println("exec error: " + input))
+      (input) => stderr ++= "\n" + input)
 
     val executor = new ScheduledThreadPoolExecutor(2)
 
     executor.execute(stdoutGobbler)
     executor.submit(errorGobbler)
-    val exitCode = process.waitFor
+    val exitCode = process.waitFor(10, TimeUnit.SECONDS)
 
     executor.shutdown()
-    executor.awaitTermination(1, TimeUnit.SECONDS)
+    executor.awaitTermination(10, TimeUnit.SECONDS)
 
-    CommandResult(exitCode == 0, stdout.toString, "")
+    CommandResult(exitCode, stdout.toString, stderr.toString)
   }
 
-  def runInst(command: String, maybeWorkingDir: Option[File] = None): CommandResult[List[Int]] = {
-    val result = runCommand(command, maybeWorkingDir)
-
-    val parsedStdout = ((for {
-      line <- result.stdout.split(10.toChar)
-    } yield {
-      if (line.isEmpty) None else Some(Integer.valueOf(line).intValue)
-    }) filter (_.nonEmpty) map (_.get)).toList
-
-    result.copy(stdout = parsedStdout)
+  def parseOut(out: String): List[String] = {
+    (for {
+      line <- out.split(10.toChar)
+      if line.nonEmpty
+    } yield line
+    ).toList
   }
 }
 
@@ -98,7 +101,6 @@ object OutputDirectory {
   }
 
   val rand = new Random
-
 
   def createTemporary: OutputDirectory = {
     val directoryCounter = rand.nextInt()

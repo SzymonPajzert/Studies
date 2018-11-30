@@ -8,8 +8,8 @@ import org.scalatest.{FlatSpec, Matchers}
 class StackOpToJVMSpec extends FlatSpec with Matchers {
   behavior of "Stack to JVM compiler"
 
-  def runStackCode(stackCode: StackOps.Code): List[Int] = {
-    val compiledJVM = StackOpToJVM.compile(stackCode)
+  def runStackCode(stackCode: StackOps.Code): List[String] = {
+    val Right(compiledJVM) = StackOpToJVM.compile(stackCode)
     JasminRunner.runCode(JVMOp.createMain("Main", JVMOp.Code(4, 3, compiledJVM.code)))
   }
 
@@ -22,7 +22,7 @@ class StackOpToJVMSpec extends FlatSpec with Matchers {
       StackOps.Print
     ), 3, 0)
 
-    assert(runStackCode(program) == List(3))
+    assert(runStackCode(program) == List("3"))
   }
 
   it should "compile program with loading" in {
@@ -39,7 +39,7 @@ class StackOpToJVMSpec extends FlatSpec with Matchers {
       StackOps.Print
     ), 3, 2)
 
-    assert(runStackCode(program) == List(3))
+    assert(runStackCode(program) == List("3"))
   }
 
 }

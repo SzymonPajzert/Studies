@@ -8,7 +8,8 @@ lazy val root = (project in file(".")).
       version      := "0.1.0-SNAPSHOT"
     )),
     name := "mrjp",
-    libraryDependencies ++= Seq(scalaTest % Test, mockito % Test)
+    libraryDependencies ++= Seq(scalaTest % Test, mockito % Test, scalaz)
   )
+
 
 mainClass in assembly := Some("Main")

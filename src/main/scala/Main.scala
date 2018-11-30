@@ -2,31 +2,34 @@ import java.io.File
 
 import backend.Directory
 import backend.jvm.{JVMOp, JasminRunner}
-import backend.llvm.{LLVM, LlvmRunner}
-import compiler.{Compiler, DirectoryToInstant, InstantToLlvm, InstantToStackOp, StackOpToJVM}
+import backend.llvm.LlvmRunner
+import compiler._
+import language.LLVM
+import parser.instant.InstantParser
+import parser.latte.LatteParser
 
 object Main extends App {
 
   val directory = Directory.fromFile(new File(args(1)))
 
   val saveJVM = new Compiler[JVMOp.Code, Unit] {
-    def compile(code: JVMOp.Code): Unit = {
+    def compile(code: JVMOp.Code): Either[List[CompileException], Unit] = {
       println("Compiling JVM")
-      JasminRunner.compile(JVMOp.createMain(directory.filenameTrim, code), directory)
+      Right(JasminRunner.compile(JVMOp.createMain(directory.filenameTrim, code), directory))
     }
   }
 
   val saveLLVM = new Compiler[LLVM.Code, Unit] {
-    def compile(code: LLVM.Code): Unit = {
+    def compile(code: LLVM.Code): Either[List[CompileException], Unit] = {
       println("Compiling LLVM")
-      LlvmRunner.compile(code, directory)
+      Right(LlvmRunner.compile(code, directory))
     }
   }
 
-  val compiler = args(0) match {
-    case "jvm" => DirectoryToInstant ~> InstantToStackOp ~> StackOpToJVM ~> saveJVM
-    case "llvm" => DirectoryToInstant ~> InstantToLlvm ~> saveLLVM
+  val compilers = args(0) match {
+    case "jvm" => compiler.withParser(InstantParser) ~> InstantToStackOp ~> StackOpToJVM ~> saveJVM
+    case "llvm" => compiler.withParser(LatteParser) ~> LatteToQuadCode ~> saveLLVM
   }
 
-  compiler compile directory
+  compilers compile directory
 }

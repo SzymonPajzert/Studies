@@ -1,23 +1,23 @@
 package compiler
 
+import language.LLVM
 import parser.instant
-import backend.llvm.LLVM
-import backend.llvm.LLVM.{Expression, Register}
 import parser.instant.{Instant, InstantProg}
 
+/*
 object InstantToLlvm extends Compiler[InstantProg, LLVM.Code] {
   case class CompilationState(tmpCounter: Int,
-                              currentSubstitutions: Map[String, Expression]) {
+                              currentSubstitutions: Map[String, LLVM.Expression]) {
     def getTmp: (LLVM.Register, CompilationState) = {
       (LLVM.Register(s"tmp$tmpCounter", LLVM.IntType),
         this.copy(tmpCounter = tmpCounter + 1))
     }
 
-    def identifyValue(identifier: String, value: Expression): CompilationState = {
+    def identifyValue(identifier: String, value: LLVM.Expression): CompilationState = {
       this.copy(currentSubstitutions = currentSubstitutions + (identifier -> value))
     }
 
-    def createRegister(identifier: String): (Register, CompilationState) = {
+    def createRegister(identifier: String): (LLVM.Register, CompilationState) = {
       val (tempRegister, newState) = getTmp
       (tempRegister, newState identifyValue (identifier, tempRegister))
     }
@@ -30,14 +30,14 @@ object InstantToLlvm extends Compiler[InstantProg, LLVM.Code] {
   }
   case class OneLine(code: LLVM.Code, state: CompilationState)
 
-  override def compile(code: InstantProg): LLVM.Code = {
-    (code foldLeft(List[LLVM.Instruction](), CompilationState(0, Map[String, Expression]()))) {
+  override def compile(code: InstantProg): Either[CompileException, LLVM.Code] = {
+    Right((code foldLeft(List[LLVM.Instruction](), CompilationState(0, Map[String, LLVM.Expression]()))) {
       (accumulator, line) => {
         val (generatedCode, currentSubstitutions) = accumulator
         val oneLine = compileLine(line, currentSubstitutions)
         (generatedCode ::: oneLine.code, oneLine.state)
       }
-    }._1
+    }._1)
   }
 
   def putIntoRegister(state: CompilationState,
@@ -104,3 +104,4 @@ object InstantToLlvm extends Compiler[InstantProg, LLVM.Code] {
     }
   }
 }
+*/

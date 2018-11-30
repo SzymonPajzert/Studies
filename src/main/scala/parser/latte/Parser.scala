@@ -2,36 +2,15 @@ package parser.latte
 
 import java.io.StringReader
 
-import collection.JavaConverters._
+import language.Type._
+import parser.{ParseError, Parser}
+
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
-trait Type
-case object IntType extends Type
-case object StringType extends Type
-case object BoolType extends Type
-case object VoidType extends Type
-case class FunctionType(returnType: Type, argsType: Seq[Type]) extends Type
-
-trait Expression
-case class FunctionCall(name: String, arguments: Seq[Expression]) extends Expression
-case class GetValue(identifier: String) extends Expression
-case class ConstValue[+T](value: T) extends Expression
-
-trait TopDefinition
-case class Function(signature: FunctionSignature, code: Block) extends TopDefinition
-case class FunctionSignature(identifier: String, returnType: Type, arguments: List[(String, Type)])
-
-trait Instruction
-case class Declaration(identifier: String, valueExpr: Option[Expression], typeValue: Type) extends Instruction
-case class Assignment(identifier: String, expr: Expression) extends Instruction
-case class BlockInstruction(block: Block) extends Instruction
-case class DiscardValue(expression: Expression) extends Instruction
-case class Return(value: Option[Expression]) extends Instruction
-case class IfThen(condition: Expression, thenInst: Instruction, elseOpt: Option[Instruction] = None) extends Instruction
-case class While(condition: Expression, instr: Instruction) extends Instruction
-
 object Transformations {
-  import latte.Absyn._
+  import latte.Absyn.{Type => AbsType, _}
+  import parser.latte.Latte._
 
   def const(i: scala.Int): Expression = ConstValue[scala.Int](i)
   def const(b: Boolean): Expression = ConstValue[Boolean](b)
@@ -131,18 +110,20 @@ object Transformations {
     item.accept(visitor, Unit)
   }
 
-  def instruction(instr: latte.Absyn.Stmt): Seq[parser.latte.Instruction] = {
-    val visitor = new Stmt.Visitor[Seq[parser.latte.Instruction], Any] {
-      type ReturnT = Seq[parser.latte.Instruction]
+  def instruction(instr: latte.Absyn.Stmt): List[Latte.Instruction] = {
+    val visitor = new Stmt.Visitor[List[Latte.Instruction], Any] {
+      type ReturnT = List[Latte.Instruction]
 
       override def visit(p: Empty, arg: Any): ReturnT = List()
 
       override def visit(p: BStmt, arg: Any): ReturnT = List(BlockInstruction(block(p.block_)))
 
-      override def visit(p: Decl, arg: Any): ReturnT = p.listitem_.asScala map (pItem => {
+      override def visit(p: Decl, arg: Any): ReturnT = (p.listitem_.asScala flatMap (pItem => {
         val item = extractItem(pItem)
-        Declaration(item._1, item._2, convertType(p.type_))
-      })
+        val declaration = Declaration(item._1, convertType(p.type_))
+        val maybeAssignment = item._2.toList map (value => Assignment(item._1, value))
+        declaration :: maybeAssignment
+      })).toList
 
       override def visit(p: Ass, arg: Any): ReturnT = List(Assignment(p.ident_, expression(p.expr_)))
 
@@ -168,7 +149,7 @@ object Transformations {
       )
 
       override def visit(p: latte.Absyn.While, arg: Any): ReturnT = List(
-        parser.latte.While(expression(p.expr_), BlockInstruction(instruction(p.stmt_))))
+        Latte.While(expression(p.expr_), BlockInstruction(instruction(p.stmt_))))
 
       override def visit(p: SExp, arg: Any): ReturnT = List(
         DiscardValue(expression(p.expr_)))
@@ -177,34 +158,34 @@ object Transformations {
     instr.accept(visitor, Unit)
   }
 
-  def block(block: latte.Absyn.Block): parser.latte.Block = {
+  def block(block: latte.Absyn.Block): Latte.Block = {
     block.accept((block, _: Any) => {
-      block.liststmt_.asScala flatMap instruction
+      (block.liststmt_.asScala flatMap instruction).toList
     }, Unit)
   }
 
-  def funType(functionType: Fun): parser.latte.Type = {
+  def funType(functionType: Fun): Type = {
     FunctionType(
       convertType(functionType.type_),
       functionType.listtype_.asScala map convertType)
   }
 
-  def convertType(typeValue: latte.Absyn.Type): parser.latte.Type = {
-    val visitor = new latte.Absyn.Type.Visitor[parser.latte.Type, Any] {
-      override def visit(p: Int, arg: Any): parser.latte.Type = IntType
-      override def visit(p: Str, arg: Any): parser.latte.Type = StringType
-      override def visit(p: Bool, arg: Any): parser.latte.Type = BoolType
-      override def visit(p: Void, arg: Any): parser.latte.Type = VoidType
-      override def visit(p: Fun, arg: Any): parser.latte.Type = funType(p)
+  def convertType(typeValue: latte.Absyn.Type): Type = {
+    val visitor = new latte.Absyn.Type.Visitor[Type, Any] {
+      override def visit(p: Int, arg: Any): Type = IntType
+      override def visit(p: Str, arg: Any): Type = StringType
+      override def visit(p: Bool, arg: Any): Type = BoolType
+      override def visit(p: Void, arg: Any): Type = VoidType
+      override def visit(p: Fun, arg: Any): Type = funType(p)
     }
 
     typeValue.accept(visitor, Unit)
   }
 
-  def arguments(args: latte.Absyn.ListArg): Seq[(String, parser.latte.Type)] = {
+  def arguments(args: latte.Absyn.ListArg): Seq[(String, Type)] = {
     args.asScala map (arg => {
-      val visitor = new Arg.Visitor[(String, parser.latte.Type), Any] {
-        override def visit(p: ArgCons, arg: Any): (String, parser.latte.Type) = {
+      val visitor = new Arg.Visitor[(String, Type), Any] {
+        override def visit(p: ArgCons, arg: Any): (String, Type) = {
           (p.ident_, convertType(p.type_))
         }
       }
@@ -215,7 +196,7 @@ object Transformations {
   def topDefinition(definition: TopDef): TopDefinition = {
     val visitor = new TopDef.Visitor[TopDefinition, Any] {
       override def visit(p: FnDef, arg: Any): TopDefinition =
-        parser.latte.Function(
+        Latte.Func(
           FunctionSignature(p.ident_, convertType(p.type_), arguments(p.listarg_).toList),
             block(p.block_))
     }
@@ -223,28 +204,26 @@ object Transformations {
     definition.accept(visitor, Unit)
   }
 
-  def program(latte: Program): Latte = {
-    val visitor = new Program.Visitor[Latte, Any] {
-      override def visit(p: ProgramCons, arg: Any): Latte = p.listtopdef_.asScala map topDefinition
+  def program(latte: Program): Latte.Code = {
+    val visitor = new Program.Visitor[Latte.Code, Any] {
+      override def visit(p: ProgramCons, arg: Any): Latte.Code = p.listtopdef_.asScala map topDefinition
     }
 
     latte.accept(visitor, Unit)
   }
 }
 
-object Parser {
-  case class ParseError(lineNumber: Int, near: String, errorMsg: String)
-
-  def parse(content: String): Either[Unit, ParseError] = {
+object LatteParser extends Parser[Latte.Code] {
+  def parse(content: String): Either[ParseError, Latte.Code] = {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
     try
     {
-      Left(Transformations.program(p.pProgram))
+      Right(Transformations.program(p.pProgram))
     }
     catch {
-      case e: Throwable =>  Right(ParseError(yylex.line_num(), yylex.buff(), e.getMessage))
+      case e: Throwable =>  Left(ParseError(yylex.line_num(), yylex.buff(), e.getMessage))
     }
   }
 }

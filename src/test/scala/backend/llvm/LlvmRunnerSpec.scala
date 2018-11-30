@@ -1,17 +1,22 @@
 package backend.llvm
 
 import backend.{FileMatchers, OutputDirectory}
+import language.LLVM
 import org.scalatest.{FlatSpec, Matchers}
+import language.Type._
 
 object Definitions {
-  def validCode: LLVM.Code = {
+  def validBlock: LLVM.Block = LLVM.Block(LLVM.FunctionId("main", IntType), {
     import LLVM._
 
-    List(
+    Vector(Subblock(Vector(
       AssignOp(Register("a", IntType), Add, 2, 3),
-      PrintInt(Register("a", IntType))
-    )
-  }
+      PrintInt(Register("a", IntType)),
+      Return(LLVM.Value("0", IntType))
+    )))
+  })
+
+  def validCode = LLVM.Code("", List(validBlock))
 }
 
 class LlvmRunnerSpec extends FlatSpec with Matchers with FileMatchers {
@@ -29,10 +34,10 @@ class LlvmRunnerSpec extends FlatSpec with Matchers with FileMatchers {
     outputDirectory.llvmTempExecutable should not be nonemptyFile
 
     val output = LlvmRunner.run(outputDirectory)
-    assert(output == List(5))
+    assert(output == List("5"))
   }
 
   it should "be able to just run" in {
-    assert(LlvmRunner.runCode(validCode) == List(5))
+    assert(LlvmRunner.runCode(validCode) == List("5"))
   }
 }

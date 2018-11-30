@@ -9,7 +9,7 @@ import backend.jvm.JVMOp.Block
 object StackOpToJVM extends Compiler[StackOps.Code, JVMOp.Code] {
   def compile(arithmetic: StackOps.Code) = {
     val jvmOps: JVMOp.Block = arithmetic.code flatMap translateOperator
-    JVMOp.Code(stackSize = arithmetic.stackSize, arithmetic.framesUsed + 1, jvmOps ::: List(JVMOp.Return))
+    Right(JVMOp.Code(stackSize = arithmetic.stackSize, arithmetic.framesUsed + 1, jvmOps ::: List(JVMOp.Return)))
   }
 
   def translateOperator(operator: StackOps): Block = {

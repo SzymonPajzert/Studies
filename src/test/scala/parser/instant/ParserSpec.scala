@@ -41,11 +41,11 @@ object FileEnumerator {
 class ParserSpec extends FlatSpec with Matchers {
   behavior of "Parser"
 
-  def nInstructions(parseResult: Parser.ParseResult, requestedSize: Int): Unit = {
+  def nInstructions(parseResult: InstantParser.ParseResult, requestedSize: Int): Unit = {
     parseResult match {
-      case Right(error) => fail(s"Should not be right: $error")
-      case Left(leftValue) if leftValue.lengthCompare(requestedSize) == 0 => Unit
-      case Left(leftValue) => fail(s"Unrecognized value $leftValue")
+      case Left(error) => fail(s"Should not be right: $error")
+      case Right(leftValue) if leftValue.lengthCompare(requestedSize) == 0 => Unit
+      case Right(leftValue) => fail(s"Unrecognized value $leftValue")
     }
   }
 
@@ -54,10 +54,10 @@ class ParserSpec extends FlatSpec with Matchers {
     it should s"compile file: $filename" in {
       val fileContent = FileUtil.readTestFile(filename)
 
-      val parseResult = Parser.parse(fileContent)
+      val parseResult = InstantParser.parse(fileContent)
       parseResult match {
-        case Left(_) => Unit
-        case Right(error) => fail(s"Right: $error")
+        case Right(_) => Unit
+        case Left(error) => fail(s"Right: $error")
       }
     }
   }

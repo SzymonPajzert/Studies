@@ -13,13 +13,17 @@ object JasminRunner extends BackendRunner[String] {
          |java
          | -jar /home/svp/Programming/mrjp/deps/jasmin.jar
          | -d ${outputDirectory.path}
-         | ${outputDirectory.jasminFile}""".stripMargin.replaceAll("[\n]", ""))
+         | ${outputDirectory.jasminFile}""".stripMargin.replaceAll("[\n]", ""),
+      outputDirectory)
   }
 
-  def run(outputDirectory: OutputDirectory): List[Int] = {
-    FileUtil.runInst(
+  def run(outputDirectory: OutputDirectory): List[String] = {
+    val commandResult = FileUtil.runCommand(
       s"java Main",
+      outputDirectory,
       Some(outputDirectory.path)
-    ).stdout
+    )
+
+    commandResult map FileUtil.parseOut stdout
   }
 }

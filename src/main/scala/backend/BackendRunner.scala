@@ -4,7 +4,9 @@ import java.io.File
 
 import scala.util.Random
 
-case class CommandResult[T](success: Boolean, stdout: T, stderr: String)
+case class CommandResult[T](success: Boolean, stdout: T, stderr: String) {
+  def map[B](f: T => B): CommandResult[B] = this.copy(stdout = f(stdout))
+}
 
 object CommandResult {
   def empty: CommandResult[String] = CommandResult[String](success = false, "", "")
@@ -14,7 +16,7 @@ object CommandResult {
 trait BackendRunner[Code] {
   val rand = new Random
 
-  def runCode(assemblyCode: Code): List[Int] = {
+  def runCode(assemblyCode: Code): List[String] = {
     val directoryCounter = rand.nextInt()
     val outputDirectory = OutputDirectory.create(new File(s"/tmp/mrjp$directoryCounter"))
 
@@ -24,5 +26,5 @@ trait BackendRunner[Code] {
   }
 
   def compile(code: Code, outputDirectory: OutputDirectory): CommandResult[String]
-  def run(outputDirectory: OutputDirectory): List[Int]
+  def run(outputDirectory: OutputDirectory): List[String]
 }

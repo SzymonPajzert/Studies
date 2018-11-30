@@ -2,7 +2,7 @@ package compiler
 
 import backend.{FileUtil, OutputDirectory}
 import org.scalatest.{FlatSpec, Matchers}
-import parser.instant.FileEnumerator
+import parser.instant.{FileEnumerator, InstantParser}
 
 class StackOpCompilerSpec extends FlatSpec with Matchers {
   behavior of "Stack of compiler spec"
@@ -13,7 +13,7 @@ class StackOpCompilerSpec extends FlatSpec with Matchers {
       val fileContent = FileUtil.readTestFile(filename)
       val directory = OutputDirectory.createTemporary.withSourceFile(filename, fileContent)
 
-      val stackOps = (DirectoryToInstant ~> InstantToStackOp) compile directory
+      val Right(stackOps) = (compiler.withParser(InstantParser) ~> InstantToStackOp) compile directory
 
       assert(stackOps.stackSize >= fileWithResult.stackDepth)
     }

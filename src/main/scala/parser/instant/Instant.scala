@@ -4,13 +4,19 @@ import java.io.{InputStreamReader, StringReader}
 
 import collection.JavaConverters._
 import instant.Absyn._
+import parser.{ParseError, Parser}
 import instant.{Yylex, parser}
 
 import scala.language.implicitConversions
 
-sealed trait Instant
-case class Assign(identifier: String, expr: Expr) extends Instant
-case class Print(expr: Expr) extends Instant
+sealed trait Instant { def toSource: String }
+case class Assign(identifier: String, expr: Expr) extends Instant {
+  override def toSource: String = s"$identifier = ${expr.toSource};"
+}
+
+case class Print(expr: Expr) extends Instant {
+  override def toSource: String = s"printInt(${expr.toSource});"
+}
 
 sealed trait Operation { def isCommutative: Boolean }
 case object Add extends Operation { val isCommutative = true }
@@ -18,10 +24,29 @@ case object Mul extends Operation { val isCommutative = true }
 case object Div extends Operation { val isCommutative = false }
 case object Sub extends Operation { val isCommutative = false }
 
-sealed trait Expr
-case class BinOp(left: Expr, op: Operation, right: Expr) extends Expr
-case class Integer(value: Int) extends Expr
-case class Value(identifier: String) extends Expr
+sealed trait Expr {
+  def toSource: String
+}
+case class BinOp(left: Expr, op: Operation, right: Expr) extends Expr {
+  override def toSource: String = {
+    val opStr = op match {
+      case Add => "+"
+      case Mul => "*"
+      case Div => "/"
+      case Sub => "-"
+    }
+
+    s"(${left.toSource}) $opStr (${right.toSource})"
+  }
+}
+
+case class Integer(value: Int) extends Expr {
+  override def toSource: String = value.toString
+}
+
+case class Value(identifier: String) extends Expr {
+  override def toSource: String = identifier
+}
 
 object Transformations {
   def expression(exp: Exp): Expr = {
@@ -66,25 +91,21 @@ object Transformations {
 }
 
 
-object Parser {
-  case class ParseError(lineNumber: Int, near: String, errorMsg: String)
-
+object InstantParser extends Parser[InstantProg] {
   def getYylex(input: String): Yylex = {
     new Yylex(new StringReader(input))
   }
 
-  type ParseResult = Either[InstantProg, ParseError]
-
-  def parse(input: String): ParseResult = {
+  def parse(input: String): Either[ParseError, InstantProg] = {
     val yylex = getYylex(input)
     val p = new parser(yylex)
 
     try
     {
-      Left(Transformations.program(p.pProgram))
+      Right(Transformations.program(p.pProgram))
     }
     catch {
-      case e: Throwable =>  Right(ParseError(yylex.line_num(), yylex.buff(), e.getMessage))
+      case e: Throwable =>  Left(ParseError(yylex.line_num(), yylex.buff(), e.getMessage))
     }
   }
 }
