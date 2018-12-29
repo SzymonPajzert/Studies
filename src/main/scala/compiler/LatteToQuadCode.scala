@@ -1,8 +1,8 @@
 package compiler
 
-import language.LLVM
+import compiler.LatteToQuadCode.transformType
+import language.{LLVM, Latte}
 import language.Type._
-import parser.latte.Latte
 
 import scalaz._
 import scalaz.Scalaz._
@@ -24,13 +24,13 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     _ <- put (state.copy(tmpCounter = tmpCounter + 1))
   } yield tmpCounter
 
-  def getConst: StateOf[String] = for {
+  def getConst(t : LLVMType = IntType): StateOf[LLVM.Register[t.type]] = for {
     counter <- increaseCounter
-  } yield s"tmp$counter"
+  } yield LLVM.constRegister(s"tmp$counter", t)
 
   def allocate(identifier: String, t: LLVMType): StateOf[Unit] = for {
     register <- getRegister(PointerType(t))
-    _ <- putLine(LLVM.AssignCode(register, s"alloca $t"))
+    _ <- putLine(LLVM.Assign(register, LLVM.alloca(t)))
     state <- get[CompilationState]
     _ <- put (state.copy(currentSubstitutions = state.currentSubstitutions + (identifier -> register)))
   } yield Unit
@@ -41,7 +41,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
   def getRegister(t : LLVMType = IntType): StateOf[LLVM.Register[t.type]] = for {
     tmpCounter <- increaseCounter
-  } yield LLVM.Register(s"tmp$tmpCounter", t)
+  } yield LLVM.register(s"tmp$tmpCounter", t)
 
 
   /** Creates in global code const with that value and returns pointer to its value
@@ -50,13 +50,12 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     * @return
     */
   def createStringConst(value: String): StateOf[LLVM.Register[PointerType]] = for {
-    constName <- getConst
-    arraySize = value.length + 1
-    arrayType = s"[$arraySize x i8]"
-    newLine = s"""@.$constName = private unnamed_addr constant $arrayType c"$value\\00""""
+    constName <- getConst(PointerType(CharType))
+    arrayType = ArrayType(CharType, value.length + 1)
+    newLine = s"""${constName.name} = private unnamed_addr constant $arrayType c"$value\\00""""
     _ <- modify[CompilationState] (state => state.copy(globalCode = state.globalCode + "\n" + newLine))
     register <- getRegister(PointerType(CharType))
-    _ <- putLine(LLVM.AssignCode(register, s"getelementptr $arrayType, $arrayType* @.$constName, i64 0, i64 0"))
+    _ <- putLine(LLVM.Assign(register, LLVM.getElementPtr(arrayType, constName)))
   } yield register
 
 
@@ -79,14 +78,17 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           register <- createStringConst(string.asInstanceOf[String])
         } yield register
       }
-      case Latte.ConstValue(value) => for {
-        register <- getRegister(transformType(expression.getType))
-        _ <- putLine(LLVM.AssignRegister(register, value.asInstanceOf[Int]))
-      } yield register
+      case Latte.ConstValue(value) => {
+        val typeT = transformType(expression.getType)
+        for {
+          register <- getRegister(typeT)
+          _ <- putLine(LLVM.Assign(register, LLVM.expression(LLVM.Value(value.toString, typeT))))
+        } yield register
+      }
       case Latte.GetValue(identifier) => for {
         valueLocation <- getLocation(identifier)
         tmpRegister <- getRegister(transformType(valueLocation.typeId.deref))
-        _ <- putLine(LLVM.AssignCode(tmpRegister, s"load ${valueLocation.typeId.deref}, ${valueLocation.typeId} ${valueLocation.name}"))
+        _ <- putLine(LLVM.Assign(tmpRegister, LLVM.load(valueLocation)))
       } yield tmpRegister
       case Latte.FunctionCall(primitiveName, arguments) if isPrimitiveName(primitiveName) => {
         val Seq(left, right) = arguments
@@ -112,7 +114,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           leftValue <- compileExpression(left)
           rightValue <- compileExpression(right)
           returnRegister <- getRegister(IntType)
-          _ <- putLine(LLVM.AssignCode(returnRegister, s"icmp sgt ${leftValue.typeId} ${leftValue.name}, ${rightValue.name}"))
+          _ <- putLine(LLVM.Assign(returnRegister, LLVM.icmpSgt(leftValue, rightValue)))
         } yield returnRegister
       }
 
@@ -165,13 +167,13 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         ifTrue <- createJumpPoint
         ifFalse <- createJumpPoint
 
-        _ <- putLine(LLVM.Jump(beginning))
+        _ <- putLine(LLVM.jump(beginning))
         _ <- putJumpPoint(beginning)
         expressionRegister <- compileExpression(condition)
         _ <- putLine(LLVM.JumpIf(expressionRegister, ifTrue, ifFalse))
         _ <- putJumpPoint(ifTrue)
         _ <- addOneLine(instructions)
-        _ <- putLine(LLVM.Jump(beginning))
+        _ <- putLine(LLVM.jump(beginning))
         _ <- putJumpPoint(ifFalse)
       } yield Unit
       case Latte.BlockInstruction(instructions) => for {

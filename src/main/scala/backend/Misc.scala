@@ -1,3 +1,5 @@
+// reviewed: 2018.12.29
+
 package backend
 
 import java.io.{BufferedReader, BufferedWriter, File, FileWriter, InputStreamReader, _}
@@ -8,6 +10,11 @@ import java.util.function.Consumer
 
 import scala.util.Random
 
+/**
+  * Processes output by given stream to consumers
+  * @param inputStream Source of the data
+  * @param consumers Consumers of the data
+  */
 private class StreamGobbler(val inputStream: InputStream,
                             val consumers: Consumer[String]*) extends Runnable {
   override def run(): Unit = {
@@ -45,22 +52,16 @@ object FileUtil {
     result.toString
   }
 
-  def existsTestFile(filename: String): Boolean = {
-    val file = new File("/home/svp/Programming/mrjp/src/test/resources/" + filename)
-    file.exists
-  }
+  def testFile(filename: String): File = new File("/home/svp/Programming/mrjp/src/test/resources/" + filename)
 
-  def readTestFile(filename: String): String = {
-    val file = new File("/home/svp/Programming/mrjp/src/test/resources/" + filename)
-    readFile(file)
-  }
 
-  def runCommand(javaCommand: String, directory: OutputDirectory, maybeWorkingDir: Option[File] = None): CommandResult[String] = {
+
+  def runCommand(command: String, directory: OutputDirectory, maybeWorkingDir: Option[File] = None): CommandResult[String] = {
     val process = maybeWorkingDir match {
       case None =>
-        Runtime.getRuntime.exec(javaCommand)
+        Runtime.getRuntime.exec(command)
       case Some(workingDir) =>
-        Runtime.getRuntime.exec(javaCommand, Array[String](), workingDir)
+        Runtime.getRuntime.exec(command, Array[String](), workingDir)
     }
 
     val stdout = new StringBuilder
@@ -109,7 +110,7 @@ object OutputDirectory {
 }
 
 class OutputDirectory(val directory: File, val filename: String) {
-  private def subfile(filename: String): File = {
+  def subfile(filename: String): File = {
     new File(Paths.get(directory.getCanonicalPath, filename).toString)
   }
 

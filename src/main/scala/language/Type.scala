@@ -17,6 +17,9 @@ object Type {
   case object CharType extends ValueType {
     override def toString: String = "i8"
   }
+  case class ArrayType(eltType: Type, size: Int) extends ValueType {
+    override def toString: String = s"[$size x $eltType]"
+  }
 
   case object StringType extends Type
   case object BoolType extends ValueType

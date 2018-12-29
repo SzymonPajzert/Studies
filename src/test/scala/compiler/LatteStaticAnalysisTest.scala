@@ -1,8 +1,8 @@
 package compiler
 
+import language.Latte
 import language.Type.IntType
 import org.scalatest.{FlatSpec, Matchers}
-import parser.latte.Latte
 
 class LatteStaticAnalysisTest extends FlatSpec with Matchers {
   behavior of "LatteStaticAnalysisTest"

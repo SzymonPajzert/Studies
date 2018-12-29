@@ -10,8 +10,8 @@ object Definitions {
     import LLVM._
 
     Vector(Subblock(Vector(
-      AssignOp(Register("a", IntType), Add, 2, 3),
-      PrintInt(Register("a", IntType)),
+      AssignOp(register("a", IntType), Add, 2, 3),
+      PrintInt(register("a", IntType)),
       Return(LLVM.Value("0", IntType))
     )))
   })

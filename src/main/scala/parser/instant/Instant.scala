@@ -96,7 +96,7 @@ object InstantParser extends Parser[InstantProg] {
     new Yylex(new StringReader(input))
   }
 
-  def parse(input: String): Either[ParseError, InstantProg] = {
+  def parse(input: String): Either[List[ParseError], InstantProg] = {
     val yylex = getYylex(input)
     val p = new parser(yylex)
 
@@ -105,7 +105,7 @@ object InstantParser extends Parser[InstantProg] {
       Right(Transformations.program(p.pProgram))
     }
     catch {
-      case e: Throwable =>  Left(ParseError(yylex.line_num(), yylex.buff(), e.getMessage))
+      case e: Throwable =>  Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
     }
   }
 }

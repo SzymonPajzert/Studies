@@ -1,8 +1,8 @@
-package parser.latte
+package language
 
-
-object Latte {
+object Latte extends Language {
   import language.Type._
+  LanguageRegister.register(Latte)
 
   type Code = Seq[TopDefinition]
   type Block = List[Instruction]

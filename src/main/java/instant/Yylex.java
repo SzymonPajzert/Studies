@@ -3,6 +3,7 @@ package instant;
 import java_cup.runtime.*;
 
 
+@SuppressWarnings("ConstantConditions")
 public class Yylex implements java_cup.runtime.Scanner {
 	private final int YY_BUFFER_SIZE = 512;
 	private final int YY_F = -1;

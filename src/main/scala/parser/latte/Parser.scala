@@ -2,6 +2,7 @@ package parser.latte
 
 import java.io.StringReader
 
+import language.Latte
 import language.Type._
 import parser.{ParseError, Parser}
 
@@ -10,7 +11,7 @@ import scala.language.implicitConversions
 
 object Transformations {
   import latte.Absyn.{Type => AbsType, _}
-  import parser.latte.Latte._
+  import language.Latte._
 
   def const(i: scala.Int): Expression = ConstValue[scala.Int](i)
   def const(b: Boolean): Expression = ConstValue[Boolean](b)
@@ -214,7 +215,7 @@ object Transformations {
 }
 
 object LatteParser extends Parser[Latte.Code] {
-  def parse(content: String): Either[ParseError, Latte.Code] = {
+  def parse(content: String): Either[List[ParseError], Latte.Code] = {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
@@ -223,7 +224,7 @@ object LatteParser extends Parser[Latte.Code] {
       Right(Transformations.program(p.pProgram))
     }
     catch {
-      case e: Throwable =>  Left(ParseError(yylex.line_num(), yylex.buff(), e.getMessage))
+      case e: Throwable =>  Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
     }
   }
 }

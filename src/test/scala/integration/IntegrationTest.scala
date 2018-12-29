@@ -1,9 +1,10 @@
 package integration
 
+import compiler.Compiler
 import backend.OutputDirectory
 import backend.llvm.LlvmRunner
 import org.scalatest.{FlatSpec, Matchers}
-import parser.latte.{FileEnumerator, LatteParser}
+import parser.latte.LatteParser
 
 class IntegrationTest extends FlatSpec with Matchers {
   behavior of "Integration test"
@@ -11,7 +12,10 @@ class IntegrationTest extends FlatSpec with Matchers {
   for (fileWithResult <- FileEnumerator.getWithResult) {
 
     val llvmCompiler =
-      compiler.withParser(LatteParser) ~> compiler.LatteToQuadCode
+      Compiler
+        .debug("parser", LatteParser)
+        .nextStage("staticAnalysis", compiler.LatteStaticAnalysis)
+        .nextStage("quad", compiler.LatteToQuadCode)
 
     val directory = OutputDirectory.createTemporary.withSourceFile(
       fileWithResult.filename, fileWithResult.fileContent)
@@ -19,10 +23,10 @@ class IntegrationTest extends FlatSpec with Matchers {
     println(directory.directory)
 
     it should s"return good result in LLVM for file ${fileWithResult.filename} in ${directory.directory}" in {
-      val Right(llvmCode) = llvmCompiler compile directory
-
-      LlvmRunner.compile(llvmCode, directory)
-      assert(LlvmRunner.run(directory) === fileWithResult.expectedResult)
+      assert((for {
+        llvmCode <- llvmCompiler compile directory
+        _ = LlvmRunner.compile(llvmCode, directory)
+      } yield LlvmRunner.run(directory)) === fileWithResult.expectedResult)
     }
   }
 }

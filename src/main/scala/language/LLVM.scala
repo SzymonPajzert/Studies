@@ -2,10 +2,13 @@ package language
 
 import java.io.File
 
+import language.Type.PointerType
+
 import scala.language.implicitConversions
 
 object LLVM extends Language {
   import language.Type.{LLVMType => Type, IntType, ValueType, VoidType}
+  LanguageRegister.register(LLVM)
 
   case class Code(globalCode: String, blocks: List[Block])
   case class FunctionId(name: String, returnType: Type)
@@ -15,18 +18,27 @@ object LLVM extends Language {
   case class JumpPoint(name: String) extends CodeBlock
   case class Subblock(instructions: Vector[Instruction]) extends CodeBlock
 
-
   sealed trait Expression {
     def name: String
     def typeId: Type
+    def isConstTrue: Boolean = false
   }
 
   implicit def intToValue(int: Int): Expression = Value(Integer.toString(int), IntType)
   def value(int: Int): Value = Value(Integer.toString(int), IntType)
-  case class Value(name: String, typeId: Type) extends Expression
-  case class Register[+T <: Type](value: String, typeId: Type) extends Expression {
-    def name: String = s"%$value"
+
+  case object ConstTrue extends Expression {
+    override def isConstTrue: Boolean = true
+    override def name: String = ???
+    override def typeId: Type = ???
   }
+  case class Value(name: String, typeId: Type) extends Expression
+  class Register[+T <: Type](val value: String, val typeId: Type, val deref: String) extends Expression {
+    def name: String = s"${deref}${value}"
+  }
+
+  def register[T <: Type](value: String, typeId: Type): Register[T] = new Register(value, typeId, "%")
+  def constRegister[T <: Type](value: String, typeId: Type): Register[T] = new Register(value, typeId, "@.")
 
   type RegisterT = Register[Type]
   type ValueRegister = Register[ValueType]
@@ -37,11 +49,33 @@ object LLVM extends Language {
   case object Div extends Operation { val name = "sdiv" }
   case object Sub extends Operation { val name = "sub" }
 
+  def failJumpPoint: JumpPoint = JumpPoint("fail")
+  def jump(point: JumpPoint) = JumpIf(ConstTrue, point, failJumpPoint)
+
+  trait Func[+T <: Type] {
+    def getLine: String
+  }
+
+  def getElementPtr[T <: Type](elementType: Type, pointer: Register[T]): Func[T] = new Func[T] {
+    override def getLine: String = s"getelementptr ${elementType}, ${PointerType(elementType)} ${pointer.name}, i32 0, i32 0"
+  }
+
+  def alloca(t: Type): Func[t.type] = new Func[t.type] {
+    override def getLine: String = s"alloca $t"
+  }
+  def load[T <: Type](valueLocation: Register[T]): Func[T] = new Func[T] {
+    override def getLine: String = s"load ${valueLocation.typeId.deref}, ${valueLocation.typeId} ${valueLocation.name}"
+  }
+  def icmpSgt(left: Expression, right: Expression): Func[Nothing] = new Func[Nothing] {
+    override def getLine: String = s"icmp sgt ${left.typeId} ${left.name}, ${right.name}"
+  }
+  def expression(expr: Expression): Func[Nothing] = new Func[Nothing] {
+    override def getLine: String = s"add i32 0, ${expr.name}"
+  }
+
   sealed trait Instruction
-  case class Jump(place: JumpPoint) extends Instruction
   case class JumpIf(expression: Expression, ifTrue: JumpPoint, ifFalse: JumpPoint) extends Instruction
-  case class AssignCode(destination: RegisterT, code: String) extends Instruction
-  case class AssignRegister(destination: RegisterT, source: Int) extends Instruction
+  case class Assign[T <: Type](destination: Register[T], function: Func[T]) extends Instruction
   case class AssignFuncall(destination: RegisterT, functionId: FunctionId, args: List[Expression]) extends Instruction
   case class AssignOp(destination: RegisterT, op: Operation, left: Expression, right: Expression) extends Instruction
   case class PrintInt(expression: Expression) extends Instruction
@@ -60,16 +94,14 @@ object LLVM extends Language {
 
   def serializeInstruction(instruction: Instruction): String = instruction match {
     case Literal(code) => code
-    case Jump(place) =>
-      s"br label %${place.name}"
+    case JumpIf(expression, ifTrue, ifFalse) if expression.isConstTrue =>
+      s"br label %${ifTrue.name}"
     case JumpIf(expression, ifTrue, ifFalse) =>
       s"br i1 ${expression.name}, label %${ifTrue.name}, label %${ifFalse.name}"
-    case AssignCode(destination, code) => s"${destination.name} = $code"
-    case AssignFuncall(destination, functionId, arguments) if functionId.returnType == VoidType =>
+    case Assign(destination, code) => s"${destination.name} = ${code.getLine}"
+    case AssignFuncall(_, functionId, arguments) if functionId.returnType == VoidType =>
       s"call ${functionId.returnType} @${functionId.name}(${convertArgs(arguments)})"
     case AssignFuncall(destination, functionId, arguments) => s"${destination.name} = call ${functionId.returnType} @${functionId.name}(${convertArgs(arguments)})"
-    case AssignRegister(destination, source) =>
-      s"${destination.name} = add ${source.typeId} 0, ${source.name}"
     case AssignOp(destination, op, left, right) =>
       s"${destination.name} = ${op.name} ${destination.typeId} ${left.name}, ${right.name}"
     case PrintInt(expression) =>
