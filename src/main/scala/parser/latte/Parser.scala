@@ -239,7 +239,11 @@ object LatteParser extends Parser[Latte.Code] {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
-    Right(Transformations.program(p.pProgram))
+    try {
+      Right(Transformations.program(p.pProgram))
+    } catch {
+      case e: Throwable => Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
+    }
     // Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
   }
 }

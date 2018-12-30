@@ -1,0 +1,16 @@
+int[] getLength(int x) {
+    int[] res = new int[x];
+
+    for(int i = 0; i < x; i++) {
+        res[i] = i;
+    }
+
+    return res;
+}
+
+int main () {
+    int[] a = getLength(5);
+
+    for (int x : a)
+        printInt(x);
+}

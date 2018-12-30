@@ -78,6 +78,10 @@ ELitTrue.    Expr6 ::= "true" ;
 
 ELitFalse.   Expr6 ::= "false" ;
 
+EField       Expr6 ::= Expr "." Ident ;
+
+EMethod      Expr6 ::= Expr "." Ident "(" [Expr] ")" ;
+
 EArrAcc.     Expr6 ::= Expr "[" Expr "]" ;
 
 EApp.        Expr6 ::= Ident "(" [Expr] ")" ;
@@ -99,6 +103,7 @@ ERel.        Expr2 ::= Expr2 RelOp Expr3 ;
 EAnd.        Expr1 ::= Expr2 "&&" Expr1 ;
 
 EOr.         Expr ::= Expr1 "||" Expr ;
+
 
 
 

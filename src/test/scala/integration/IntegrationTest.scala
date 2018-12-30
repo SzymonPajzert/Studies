@@ -26,12 +26,12 @@ class IntegrationTest extends FlatSpec with Matchers {
       val llvmCodeOrError = llvmCompiler compile directory
 
       llvmCodeOrError match {
-        case Left(exceptions) => assert(Left(exceptions) == fileWithResult.expectedResult)
+        case Left(exceptions) => assert(Left(exceptions) == fileWithResult.expectedResult.get)
         case Right(llvmCode) => {
           val result = LlvmRunner.compile(llvmCode, directory)
           if(result.success) {
             println(directory.directory)
-            assert(Right(LlvmRunner.run(directory)) == fileWithResult.expectedResult)
+            assert(Right(LlvmRunner.run(directory)) == fileWithResult.expectedResult.get)
           } else {
             fail(result.stdout ++ result.stderr)
           }
