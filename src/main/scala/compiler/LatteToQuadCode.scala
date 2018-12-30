@@ -1,14 +1,12 @@
 package compiler
 
-import compiler.LatteToQuadCode.transformType
-import language.LLVM.RegisterT
-import language.Latte.{ArrayAccess, Expression}
-import language.{LLVM, Latte}
+// import language.LLVM.RegisterT
+// import language.Latte.{ArrayAccess, Expression}
 import language.Type._
+import language.{LLVM, Latte}
 
-import scalaz._
 import scalaz.Scalaz._
-import scalaz.State
+import scalaz.{State, _}
 
 object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   case class CompilationState(globalCode: String = "",
@@ -70,7 +68,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     case BoolType => BoolType
     case a: PointerType => a
     case StringType => PointerType(CharType)
-    case ArrayType(t, _) => PointerType(t)
+    case ArrayType(t, _) => PointerType(transformType(t))
   }
 
   def isIcmp(primitiveName: String): Option[Boolean] = primitiveName match {
@@ -94,19 +92,19 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     * @param arrayAccess Expression representing array access
     * @return Register of type (T*)
     */
-  def calculateArrayAddress(arrayAccess: ArrayAccess): StateOf[LLVM.RegisterT] = {
+  def calculateArrayAddress(arrayAccess: Latte.ArrayAccess): StateOf[LLVM.RegisterT] = {
     arrayAccess match {
       case Latte.ArrayAccess(Latte.GetValue(array), element) =>
         for {
-          valueLocation <- getRegister(PointerType(IntType))
           arrayLocation <- getLocation(array)      // t**
           arrayPtr <- loadRegister(arrayLocation)  // t*
+          valueLocation <- getRegister(transformType(arrayLocation.typeId.deref))
 
           index <- compileExpression(element)
           _ <- putLine(
             LLVM.Assign(
               valueLocation,
-              LLVM.getElementPtr(IntType, arrayPtr, List(index))))
+              LLVM.getElementPtr(transformType(arrayPtr.typeId.deref), arrayPtr, List(index))))
         } yield valueLocation
     }
   }
@@ -155,9 +153,9 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         } yield returnRegister
       }
 
-      case Latte.ArrayCreation(t, size) => for {
-        returnRegister <- getRegister(PointerType(IntType))
-        _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(IntType, Some(size))))
+      case Latte.ArrayCreation(elementType, size) => for {
+        returnRegister <- getRegister(PointerType(transformType(elementType)))
+        _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(transformType(elementType), Some(size))))
       } yield returnRegister
 
       case Latte.FunctionCall(primitiveName, arguments) if isIcmp(primitiveName).isDefined => {
@@ -208,7 +206,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     * @param value Expression to be calculated
     * @return State of changed source code
     */
-  def calculateExpressionIntoRegister(location: RegisterT, value: Expression): StateOf[Unit] = for {
+  def calculateExpressionIntoRegister(location: LLVM.RegisterT, value: Latte.Expression): StateOf[Unit] = for {
     expression <- compileExpression(value)
     _ <- putLine(LLVM.Literal(s"store ${expression.typeId} ${expression.name}, ${location.typeId} ${location.name}"))
   } yield Unit
@@ -220,7 +218,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         location <- getLocation(identifier)
         _ <- calculateExpressionIntoRegister(location, value)
       } yield Unit
-      case Latte.Assignment(arrayAccess: ArrayAccess, value) => for {
+      case Latte.Assignment(arrayAccess: Latte.ArrayAccess, value) => for {
         location <- calculateArrayAddress(arrayAccess)
         _ <- calculateExpressionIntoRegister(location, value)
       } yield Unit
