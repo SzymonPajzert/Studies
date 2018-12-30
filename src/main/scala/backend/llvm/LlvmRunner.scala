@@ -9,16 +9,19 @@ import scala.language.{implicitConversions, postfixOps}
 
 object LlvmRunner extends BackendRunner[LLVM.Code] {
   override def compile(code: LLVM.Code, outputDirectory: OutputDirectory): CommandResult[String] = {
-    FileUtil.saveToFile(LLVM.serializeCode(code), outputDirectory.llvmFile)
+    implicit val runner = FileUtil.commandRunner
+    import FileUtil.Interactive._
 
-    FileUtil.runCommand(
+    saveToFile(LLVM.serializeCode(code), outputDirectory.llvmFile)
+
+    runCommand(
       s"""
          |llvm-as
          | -o ${outputDirectory.llvmTempExecutable}
          | ${outputDirectory.llvmFile}""".stripMargin.replaceAll("[\n]", ""),
       outputDirectory)
 
-    FileUtil.runCommand(
+    runCommand(
       s"""
          |llvm-link
          | -o ${outputDirectory.llvmExecutable}
@@ -27,7 +30,9 @@ object LlvmRunner extends BackendRunner[LLVM.Code] {
       outputDirectory
     )
 
-    FileUtil.runCommand(s"rm ${outputDirectory.llvmTempExecutable}", outputDirectory)
+    runCommand(s"rm ${outputDirectory.llvmTempExecutable}", outputDirectory)
+
+    runner.finish
   }
 
   override def run(outputDirectory: OutputDirectory): List[String] = {

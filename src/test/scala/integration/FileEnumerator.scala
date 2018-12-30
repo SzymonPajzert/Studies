@@ -19,6 +19,10 @@ object FileEnumerator {
 
 
   def getWithResult: List[Test] = List(
+    // TODO multidimenstional arrays
+    positiveTest("latte/pos/array_access.latte", List("1")),
+    positiveTest("latte/pos/array_assign.latte", List()),
+    positiveTest("latte/pos/array_loop.latte", List("1", "2", "3")),
     positiveTest("latte/pos/assign_complex_expression.latte", List("4")),
     positiveTest("latte/pos/hiding.latte", List("1", "3")),
     positiveTest("latte/pos/loop.latte", List(

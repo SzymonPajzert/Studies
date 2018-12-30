@@ -1,8 +1,8 @@
 package integration
 
-import compiler.Compiler
 import backend.OutputDirectory
 import backend.llvm.LlvmRunner
+import compiler.Compiler
 import org.scalatest.{FlatSpec, Matchers}
 import parser.latte.LatteParser
 
@@ -23,10 +23,20 @@ class IntegrationTest extends FlatSpec with Matchers {
     println(directory.directory)
 
     it should s"return good result in LLVM for file ${fileWithResult.filename} in ${directory.directory}" in {
-      assert((for {
-        llvmCode <- llvmCompiler compile directory
-        _ = LlvmRunner.compile(llvmCode, directory)
-      } yield LlvmRunner.run(directory)) === fileWithResult.expectedResult)
+      val llvmCodeOrError = llvmCompiler compile directory
+
+      llvmCodeOrError match {
+        case Left(exceptions) => assert(Left(exceptions) == fileWithResult.expectedResult)
+        case Right(llvmCode) => {
+          val result = LlvmRunner.compile(llvmCode, directory)
+          if(result.success) {
+            println(directory.directory)
+            assert(Right(LlvmRunner.run(directory)) == fileWithResult.expectedResult)
+          } else {
+            fail(result.stdout ++ result.stderr)
+          }
+        }
+      }
     }
   }
 }

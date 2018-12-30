@@ -49,7 +49,15 @@ object LatteStaticAnalysis extends Compiler[Latte.Code, Latte.Code] {
         currentState <- get[Variables]
         argumentsC = mapM(arguments.toList, runOn(compileExpr, currentState))
       } yield argumentsC map (a => Latte.FunctionCall(functionName, a): Latte.Expression)
-      case _ => state(\/-(expression))
+      case Latte.ConstValue(_) => state(\/-(expression))
+      case Latte.ArrayCreation(_, _) => state(\/-(expression))
+      case Latte.ArrayAccess(Latte.GetValue(name), index) => for {
+        newNameE <- getVariable(name)
+        newIndexE <- compileExpr(index)
+      } yield for {
+        newName <- newNameE
+        newIndex <- newIndexE
+      } yield Latte.ArrayAccess(Latte.GetValue(newName), newIndex)
     }
   }
 
@@ -76,7 +84,17 @@ object LatteStaticAnalysis extends Compiler[Latte.Code, Latte.Code] {
     case Latte.Declaration(name, typeDecl) => for {
       variableNameC <- newVariable(name)
     } yield variableNameC map (v => Latte.Declaration(v, typeDecl))
-    case Latte.Assignment(name, expression) => for {
+    case Latte.Assignment(Latte.ArrayAccess(Latte.GetValue(name), indexE), expression) => for {
+      indexC <- compileExpr(indexE)
+      nameC <- getVariable(name)
+      expressionC <- compileExpr(expression)
+      // TODO check if those nests work
+    } yield for {
+      e <- expressionC
+      n <- nameC
+      i <- indexC
+    } yield Latte.Assignment(Latte.ArrayAccess(Latte.GetValue(n), i), e)
+    case Latte.Assignment(Latte.Variable(name), expression) => for {
       nameC <- getVariable(name)
       expressionC <- compileExpr(expression)
       // TODO check if those nests work

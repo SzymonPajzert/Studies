@@ -1,5 +1,7 @@
 package language
 
+import scala.language.implicitConversions
+
 object Latte extends Language {
   import language.Type._
   LanguageRegister.register(Latte)
@@ -23,6 +25,12 @@ object Latte extends Language {
       case _ => VoidType
     }
   }
+  case class ArrayAccess(array: Expression, element: Expression) extends Expression with Location
+  case class ArrayCreation(typeT: Type, size: Int) extends Expression
+
+  trait Location
+  case class Variable(identifier: String) extends Location
+  implicit def namesAreVariables(identifier: String): Variable = Variable(identifier)
 
   trait TopDefinition
   case class Func(signature: FunctionSignature, code: Block) extends TopDefinition
@@ -31,7 +39,7 @@ object Latte extends Language {
 
   trait Instruction
   case class Declaration(identifier: String, typeValue: Type) extends Instruction
-  case class Assignment(identifier: String, expr: Expression) extends Instruction
+  case class Assignment(location: Location, expr: Expression) extends Instruction
   case class BlockInstruction(block: Block) extends Instruction
   case class DiscardValue(expression: Expression) extends Instruction
   case class Return(value: Option[Expression]) extends Instruction

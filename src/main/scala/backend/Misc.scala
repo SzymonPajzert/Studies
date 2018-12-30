@@ -25,6 +25,37 @@ private class StreamGobbler(val inputStream: InputStream,
 }
 
 object FileUtil {
+  object Interactive {
+    def saveToFile[T](content: String, file: File)
+                     (implicit runner: Runner): Unit = {
+      if(runner.lastFailed.isEmpty) {
+        FileUtil.saveToFile(content, file)
+      }
+    }
+
+    def runCommand[T](command: String, directory: OutputDirectory, maybeWorkingDir: Option[File] = None)
+                     (implicit runner: Runner): Unit = {
+      if(runner.lastFailed.isEmpty) {
+        val result = FileUtil.runCommand(command, directory, maybeWorkingDir)
+        if(!result.success) {
+          runner.lastFailed = Some(result)
+        }
+      }
+    }
+
+  }
+
+  class Runner(var lastFailed: Option[CommandResult[String]]) {
+    def finish: CommandResult[String] = lastFailed match {
+      case None => CommandResult[String](true, null, "")
+      case Some(a) => a
+    }
+
+  }
+
+  def commandRunner: Runner = new Runner(None)
+
+
   def mkdirRecur(directory: File): Boolean = {
     if (!directory.exists) {
       mkdirRecur(directory.getParentFile) && directory.mkdir()
@@ -77,12 +108,13 @@ object FileUtil {
 
     executor.execute(stdoutGobbler)
     executor.submit(errorGobbler)
-    val exitCode = process.waitFor(10, TimeUnit.SECONDS)
+    val terminated = process.waitFor(10, TimeUnit.SECONDS)
+    val exitCode = process.waitFor()
 
     executor.shutdown()
     executor.awaitTermination(10, TimeUnit.SECONDS)
 
-    CommandResult(exitCode, stdout.toString, stderr.toString)
+    CommandResult(terminated && exitCode == 0, stdout.toString, stderr.toString)
   }
 
   def parseOut(out: String): List[String] = {

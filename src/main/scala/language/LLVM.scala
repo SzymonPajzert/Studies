@@ -56,12 +56,22 @@ object LLVM extends Language {
     def getLine: String
   }
 
-  def getElementPtr[T <: Type](elementType: Type, pointer: Register[T]): Func[T] = new Func[T] {
-    override def getLine: String = s"getelementptr ${elementType}, ${PointerType(elementType)} ${pointer.name}, i32 0, i32 0"
+  // TODO it should check types of the incomming registers
+  def getElementPtr[T <: Type](elementType: Type,
+                               pointer: Register[T],
+                               indices: List[Expression] = List(Value("0", IntType), Value("0", IntType))): Func[T] = new Func[T] {
+    override def getLine: String = {
+      val accessTypes = s"$elementType, ${PointerType(elementType)}"
+      val indicesStr = (indices map (index => s"${index.typeId} ${index.name}")).mkString(", ")
+      s"getelementptr $accessTypes ${pointer.name}, $indicesStr"
+    }
   }
 
-  def alloca(t: Type): Func[t.type] = new Func[t.type] {
-    override def getLine: String = s"alloca $t"
+  def alloca(t: Type, size: Option[Int] = None): Func[t.type] = new Func[t.type] {
+    override def getLine: String = size match {
+      case None => s"alloca $t"
+      case Some(s) => s"alloca $t, i32 $s"
+    }
   }
   def load[T <: Type](valueLocation: Register[T]): Func[T] = new Func[T] {
     override def getLine: String = s"load ${valueLocation.typeId.deref}, ${valueLocation.typeId} ${valueLocation.name}"
@@ -98,7 +108,7 @@ object LLVM extends Language {
       s"br label %${ifTrue.name}"
     case JumpIf(expression, ifTrue, ifFalse) =>
       s"br i1 ${expression.name}, label %${ifTrue.name}, label %${ifFalse.name}"
-    case Assign(destination, code) => s"${destination.name} = ${code.getLine}"
+    case Assign(destination, code) => s"${destination.name} = ${code.getLine}  ; ${destination.typeId}"
     case AssignFuncall(_, functionId, arguments) if functionId.returnType == VoidType =>
       s"call ${functionId.returnType} @${functionId.name}(${convertArgs(arguments)})"
     case AssignFuncall(destination, functionId, arguments) => s"${destination.name} = call ${functionId.returnType} @${functionId.name}(${convertArgs(arguments)})"
@@ -118,7 +128,7 @@ object LLVM extends Language {
   def serializeBlock(block: Block): String = {
     s"""
        |define ${block.funcId.returnType} @${block.funcId.name}() {
-       |  ${(block.code map serializeCodeBlock).mkString("\n")}
+       |${(block.code map serializeCodeBlock).mkString("\n")}
        |}""".stripMargin
   }
 
@@ -127,7 +137,9 @@ object LLVM extends Language {
        |declare void @printInt(i32)
        |declare void @printString(i8*)
        |
+       |; begin global section
        |${code.globalCode}
+       |; end global section
        |
        |${(code.blocks map serializeBlock).mkString("\n\n")}
     """.stripMargin

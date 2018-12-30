@@ -10,8 +10,8 @@ import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 object Transformations {
-  import latte.Absyn.{Type => AbsType, _}
   import language.Latte._
+  import latte.Absyn.{Type => AbsType, _}
 
   def const(i: scala.Int): Expression = ConstValue[scala.Int](i)
   def const(b: Boolean): Expression = ConstValue[Boolean](b)
@@ -96,6 +96,12 @@ object Transformations {
 
       override def visit(p: EOr, arg: Any): Expression = FunctionCall(
         "bool_or", List(expression(p.expr_1), expression(p.expr_2)))
+
+      // TODO change to method call on object array
+      override def visit(p: EArrAcc, arg: Any): Expression = ArrayAccess(expression(p.expr_1), expression(p.expr_2))
+
+      // TODO change to constructor call on object array
+      override def visit(p: EArrayCons, arg: Any): Expression = ArrayCreation(convertType(p.type_), p.integer_)
     }
 
     expr.accept(visitor, Unit)
@@ -154,6 +160,19 @@ object Transformations {
 
       override def visit(p: SExp, arg: Any): ReturnT = List(
         DiscardValue(expression(p.expr_)))
+
+      override def visit(p: AssArr, arg: Any): List[Instruction] = List(
+        Assignment(
+          Latte.ArrayAccess(Latte.GetValue(p.ident_), expression(p.expr_1)),
+          expression(p.expr_2))
+      )
+
+      override def visit(p: For, arg: Any): List[Instruction] = List(
+        Latte.BlockInstruction(
+          instruction(p.stmt_1) ++
+          List(Latte.While(expression(p.expr_),
+              BlockInstruction(
+                instruction(p.stmt_3) ++ instruction(p.stmt_2))))))
     }
 
     instr.accept(visitor, Unit)
@@ -178,6 +197,7 @@ object Transformations {
       override def visit(p: Bool, arg: Any): Type = BoolType
       override def visit(p: Void, arg: Any): Type = VoidType
       override def visit(p: Fun, arg: Any): Type = funType(p)
+      override def visit(p: ArrayT, arg: Any): Type = ArrayType(convertType(p.type_), 0)
     }
 
     typeValue.accept(visitor, Unit)
@@ -219,12 +239,7 @@ object LatteParser extends Parser[Latte.Code] {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
-    try
-    {
-      Right(Transformations.program(p.pProgram))
-    }
-    catch {
-      case e: Throwable =>  Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
-    }
+    Right(Transformations.program(p.pProgram))
+    // Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
   }
 }
