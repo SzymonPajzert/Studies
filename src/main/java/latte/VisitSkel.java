@@ -68,6 +68,12 @@ public class VisitSkel
       //p.ident_;
       p.expr_.accept(new ExprVisitor<R,A>(), arg);
       return null;
+    }    public R visit(latte.Absyn.AssArr p, A arg)
+    { /* Code For AssArr Goes Here */
+      //p.ident_;
+      p.expr_1.accept(new ExprVisitor<R,A>(), arg);
+      p.expr_2.accept(new ExprVisitor<R,A>(), arg);
+      return null;
     }    public R visit(latte.Absyn.Incr p, A arg)
     { /* Code For Incr Goes Here */
       //p.ident_;
@@ -98,6 +104,13 @@ public class VisitSkel
     { /* Code For While Goes Here */
       p.expr_.accept(new ExprVisitor<R,A>(), arg);
       p.stmt_.accept(new StmtVisitor<R,A>(), arg);
+      return null;
+    }    public R visit(latte.Absyn.For p, A arg)
+    { /* Code For For Goes Here */
+      p.stmt_1.accept(new StmtVisitor<R,A>(), arg);
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
+      p.stmt_2.accept(new StmtVisitor<R,A>(), arg);
+      p.stmt_3.accept(new StmtVisitor<R,A>(), arg);
       return null;
     }    public R visit(latte.Absyn.SExp p, A arg)
     { /* Code For SExp Goes Here */
@@ -138,6 +151,10 @@ public class VisitSkel
       for (Type x: p.listtype_)
       { /* ... */ }
       return null;
+    }    public R visit(latte.Absyn.ArrayT p, A arg)
+    { /* Code For ArrayT Goes Here */
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      return null;
     }
   }
   public class ExprVisitor<R,A> implements Expr.Visitor<R,A>
@@ -156,6 +173,11 @@ public class VisitSkel
     }    public R visit(latte.Absyn.ELitFalse p, A arg)
     { /* Code For ELitFalse Goes Here */
       return null;
+    }    public R visit(latte.Absyn.EArrAcc p, A arg)
+    { /* Code For EArrAcc Goes Here */
+      p.expr_1.accept(new ExprVisitor<R,A>(), arg);
+      p.expr_2.accept(new ExprVisitor<R,A>(), arg);
+      return null;
     }    public R visit(latte.Absyn.EApp p, A arg)
     { /* Code For EApp Goes Here */
       //p.ident_;
@@ -166,7 +188,12 @@ public class VisitSkel
     { /* Code For EString Goes Here */
       //p.string_;
       return null;
-    }        public R visit(latte.Absyn.Neg p, A arg)
+    }        public R visit(latte.Absyn.EArrayCons p, A arg)
+    { /* Code For EArrayCons Goes Here */
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      //p.integer_;
+      return null;
+    }    public R visit(latte.Absyn.Neg p, A arg)
     { /* Code For Neg Goes Here */
       p.expr_.accept(new ExprVisitor<R,A>(), arg);
       return null;

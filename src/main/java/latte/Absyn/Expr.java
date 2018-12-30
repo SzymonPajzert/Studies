@@ -7,8 +7,10 @@ public abstract class Expr implements java.io.Serializable {
     public R visit(latte.Absyn.ELitInt p, A arg);
     public R visit(latte.Absyn.ELitTrue p, A arg);
     public R visit(latte.Absyn.ELitFalse p, A arg);
+    public R visit(latte.Absyn.EArrAcc p, A arg);
     public R visit(latte.Absyn.EApp p, A arg);
     public R visit(latte.Absyn.EString p, A arg);
+    public R visit(latte.Absyn.EArrayCons p, A arg);
     public R visit(latte.Absyn.Neg p, A arg);
     public R visit(latte.Absyn.Not p, A arg);
     public R visit(latte.Absyn.EMul p, A arg);

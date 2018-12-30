@@ -73,6 +73,12 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       r = combine(p.expr_.accept(this, arg), r, arg);
       return r;
     }
+    public R visit(latte.Absyn.AssArr p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.expr_1.accept(this, arg), r, arg);
+      r = combine(p.expr_2.accept(this, arg), r, arg);
+      return r;
+    }
     public R visit(latte.Absyn.Incr p, A arg) {
       R r = leaf(arg);
       return r;
@@ -107,6 +113,14 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       r = combine(p.expr_.accept(this, arg), r, arg);
       r = combine(p.stmt_.accept(this, arg), r, arg);
+      return r;
+    }
+    public R visit(latte.Absyn.For p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.stmt_1.accept(this, arg), r, arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
+      r = combine(p.stmt_2.accept(this, arg), r, arg);
+      r = combine(p.stmt_3.accept(this, arg), r, arg);
       return r;
     }
     public R visit(latte.Absyn.SExp p, A arg) {
@@ -152,6 +166,11 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       }
       return r;
     }
+    public R visit(latte.Absyn.ArrayT p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
+      return r;
+    }
 
 /* Expr */
     public R visit(latte.Absyn.EVar p, A arg) {
@@ -170,6 +189,12 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       return r;
     }
+    public R visit(latte.Absyn.EArrAcc p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.expr_1.accept(this, arg), r, arg);
+      r = combine(p.expr_2.accept(this, arg), r, arg);
+      return r;
+    }
     public R visit(latte.Absyn.EApp p, A arg) {
       R r = leaf(arg);
       for (Expr x : p.listexpr_)
@@ -180,6 +205,11 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
     }
     public R visit(latte.Absyn.EString p, A arg) {
       R r = leaf(arg);
+      return r;
+    }
+    public R visit(latte.Absyn.EArrayCons p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
       return r;
     }
     public R visit(latte.Absyn.Neg p, A arg) {

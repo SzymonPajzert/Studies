@@ -443,6 +443,19 @@ public class PrettyPrinter
        render(";");
        if (_i_ > 0) render(_R_PAREN);
     }
+    else     if (foo instanceof latte.Absyn.AssArr)
+    {
+       latte.Absyn.AssArr _assarr = (latte.Absyn.AssArr) foo;
+       if (_i_ > 0) render(_L_PAREN);
+       pp(_assarr.ident_, 0);
+       render("[");
+       pp(_assarr.expr_1, 0);
+       render("]");
+       render("=");
+       pp(_assarr.expr_2, 0);
+       render(";");
+       if (_i_ > 0) render(_R_PAREN);
+    }
     else     if (foo instanceof latte.Absyn.Incr)
     {
        latte.Absyn.Incr _incr = (latte.Absyn.Incr) foo;
@@ -511,6 +524,20 @@ public class PrettyPrinter
        pp(_while.expr_, 0);
        render(")");
        pp(_while.stmt_, 0);
+       if (_i_ > 0) render(_R_PAREN);
+    }
+    else     if (foo instanceof latte.Absyn.For)
+    {
+       latte.Absyn.For _for = (latte.Absyn.For) foo;
+       if (_i_ > 0) render(_L_PAREN);
+       render("for");
+       render("(");
+       pp(_for.stmt_1, 0);
+       pp(_for.expr_, 0);
+       render(";");
+       pp(_for.stmt_2, 0);
+       render(")");
+       pp(_for.stmt_3, 0);
        if (_i_ > 0) render(_R_PAREN);
     }
     else     if (foo instanceof latte.Absyn.SExp)
@@ -595,6 +622,14 @@ public class PrettyPrinter
        render(")");
        if (_i_ > 0) render(_R_PAREN);
     }
+    else     if (foo instanceof latte.Absyn.ArrayT)
+    {
+       latte.Absyn.ArrayT _arrayt = (latte.Absyn.ArrayT) foo;
+       if (_i_ > 0) render(_L_PAREN);
+       pp(_arrayt.type_, 0);
+       render("[]");
+       if (_i_ > 0) render(_R_PAREN);
+    }
   }
 
   private static void pp(latte.Absyn.ListType foo, int _i_)
@@ -639,6 +674,16 @@ public class PrettyPrinter
        render("false");
        if (_i_ > 6) render(_R_PAREN);
     }
+    else     if (foo instanceof latte.Absyn.EArrAcc)
+    {
+       latte.Absyn.EArrAcc _earracc = (latte.Absyn.EArrAcc) foo;
+       if (_i_ > 6) render(_L_PAREN);
+       pp(_earracc.expr_1, 0);
+       render("[");
+       pp(_earracc.expr_2, 0);
+       render("]");
+       if (_i_ > 6) render(_R_PAREN);
+    }
     else     if (foo instanceof latte.Absyn.EApp)
     {
        latte.Absyn.EApp _eapp = (latte.Absyn.EApp) foo;
@@ -655,6 +700,17 @@ public class PrettyPrinter
        if (_i_ > 6) render(_L_PAREN);
        pp(_estring.string_, 0);
        if (_i_ > 6) render(_R_PAREN);
+    }
+    else     if (foo instanceof latte.Absyn.EArrayCons)
+    {
+       latte.Absyn.EArrayCons _earraycons = (latte.Absyn.EArrayCons) foo;
+       if (_i_ > 5) render(_L_PAREN);
+       render("new");
+       pp(_earraycons.type_, 0);
+       render("[");
+       pp(_earraycons.integer_, 0);
+       render("]");
+       if (_i_ > 5) render(_R_PAREN);
     }
     else     if (foo instanceof latte.Absyn.Neg)
     {
@@ -944,6 +1000,16 @@ public class PrettyPrinter
        sh(_ass.expr_);
        render(")");
     }
+    if (foo instanceof latte.Absyn.AssArr)
+    {
+       latte.Absyn.AssArr _assarr = (latte.Absyn.AssArr) foo;
+       render("(");
+       render("AssArr");
+       sh(_assarr.ident_);
+       sh(_assarr.expr_1);
+       sh(_assarr.expr_2);
+       render(")");
+    }
     if (foo instanceof latte.Absyn.Incr)
     {
        latte.Absyn.Incr _incr = (latte.Absyn.Incr) foo;
@@ -999,6 +1065,17 @@ public class PrettyPrinter
        render("While");
        sh(_while.expr_);
        sh(_while.stmt_);
+       render(")");
+    }
+    if (foo instanceof latte.Absyn.For)
+    {
+       latte.Absyn.For _for = (latte.Absyn.For) foo;
+       render("(");
+       render("For");
+       sh(_for.stmt_1);
+       sh(_for.expr_);
+       sh(_for.stmt_2);
+       sh(_for.stmt_3);
        render(")");
     }
     if (foo instanceof latte.Absyn.SExp)
@@ -1075,6 +1152,14 @@ public class PrettyPrinter
        render("]");
        render(")");
     }
+    if (foo instanceof latte.Absyn.ArrayT)
+    {
+       latte.Absyn.ArrayT _arrayt = (latte.Absyn.ArrayT) foo;
+       render("(");
+       render("ArrayT");
+       sh(_arrayt.type_);
+       render(")");
+    }
   }
 
   private static void sh(latte.Absyn.ListType foo)
@@ -1115,6 +1200,15 @@ public class PrettyPrinter
        latte.Absyn.ELitFalse _elitfalse = (latte.Absyn.ELitFalse) foo;
        render("ELitFalse");
     }
+    if (foo instanceof latte.Absyn.EArrAcc)
+    {
+       latte.Absyn.EArrAcc _earracc = (latte.Absyn.EArrAcc) foo;
+       render("(");
+       render("EArrAcc");
+       sh(_earracc.expr_1);
+       sh(_earracc.expr_2);
+       render(")");
+    }
     if (foo instanceof latte.Absyn.EApp)
     {
        latte.Absyn.EApp _eapp = (latte.Absyn.EApp) foo;
@@ -1132,6 +1226,15 @@ public class PrettyPrinter
        render("(");
        render("EString");
        sh(_estring.string_);
+       render(")");
+    }
+    if (foo instanceof latte.Absyn.EArrayCons)
+    {
+       latte.Absyn.EArrayCons _earraycons = (latte.Absyn.EArrayCons) foo;
+       render("(");
+       render("EArrayCons");
+       sh(_earraycons.type_);
+       sh(_earraycons.integer_);
        render(")");
     }
     if (foo instanceof latte.Absyn.Neg)
