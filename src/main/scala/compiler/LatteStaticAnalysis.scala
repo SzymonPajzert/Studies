@@ -2,7 +2,7 @@
 
 package compiler
 
-import language.Latte
+import language.{HighLatte, Latte, TypeInformation}
 
 import scalaz.Scalaz._
 import scalaz._
@@ -12,7 +12,7 @@ import scalaz._
   *   - static binding of variables
   *   - renaming hiding variables
   */
-object LatteStaticAnalysis extends Compiler[Latte.Code, Latte.Code] {
+object LatteStaticAnalysis extends Compiler[HighLatte.Code, Latte.Code] {
   case class VariableState(counter: Int, fromCurrentBlock: Boolean)
   type Variables = Map[String, VariableState]
   type S[A] = StateT[Id, Variables, A]
@@ -40,18 +40,20 @@ object LatteStaticAnalysis extends Compiler[Latte.Code, Latte.Code] {
     case None => -\/(List(ErrorString(s"Undefined variable $identifier")))
   }
 
-  def compileExpr(expression: Latte.Expression): Compiler[Latte.Expression] = {
+  def compileExpr(expression: HighLatte.Expression): Compiler[Latte.Expression] = {
     expression match {
-      case Latte.GetValue(identifier) => for {
+      case HighLatte.GetValue(identifier) => for {
         nameC <- getVariable(identifier)
       } yield nameC map (n => Latte.GetValue(n))
-      case Latte.FunctionCall(functionName, arguments) => for {
+      case HighLatte.FunctionCall(HighLatte.FunName(functionName), arguments) => for {
         currentState <- get[Variables]
         argumentsC = mapM(arguments.toList, runOn(compileExpr, currentState))
-      } yield argumentsC map (a => Latte.FunctionCall(functionName, a): Latte.Expression)
-      case Latte.ConstValue(_) => state(\/-(expression))
-      case Latte.ArrayCreation(_, _) => state(\/-(expression))
-      case Latte.ArrayAccess(Latte.GetValue(name), index) => for {
+      } yield argumentsC map (a => Latte.FunctionCall(Latte.FunName(functionName), a): Latte.Expression)
+      case HighLatte.ConstValue(v) => state(\/-(Latte.ConstValue(v)))
+      case HighLatte.ArrayCreation(a, b) => for {
+        bem <- compileExpr(b)
+      } yield bem map (Latte.ArrayCreation(a, _))
+      case HighLatte.ArrayAccess(HighLatte.GetValue(name), index) => for {
         newNameE <- getVariable(name)
         newIndexE <- compileExpr(index)
       } yield for {
@@ -80,11 +82,11 @@ object LatteStaticAnalysis extends Compiler[Latte.Code, Latte.Code] {
     case Some(value) => \/-[String](variableName + value.toString)
   }
 
-  def modifyHead(instruction: Latte.Instruction): Compiler[Latte.Instruction] = instruction match {
-    case Latte.Declaration(name, typeDecl) => for {
+  def modifyHead(instruction: HighLatte.Instruction): Compiler[Latte.Instruction] = instruction match {
+    case HighLatte.Declaration(name, typeDecl) => for {
       variableNameC <- newVariable(name)
     } yield variableNameC map (v => Latte.Declaration(v, typeDecl))
-    case Latte.Assignment(Latte.ArrayAccess(Latte.GetValue(name), indexE), expression) => for {
+    case HighLatte.Assignment(HighLatte.ArrayAccess(HighLatte.GetValue(name), indexE), expression) => for {
       indexC <- compileExpr(indexE)
       nameC <- getVariable(name)
       expressionC <- compileExpr(expression)
@@ -94,31 +96,31 @@ object LatteStaticAnalysis extends Compiler[Latte.Code, Latte.Code] {
       n <- nameC
       i <- indexC
     } yield Latte.Assignment(Latte.ArrayAccess(Latte.GetValue(n), i), e)
-    case Latte.Assignment(Latte.Variable(name), expression) => for {
+    case HighLatte.Assignment(HighLatte.Variable(name), expression) => for {
       nameC <- getVariable(name)
       expressionC <- compileExpr(expression)
       // TODO check if those nests work
     } yield expressionC flatMap (e => nameC map (n => Latte.Assignment(n, e): Latte.Instruction))
-    case Latte.BlockInstruction(instructions) => for {
+    case HighLatte.BlockInstruction(instructions) => for {
       copyState <- get[Variables]
       transformedC = mapWithEnvironment(instructions)(markAsOld(copyState))._2
     } yield transformedC map (t => Latte.BlockInstruction(t): Latte.Instruction)
-    case Latte.DiscardValue(expression) => for {
+    case HighLatte.DiscardValue(expression) => for {
       expressionC <- compileExpr(expression)
     } yield expressionC map (e => Latte.DiscardValue(e))
-    case Latte.Return(maybeExpression) => maybeExpression match {
+    case HighLatte.Return(maybeExpression) => maybeExpression match {
       case Some(expr) => for {
         exprC <- compileExpr(expr)
       } yield exprC map (e => Latte.Return(Some(e)))
       case None => state(\/-(Latte.Return(None)))
     }
-    case Latte.While(condition, instructions) => for {
+    case HighLatte.While(condition, instructions) => for {
       conditionC <- compileExpr(condition)
       instructionsC <- modifyHead(instructions)
     } yield conditionC flatMap  (c => instructionsC map (i => Latte.While(c, i)))
   }
 
-  def mapWithEnvironment(code: List[Latte.Instruction]): Compiler[List[Latte.Instruction]] = code match {
+  def mapWithEnvironment(code: List[HighLatte.Instruction]): Compiler[List[Latte.Instruction]] = code match {
     case Nil => state(\/-(Nil))
     case (h :: t) => for {
       he <- modifyHead(h)
@@ -131,20 +133,29 @@ object LatteStaticAnalysis extends Compiler[Latte.Code, Latte.Code] {
 
   def emptyEnvironment: Variables = Map()
 
-  def compileFunc(func: Latte.TopDefinition): Compiler[Latte.TopDefinition] = {
+  def transformSignature(signature: HighLatte.FunctionSignature): Latte.FunctionSignature =
+    Latte.FunctionSignature(signature.identifier, signature.returnType, signature.arguments)
+
+  def compileFunc(func: HighLatte.TopDefinition): Compiler[Latte.Func] = {
     func match {
-      case Latte.Func(signature, code) => for {
+      case HighLatte.Func(signature, code) => for {
         codeParsed <- mapWithEnvironment(code)
       } yield for {
         withoutError <- codeParsed
-      } yield Latte.Func(signature, withoutError)
+      } yield Latte.Func(transformSignature(signature), withoutError)
     }
   }
 
-  private def runOn[A](f: A => Compiler[A], env: Variables): (A => List[CompileException] \/ A) = {
+  private def runOn[A, B](f: A => Compiler[B], env: Variables): (A => List[CompileException] \/ B) = {
     (a: A) => f(a)(env)._2
   }
 
-  override def compile(code: Latte.Code): Either[List[CompileException], Latte.Code] =
-    mapM(code.toList, runOn(compileFunc, emptyEnvironment)).toEither
+  def getTypeInformation(code: HighLatte.Code): Either[List[CompileException], TypeInformation] =
+    Right(null)
+
+  override def compile(code: HighLatte.Code): Either[List[CompileException], Latte.Code] = for {
+    latteCode <- mapM(code.toList, runOn(compileFunc, emptyEnvironment)).toEither
+    offsetTable <- getTypeInformation(code)
+  } yield Latte.Code(latteCode, offsetTable)
+
 }

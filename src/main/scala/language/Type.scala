@@ -21,6 +21,7 @@ object Type {
     override def toString: String = s"[$size x $eltType]"
   }
 
+  case class ClassType(name: String) extends Type
   case object StringType extends Type
   case object BoolType extends ValueType
 

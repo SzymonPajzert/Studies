@@ -2,7 +2,7 @@ package parser.latte
 
 import java.io.StringReader
 
-import language.Latte
+import language.{HighLatte}
 import language.Type._
 import parser.{ParseError, Parser}
 
@@ -10,7 +10,7 @@ import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 object Transformations {
-  import language.Latte._
+  import language.HighLatte._
   import latte.Absyn.{Type => AbsType, _}
 
   def const(i: scala.Int): Expression = ConstValue[scala.Int](i)
@@ -59,7 +59,6 @@ object Transformations {
 
   def expression(expr: Expr): Expression = {
     val visitor = new Expr.Visitor[Expression, Any] {
-      override def visit(p: EVar, arg: Any): Expression = GetValue(p.ident_)
 
       override def visit(p: ELitInt, arg: Any): Expression = const(Integer.valueOf(p.integer_))
 
@@ -97,11 +96,24 @@ object Transformations {
       override def visit(p: EOr, arg: Any): Expression = FunctionCall(
         "bool_or", List(expression(p.expr_1), expression(p.expr_2)))
 
-      // TODO change to method call on object array
-      override def visit(p: EArrAcc, arg: Any): Expression = ArrayAccess(expression(p.expr_1), expression(p.expr_2))
-
       // TODO change to constructor call on object array
-      override def visit(p: EArrayCons, arg: Any): Expression = ArrayCreation(convertType(p.type_), p.integer_)
+      override def visit(p: EArrayCons, arg: Any): Expression = ArrayCreation(convertType(p.type_), expression(p.expr_))
+
+      override def visit(p: IVar, arg: Any): Expression = GetValue(p.ident_)
+
+      override def visit(p: AVar, arg: Any): Expression = arrayAccess(p.arraye_)
+
+      override def visit(p: FVar, arg: Any): Expression = fieldAccess(p.fielde_)
+
+      override def visit(p: EClassCons, arg: Any): Expression = InstanceCreation(convertType(p.type_))
+
+      override def visit(p: EMethod, arg: Any): Expression =
+        FunctionCall(
+          VTableLookup(expression(p.expr_), p.ident_),
+          p.listexpr_.asScala map expression)
+
+
+      override def visit(p: ECast, arg: Any): Expression = Cast(convertType(p.type_), expression(p.expr_))
     }
 
     expr.accept(visitor, Unit)
@@ -117,9 +129,28 @@ object Transformations {
     item.accept(visitor, Unit)
   }
 
-  def instruction(instr: latte.Absyn.Stmt): List[Latte.Instruction] = {
-    val visitor = new Stmt.Visitor[List[Latte.Instruction], Any] {
-      type ReturnT = List[Latte.Instruction]
+  def fieldAccess(e: FieldE): FieldAccess = {
+    val visitor = new FieldE.Visitor[FieldAccess, Any] {
+      override def visit(p: FldAccess, arg: Any): FieldAccess =
+        FieldAccess(expression(p.expr_), p.ident_)
+    }
+
+    e.accept(visitor, Unit)
+  }
+
+  def arrayAccess(e: ArrayE): ArrayAccess = {
+    val visitor = new ArrayE.Visitor[ArrayAccess, Any] {
+      override def visit(p: ArrAccess, arg: Any): ArrayAccess = {
+        ArrayAccess(expression(p.expr_1), expression(p.expr_2))
+      }
+    }
+
+    e.accept(visitor, Unit)
+  }
+
+  def instruction(instr: latte.Absyn.Stmt): List[HighLatte.Instruction] = {
+    val visitor = new Stmt.Visitor[List[HighLatte.Instruction], Any] {
+      type ReturnT = List[HighLatte.Instruction]
 
       override def visit(p: Empty, arg: Any): ReturnT = List()
 
@@ -156,29 +187,36 @@ object Transformations {
       )
 
       override def visit(p: latte.Absyn.While, arg: Any): ReturnT = List(
-        Latte.While(expression(p.expr_), BlockInstruction(instruction(p.stmt_))))
+        HighLatte.While(expression(p.expr_), BlockInstruction(instruction(p.stmt_))))
 
       override def visit(p: SExp, arg: Any): ReturnT = List(
         DiscardValue(expression(p.expr_)))
 
       override def visit(p: AssArr, arg: Any): List[Instruction] = List(
         Assignment(
-          Latte.ArrayAccess(Latte.GetValue(p.ident_), expression(p.expr_1)),
-          expression(p.expr_2))
+          arrayAccess(p.arraye_), expression(p.expr_))
       )
 
       override def visit(p: For, arg: Any): List[Instruction] = List(
-        Latte.BlockInstruction(
+        HighLatte.BlockInstruction(
           instruction(p.stmt_1) ++
-          List(Latte.While(expression(p.expr_),
+          List(HighLatte.While(expression(p.expr_),
               BlockInstruction(
                 instruction(p.stmt_3) ++ instruction(p.stmt_2))))))
+
+      override def visit(p: AssFie, arg: Any): List[Instruction] = List(
+        HighLatte.Assignment(fieldAccess(p.fielde_), expression(p.expr_))
+      )
+
+      override def visit(p: ForAbb, arg: Any): List[Instruction] = List(
+
+      )
     }
 
     instr.accept(visitor, Unit)
   }
 
-  def block(block: latte.Absyn.Block): Latte.Block = {
+  def block(block: latte.Absyn.Block): HighLatte.Block = {
     block.accept((block, _: Any) => {
       (block.liststmt_.asScala flatMap instruction).toList
     }, Unit)
@@ -198,6 +236,7 @@ object Transformations {
       override def visit(p: Void, arg: Any): Type = VoidType
       override def visit(p: Fun, arg: Any): Type = funType(p)
       override def visit(p: ArrayT, arg: Any): Type = ArrayType(convertType(p.type_), 0)
+      override def visit(p: latte.Absyn.Class, arg: Any): Type = ClassType(p.ident_)
     }
 
     typeValue.accept(visitor, Unit)
@@ -214,35 +253,56 @@ object Transformations {
     })
   }
 
+  def members(elts: ListClassElt) = elts.asScala.toList map (elt => {
+    val visitor = new ClassElt.Visitor[HighLatte.ClassMember, Any] {
+      override def visit(p: Field, arg: Any): ClassMember =
+        HighLatte.Declaration(p.ident_, convertType(p.type_))
+
+      override def visit(p: Method, arg: Any): ClassMember =
+        HighLatte.Func(
+          FunctionSignature(p.ident_, convertType(p.type_), arguments(p.listarg_).toList),
+          block(p.block_))
+    }
+
+    elt.accept(visitor, Unit)
+  })
+
   def topDefinition(definition: TopDef): TopDefinition = {
     val visitor = new TopDef.Visitor[TopDefinition, Any] {
       override def visit(p: FnDef, arg: Any): TopDefinition =
-        Latte.Func(
+        HighLatte.Func(
           FunctionSignature(p.ident_, convertType(p.type_), arguments(p.listarg_).toList),
             block(p.block_))
+
+      override def visit(p: ClDef, arg: Any): TopDefinition =
+        HighLatte.Class(p.ident_, "Object", members(p.listclasselt_))
+
+      override def visit(p: ClInh, arg: Any): TopDefinition =
+        HighLatte.Class(p.ident_1, p.ident_2, members(p.listclasselt_))
     }
 
     definition.accept(visitor, Unit)
   }
 
-  def program(latte: Program): Latte.Code = {
-    val visitor = new Program.Visitor[Latte.Code, Any] {
-      override def visit(p: ProgramCons, arg: Any): Latte.Code = p.listtopdef_.asScala map topDefinition
+  def program(latte: Program): HighLatte.Code = {
+    val visitor = new Program.Visitor[HighLatte.Code, Any] {
+      override def visit(p: ProgramCons, arg: Any): HighLatte.Code =
+        p.listtopdef_.asScala map topDefinition
     }
 
     latte.accept(visitor, Unit)
   }
 }
 
-object LatteParser extends Parser[Latte.Code] {
-  def parse(content: String): Either[List[ParseError], Latte.Code] = {
+object LatteParser extends Parser[HighLatte.Code] {
+  def parse(content: String): Either[List[ParseError], HighLatte.Code] = {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
     try {
       Right(Transformations.program(p.pProgram))
     } catch {
-      case e: Throwable => Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
+      case e: Exception => Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
     }
     // Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
   }

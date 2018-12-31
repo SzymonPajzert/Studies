@@ -2,3 +2,5 @@
 *.class
 target
 .idea
+**/*.bak
+**/*.hs

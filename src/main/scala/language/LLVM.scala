@@ -67,10 +67,10 @@ object LLVM extends Language {
     }
   }
 
-  def alloca(t: Type, size: Option[Int] = None): Func[t.type] = new Func[t.type] {
+  def alloca(t: Type, size: Option[Expression] = None): Func[t.type] = new Func[t.type] {
     override def getLine: String = size match {
       case None => s"alloca $t"
-      case Some(s) => s"alloca $t, i32 $s"
+      case Some(s) => s"alloca $t, ${s.typeId} ${s.name}"
     }
   }
   def load[T <: Type](valueLocation: Register[T]): Func[T] = new Func[T] {

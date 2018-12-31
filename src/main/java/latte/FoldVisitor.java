@@ -31,6 +31,39 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       r = combine(p.block_.accept(this, arg), r, arg);
       return r;
     }
+    public R visit(latte.Absyn.ClInh p, A arg) {
+      R r = leaf(arg);
+      for (ClassElt x : p.listclasselt_)
+      {
+        r = combine(x.accept(this, arg), r, arg);
+      }
+      return r;
+    }
+    public R visit(latte.Absyn.ClDef p, A arg) {
+      R r = leaf(arg);
+      for (ClassElt x : p.listclasselt_)
+      {
+        r = combine(x.accept(this, arg), r, arg);
+      }
+      return r;
+    }
+
+/* ClassElt */
+    public R visit(latte.Absyn.Field p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
+      return r;
+    }
+    public R visit(latte.Absyn.Method p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
+      for (Arg x : p.listarg_)
+      {
+        r = combine(x.accept(this, arg), r, arg);
+      }
+      r = combine(p.block_.accept(this, arg), r, arg);
+      return r;
+    }
 
 /* Arg */
     public R visit(latte.Absyn.ArgCons p, A arg) {
@@ -75,8 +108,14 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
     }
     public R visit(latte.Absyn.AssArr p, A arg) {
       R r = leaf(arg);
-      r = combine(p.expr_1.accept(this, arg), r, arg);
-      r = combine(p.expr_2.accept(this, arg), r, arg);
+      r = combine(p.arraye_.accept(this, arg), r, arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
+      return r;
+    }
+    public R visit(latte.Absyn.AssFie p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.fielde_.accept(this, arg), r, arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
       return r;
     }
     public R visit(latte.Absyn.Incr p, A arg) {
@@ -123,6 +162,13 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       r = combine(p.stmt_3.accept(this, arg), r, arg);
       return r;
     }
+    public R visit(latte.Absyn.ForAbb p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
+      r = combine(p.stmt_.accept(this, arg), r, arg);
+      return r;
+    }
     public R visit(latte.Absyn.SExp p, A arg) {
       R r = leaf(arg);
       r = combine(p.expr_.accept(this, arg), r, arg);
@@ -157,6 +203,10 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       return r;
     }
+    public R visit(latte.Absyn.Class p, A arg) {
+      R r = leaf(arg);
+      return r;
+    }
     public R visit(latte.Absyn.Fun p, A arg) {
       R r = leaf(arg);
       r = combine(p.type_.accept(this, arg), r, arg);
@@ -172,9 +222,34 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       return r;
     }
 
-/* Expr */
-    public R visit(latte.Absyn.EVar p, A arg) {
+/* ArrayE */
+    public R visit(latte.Absyn.ArrAccess p, A arg) {
       R r = leaf(arg);
+      r = combine(p.expr_1.accept(this, arg), r, arg);
+      r = combine(p.expr_2.accept(this, arg), r, arg);
+      return r;
+    }
+
+/* FieldE */
+    public R visit(latte.Absyn.FldAccess p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
+      return r;
+    }
+
+/* Expr */
+    public R visit(latte.Absyn.IVar p, A arg) {
+      R r = leaf(arg);
+      return r;
+    }
+    public R visit(latte.Absyn.AVar p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.arraye_.accept(this, arg), r, arg);
+      return r;
+    }
+    public R visit(latte.Absyn.FVar p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.fielde_.accept(this, arg), r, arg);
       return r;
     }
     public R visit(latte.Absyn.ELitInt p, A arg) {
@@ -189,14 +264,17 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       return r;
     }
-    public R visit(latte.Absyn.EArrAcc p, A arg) {
-      R r = leaf(arg);
-      r = combine(p.expr_1.accept(this, arg), r, arg);
-      r = combine(p.expr_2.accept(this, arg), r, arg);
-      return r;
-    }
     public R visit(latte.Absyn.EApp p, A arg) {
       R r = leaf(arg);
+      for (Expr x : p.listexpr_)
+      {
+        r = combine(x.accept(this, arg), r, arg);
+      }
+      return r;
+    }
+    public R visit(latte.Absyn.EMethod p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
       for (Expr x : p.listexpr_)
       {
         r = combine(x.accept(this, arg), r, arg);
@@ -207,9 +285,21 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       return r;
     }
+    public R visit(latte.Absyn.EClassCons p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
+      return r;
+    }
     public R visit(latte.Absyn.EArrayCons p, A arg) {
       R r = leaf(arg);
       r = combine(p.type_.accept(this, arg), r, arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
+      return r;
+    }
+    public R visit(latte.Absyn.ECast p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
+      r = combine(p.expr_.accept(this, arg), r, arg);
       return r;
     }
     public R visit(latte.Absyn.Neg p, A arg) {

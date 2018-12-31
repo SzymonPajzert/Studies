@@ -28,6 +28,36 @@ public class VisitSkel
       { /* ... */ }
       p.block_.accept(new BlockVisitor<R,A>(), arg);
       return null;
+    }    public R visit(latte.Absyn.ClInh p, A arg)
+    { /* Code For ClInh Goes Here */
+      //p.ident_1;
+      //p.ident_2;
+      for (ClassElt x: p.listclasselt_)
+      { /* ... */ }
+      return null;
+    }    public R visit(latte.Absyn.ClDef p, A arg)
+    { /* Code For ClDef Goes Here */
+      //p.ident_;
+      for (ClassElt x: p.listclasselt_)
+      { /* ... */ }
+      return null;
+    }
+  }
+  public class ClassEltVisitor<R,A> implements ClassElt.Visitor<R,A>
+  {
+    public R visit(latte.Absyn.Field p, A arg)
+    { /* Code For Field Goes Here */
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      //p.ident_;
+      return null;
+    }    public R visit(latte.Absyn.Method p, A arg)
+    { /* Code For Method Goes Here */
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      //p.ident_;
+      for (Arg x: p.listarg_)
+      { /* ... */ }
+      p.block_.accept(new BlockVisitor<R,A>(), arg);
+      return null;
     }
   }
   public class ArgVisitor<R,A> implements Arg.Visitor<R,A>
@@ -70,9 +100,13 @@ public class VisitSkel
       return null;
     }    public R visit(latte.Absyn.AssArr p, A arg)
     { /* Code For AssArr Goes Here */
-      //p.ident_;
-      p.expr_1.accept(new ExprVisitor<R,A>(), arg);
-      p.expr_2.accept(new ExprVisitor<R,A>(), arg);
+      p.arraye_.accept(new ArrayEVisitor<R,A>(), arg);
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
+      return null;
+    }    public R visit(latte.Absyn.AssFie p, A arg)
+    { /* Code For AssFie Goes Here */
+      p.fielde_.accept(new FieldEVisitor<R,A>(), arg);
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
       return null;
     }    public R visit(latte.Absyn.Incr p, A arg)
     { /* Code For Incr Goes Here */
@@ -112,6 +146,13 @@ public class VisitSkel
       p.stmt_2.accept(new StmtVisitor<R,A>(), arg);
       p.stmt_3.accept(new StmtVisitor<R,A>(), arg);
       return null;
+    }    public R visit(latte.Absyn.ForAbb p, A arg)
+    { /* Code For ForAbb Goes Here */
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      //p.ident_;
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
+      p.stmt_.accept(new StmtVisitor<R,A>(), arg);
+      return null;
     }    public R visit(latte.Absyn.SExp p, A arg)
     { /* Code For SExp Goes Here */
       p.expr_.accept(new ExprVisitor<R,A>(), arg);
@@ -145,6 +186,10 @@ public class VisitSkel
     }    public R visit(latte.Absyn.Void p, A arg)
     { /* Code For Void Goes Here */
       return null;
+    }    public R visit(latte.Absyn.Class p, A arg)
+    { /* Code For Class Goes Here */
+      //p.ident_;
+      return null;
     }    public R visit(latte.Absyn.Fun p, A arg)
     { /* Code For Fun Goes Here */
       p.type_.accept(new TypeVisitor<R,A>(), arg);
@@ -157,11 +202,37 @@ public class VisitSkel
       return null;
     }
   }
+  public class ArrayEVisitor<R,A> implements ArrayE.Visitor<R,A>
+  {
+    public R visit(latte.Absyn.ArrAccess p, A arg)
+    { /* Code For ArrAccess Goes Here */
+      p.expr_1.accept(new ExprVisitor<R,A>(), arg);
+      p.expr_2.accept(new ExprVisitor<R,A>(), arg);
+      return null;
+    }
+  }
+  public class FieldEVisitor<R,A> implements FieldE.Visitor<R,A>
+  {
+    public R visit(latte.Absyn.FldAccess p, A arg)
+    { /* Code For FldAccess Goes Here */
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
+      //p.ident_;
+      return null;
+    }
+  }
   public class ExprVisitor<R,A> implements Expr.Visitor<R,A>
   {
-    public R visit(latte.Absyn.EVar p, A arg)
-    { /* Code For EVar Goes Here */
+    public R visit(latte.Absyn.IVar p, A arg)
+    { /* Code For IVar Goes Here */
       //p.ident_;
+      return null;
+    }    public R visit(latte.Absyn.AVar p, A arg)
+    { /* Code For AVar Goes Here */
+      p.arraye_.accept(new ArrayEVisitor<R,A>(), arg);
+      return null;
+    }    public R visit(latte.Absyn.FVar p, A arg)
+    { /* Code For FVar Goes Here */
+      p.fielde_.accept(new FieldEVisitor<R,A>(), arg);
       return null;
     }    public R visit(latte.Absyn.ELitInt p, A arg)
     { /* Code For ELitInt Goes Here */
@@ -173,13 +244,15 @@ public class VisitSkel
     }    public R visit(latte.Absyn.ELitFalse p, A arg)
     { /* Code For ELitFalse Goes Here */
       return null;
-    }    public R visit(latte.Absyn.EArrAcc p, A arg)
-    { /* Code For EArrAcc Goes Here */
-      p.expr_1.accept(new ExprVisitor<R,A>(), arg);
-      p.expr_2.accept(new ExprVisitor<R,A>(), arg);
-      return null;
-    }    public R visit(latte.Absyn.EApp p, A arg)
+    }        public R visit(latte.Absyn.EApp p, A arg)
     { /* Code For EApp Goes Here */
+      //p.ident_;
+      for (Expr x: p.listexpr_)
+      { /* ... */ }
+      return null;
+    }    public R visit(latte.Absyn.EMethod p, A arg)
+    { /* Code For EMethod Goes Here */
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
       //p.ident_;
       for (Expr x: p.listexpr_)
       { /* ... */ }
@@ -188,10 +261,19 @@ public class VisitSkel
     { /* Code For EString Goes Here */
       //p.string_;
       return null;
-    }        public R visit(latte.Absyn.EArrayCons p, A arg)
+    }        public R visit(latte.Absyn.EClassCons p, A arg)
+    { /* Code For EClassCons Goes Here */
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      return null;
+    }    public R visit(latte.Absyn.EArrayCons p, A arg)
     { /* Code For EArrayCons Goes Here */
       p.type_.accept(new TypeVisitor<R,A>(), arg);
-      //p.integer_;
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
+      return null;
+    }    public R visit(latte.Absyn.ECast p, A arg)
+    { /* Code For ECast Goes Here */
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      p.expr_.accept(new ExprVisitor<R,A>(), arg);
       return null;
     }    public R visit(latte.Absyn.Neg p, A arg)
     { /* Code For Neg Goes Here */

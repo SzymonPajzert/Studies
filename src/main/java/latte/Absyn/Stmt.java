@@ -8,6 +8,7 @@ public abstract class Stmt implements java.io.Serializable {
     public R visit(latte.Absyn.Decl p, A arg);
     public R visit(latte.Absyn.Ass p, A arg);
     public R visit(latte.Absyn.AssArr p, A arg);
+    public R visit(latte.Absyn.AssFie p, A arg);
     public R visit(latte.Absyn.Incr p, A arg);
     public R visit(latte.Absyn.Decr p, A arg);
     public R visit(latte.Absyn.Ret p, A arg);
@@ -16,6 +17,7 @@ public abstract class Stmt implements java.io.Serializable {
     public R visit(latte.Absyn.CondElse p, A arg);
     public R visit(latte.Absyn.While p, A arg);
     public R visit(latte.Absyn.For p, A arg);
+    public R visit(latte.Absyn.ForAbb p, A arg);
     public R visit(latte.Absyn.SExp p, A arg);
 
   }

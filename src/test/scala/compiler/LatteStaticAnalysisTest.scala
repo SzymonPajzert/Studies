@@ -8,8 +8,8 @@ class LatteStaticAnalysisTest extends FlatSpec with Matchers {
   behavior of "LatteStaticAnalysisTest"
 
   def makeMain(block: Latte.Block): Latte.Code = {
-    List(
-      Latte.Func(Latte.FunctionSignature("main", IntType, List()), block)
-    )
+    Latte.Code(
+      List(Latte.Func(Latte.FunctionSignature("main", IntType, List()), block)),
+      null)
   }
 }

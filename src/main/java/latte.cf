@@ -5,7 +5,13 @@ entrypoints Program ;
 ProgramCons.   Program ::= [TopDef] ;
 
 FnDef.	   TopDef ::= Type Ident "(" [Arg] ")" Block ;
+ClInh.     TopDef ::= "class" Ident "extends" Ident "{" [ClassElt] "}" ;
+ClDef.     TopDef ::= "class" Ident "{" [ClassElt] "}" ;
 
+Field.   ClassElt ::= Type Ident ";" ;
+Method.  ClassElt ::= Type Ident "(" [Arg] ")" Block ;
+
+separator nonempty ClassElt "" ;
 separator nonempty TopDef "" ;
 
 ArgCons. 	   Arg ::= Type Ident;
@@ -32,7 +38,9 @@ separator nonempty Item "," ;
 
 Ass.       Stmt ::= Ident "=" Expr  ";" ;
 
-AssArr.    Stmt ::= Ident "[" Expr "]" "=" Expr ";" ;
+AssArr.    Stmt ::= ArrayE "=" Expr ";" ;
+
+AssFie.    Stmt ::= FieldE "=" Expr ";" ;
 
 Incr.      Stmt ::= Ident "++"  ";" ;
 
@@ -50,6 +58,8 @@ While.     Stmt ::= "while" "(" Expr ")" Stmt ;
 
 For.       Stmt ::= "for" "(" Stmt Expr ";" Stmt ")" Stmt ;
 
+ForAbb.    Stmt ::= "for" "(" Type Ident ":" Expr ")" Stmt ;
+
 SExp.      Stmt ::= Expr  ";" ;
 
 -- Types ---------------------------------------------------
@@ -62,6 +72,8 @@ Bool.      Type ::= "boolean" ;
 
 Void.      Type ::= "void" ;
 
+Class.     Type ::= Ident ;
+
 internal   Fun. Type ::= Type "(" [Type] ")" ;
 
 ArrayT.    Type ::= Type "[]" ;
@@ -70,25 +82,29 @@ separator  Type "," ;
 
 -- Expressions ---------------------------------------------
 
-EVar.        Expr6 ::= Ident ;
+ArrAccess. ArrayE ::= Expr5 "[" Expr "]" ;
+FldAccess. FieldE ::= Expr5 "." Ident ;
 
-ELitInt.     Expr6 ::= Integer ;
+IVar.        Expr7 ::= Ident;
 
-ELitTrue.    Expr6 ::= "true" ;
+AVar.        Expr7 ::= ArrayE ;
+FVar.        Expr7 ::= FieldE ;
+ELitInt.     Expr7 ::= Integer ;
+ELitTrue.    Expr7 ::= "true" ;
 
-ELitFalse.   Expr6 ::= "false" ;
-
-EField       Expr6 ::= Expr "." Ident ;
-
-EMethod      Expr6 ::= Expr "." Ident "(" [Expr] ")" ;
-
-EArrAcc.     Expr6 ::= Expr "[" Expr "]" ;
+ELitFalse.   Expr7 ::= "false" ;
 
 EApp.        Expr6 ::= Ident "(" [Expr] ")" ;
 
+EMethod.     Expr6 ::= Expr5 "." Ident "(" [Expr] ")" ;
+
 EString.     Expr6 ::= String ;
 
-EArrayCons.  Expr5 ::= "new" Type "[" Integer "]" ;
+EClassCons.  Expr5 ::= "new" Type ;
+
+EArrayCons.  Expr5 ::= "new" Type "[" Expr "]" ;
+
+ECast.       Expr5 ::= "(" Type ")" Expr6;
 
 Neg.         Expr5 ::= "-" Expr6 ;
 
@@ -105,9 +121,7 @@ EAnd.        Expr1 ::= Expr2 "&&" Expr1 ;
 EOr.         Expr ::= Expr1 "||" Expr ;
 
 
-
-
-coercions  Expr 6 ;
+coercions  Expr 7 ;
 
 separator  Expr "," ;
 

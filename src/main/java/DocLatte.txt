@@ -32,14 +32,14 @@ except ``"`` unless preceded by ``\``.
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in latte are the following:
-  | ``boolean`` | ``else`` | ``false`` | ``if``
-  | ``int`` | ``new`` | ``return`` | ``string``
-  | ``true`` | ``void`` | ``while`` | 
+  | ``boolean`` | ``else`` | ``false`` | ``for``
+  | ``if`` | ``int`` | ``new`` | ``return``
+  | ``string`` | ``true`` | ``void`` | ``while``
 
 The symbols used in latte are the following:
   | ( | ) | , | {
-  | } | ; | = | ++
-  | -- | [] | [ | ]
+  | } | ; | = | [
+  | ] | ++ | -- | []
   | - | ! | && | ||
   | + | * | / | %
   | < | <= | > | >=
@@ -69,6 +69,7 @@ All other symbols are terminals.
   |  |  **|**  | //Block// 
   |  |  **|**  | //Type// //[Item]// ``;`` 
   |  |  **|**  | //Ident// ``=`` //Expr// ``;`` 
+  |  |  **|**  | //Ident// ``[`` //Expr// ``]`` ``=`` //Expr// ``;`` 
   |  |  **|**  | //Ident// ``++`` ``;`` 
   |  |  **|**  | //Ident// ``--`` ``;`` 
   |  |  **|**  | ``return`` //Expr// ``;`` 
@@ -76,6 +77,7 @@ All other symbols are terminals.
   |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// 
   |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// ``else`` //Stmt// 
   |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //Stmt// 
+  |  |  **|**  | ``for`` ``(`` //Stmt// //Expr// ``;`` //Stmt// ``)`` //Stmt// 
   |  |  **|**  | //Expr// ``;`` 
   | //Item// | -> | //Ident// 
   |  |  **|**  | //Ident// ``=`` //Expr// 

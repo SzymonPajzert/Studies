@@ -4,7 +4,6 @@ package parser.latte
 
 import integration.FileEnumerator
 import integration.FileEnumerator.Test
-import language.Latte
 import org.scalatest.{FlatSpec, Matchers}
 
 class ParserSpec extends FlatSpec with Matchers {
@@ -18,13 +17,8 @@ class ParserSpec extends FlatSpec with Matchers {
     it should s"compile file: ${requirements.filename}" in {
       val parseResult = LatteParser.parse(requirements.fileContent)
       parseResult match {
-        case Right(topDefinitions) =>
-          assert(topDefinitions.size === 1)
-          topDefinitions.head match {
-            case Latte.Func(_, _) => Unit
-            case otherCase => fail(s"Unexpected head: $otherCase")
-          }
-        case Left(error) => fail(s"Right: $error")
+        case Right(_) => Unit
+        case Left(error) => fail(s"$error")
       }
     }
   }

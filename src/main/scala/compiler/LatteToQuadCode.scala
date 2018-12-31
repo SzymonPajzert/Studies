@@ -1,7 +1,5 @@
 package compiler
 
-// import language.LLVM.RegisterT
-// import language.Latte.{ArrayAccess, Expression}
 import language.Type._
 import language.{LLVM, Latte}
 
@@ -9,6 +7,7 @@ import scalaz.Scalaz._
 import scalaz.{State, _}
 
 object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
+  // TODO remove globalCode section
   case class CompilationState(globalCode: String = "",
                               tmpCounter: Int = 0,
                               currentSubstitutions: Registers = Map(),
@@ -58,9 +57,6 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     _ <- putLine(LLVM.Assign(register, LLVM.getElementPtr(arrayType, constName)))
   } yield register
 
-
-  def isPrimitiveName(str: String): Boolean = Set("int_add", "int_mul", "int_div", "int_sub") contains str
-
   def transformType(value: Type): LLVMType = value match {
     case IntType => IntType
     case VoidType => VoidType
@@ -71,11 +67,20 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     case ArrayType(t, _) => PointerType(transformType(t))
   }
 
-  def isIcmp(primitiveName: String): Option[Boolean] = primitiveName match {
-    case "gen_gt" => Some(false)
-    case "gen_lt" => Some(true)
-    case _ => None
+  def isPrimitiveName(location: Latte.FunLocation): Boolean = location match {
+    case Latte.FunName(name) => Set("int_add", "int_mul", "int_div", "int_sub") contains name
+    case Latte.VTableLookup(_, _) => false
   }
+
+  def isIcmp(location: Latte.FunLocation): Option[Boolean] =
+    location match {
+      case Latte.FunName(primitiveName) => primitiveName match {
+        case "gen_gt" => Some(false)
+        case "gen_lt" => Some(true)
+        case _ => None
+      }
+      case Latte.VTableLookup(_, _) => None
+    }
 
   /**
     * Load value stored at the register
@@ -139,10 +144,10 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         val Seq(left, right) = arguments
 
         val operation = primitiveName match {
-          case "int_add" => LLVM.Add
-          case "int_mul" => LLVM.Mul
-          case "int_div" => LLVM.Div
-          case "int_sub" => LLVM.Sub
+          case Latte.FunName("int_add") => LLVM.Add
+          case Latte.FunName("int_mul") => LLVM.Mul
+          case Latte.FunName("int_div") => LLVM.Div
+          case Latte.FunName("int_sub") => LLVM.Sub
         }
 
         for {
@@ -153,8 +158,9 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         } yield returnRegister
       }
 
-      case Latte.ArrayCreation(elementType, size) => for {
+      case Latte.ArrayCreation(elementType, sizeExpr) => for {
         returnRegister <- getRegister(PointerType(transformType(elementType)))
+        size <- compileExpression(sizeExpr)
         _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(transformType(elementType), Some(size))))
       } yield returnRegister
 
@@ -172,7 +178,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         } yield returnRegister
       }
 
-      case Latte.FunctionCall(name, arguments) =>
+      case Latte.FunctionCall(Latte.FunName(name), arguments) =>
         val identifier = name match {
           case "printInt" => LLVM.FunctionId(name, VoidType)
           case "printString" => LLVM.FunctionId(name, VoidType)
@@ -266,8 +272,8 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
   override def compile(code: Latte.Code): Either[List[CompileException], LLVM.Code] = {
 
-    assert(code.lengthCompare(1) == 0)
-    val mainFunction = code.head
+    assert(code.definitions.lengthCompare(1) == 0)
+    val mainFunction = code.definitions.head
 
     mainFunction match {
       case Latte.Func(signature, codeBlock) => {
