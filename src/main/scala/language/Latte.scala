@@ -2,18 +2,20 @@ package language
 
 import scala.language.implicitConversions
 
-class TypeInformation {
-  trait Member
-  case class Field(fieldType: language.Type.Type) extends Member
-  case class Method()
-}
-
 object Latte extends Language {
   import language.Type._
   LanguageRegister.register(Latte)
 
-  case class Code(definitions: Seq[Func],
-                  typeGraph: TypeInformation)
+  class TypeInformation {
+    def offsetForClass(className: Type): FieldOffset = ???
+  }
+
+  class FieldOffset {
+    def fieldOffset(field: String): Option[Int] = None
+    def methodOffset(method: String): Option[Int] = None
+  }
+
+  case class Code(definitions: Seq[Func])
 
   type Block = List[Instruction]
 

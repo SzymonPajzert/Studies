@@ -2,7 +2,7 @@ package integration
 
 import backend.OutputDirectory
 import backend.llvm.LlvmRunner
-import compiler.Compiler
+import compiler.{Compiler, TypePhase}
 import org.scalatest.{FlatSpec, Matchers}
 import parser.ParseError
 import parser.latte.LatteParser
@@ -15,13 +15,12 @@ class IntegrationTest extends FlatSpec with Matchers {
     val llvmCompiler =
       Compiler
         .debug("parser", LatteParser)
+        .nextStage("typer", TypePhase)
         .nextStage("staticAnalysis", compiler.LatteStaticAnalysis)
         .nextStage("quad", compiler.LatteToQuadCode)
 
     val directory = OutputDirectory.createTemporary.withSourceFile(
       fileWithResult.filename, fileWithResult.fileContent)
-
-    println(directory.directory)
 
     val result = fileWithResult.expectedResult
 

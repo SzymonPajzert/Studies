@@ -1,25 +1,78 @@
 package language
 
+import language.Latte.{FieldOffset, TypeInformation}
+import language.Type.Type
+
 import scala.language.implicitConversions
 
-object HighLatte extends Language {
+object UntypedLatte extends HighLatte {
+  override type CodeInformation = Unit
+  override type ExpressionInformation = Unit
+
+  implicit def namesAreVariables(identifier: String): LocationInf = (Variable(identifier), Unit)
+  implicit def namesAreFunctionHandles(identifier: String): FunLocationInf = (FunName(identifier), Unit)
+}
+
+object TypedLatte extends HighLatte {
+  override type CodeInformation = TypeInformation
+  override type ExpressionInformation = Type
+}
+
+trait HighLatte extends Language {
   import language.Type._
   LanguageRegister.register(Latte)
 
-  type Code = Seq[TopDefinition]
+  type CodeInformation
+  type ExpressionInformation
+
+  type Code = (Seq[TopDefinition], CodeInformation)
+
+  def findFunction(code: Code, name: String): Option[Func] = {
+    code._1 find {
+      case Func(signature, _) if signature.identifier == name => true
+      case _ => false
+    }
+  }.asInstanceOf[Option[Func]]
+
+  def findAssignment(func: Func, name: String): Option[ExpressionInf] = func.code collectFirst {
+    case Assignment((Variable(nameM), _), expr) if nameM == name => expr
+  }
+
+  trait TopDefinition
+  case class Func(signature: FunctionSignature, code: Block) extends TopDefinition with ClassMember
+  case class Class(name: String, base: String, insides: List[ClassMember]) extends TopDefinition
+
+  trait ClassMember
+
   type Block = List[Instruction]
+
+  sealed trait Instruction
+  type ExpressionInf = (Expression, ExpressionInformation)
+  type LocationInf = (Location, ExpressionInformation)
+  type FunLocationInf = (FunLocation, ExpressionInformation)
+
+  case class Declaration(identifier: String, typeValue: Type) extends Instruction with ClassMember
+  case class Assignment(location: LocationInf, expr: ExpressionInf) extends Instruction
+  case class BlockInstruction(block: Block) extends Instruction
+  case class DiscardValue(expression: ExpressionInf) extends Instruction
+  case class Return(value: Option[ExpressionInf]) extends Instruction
+  case class IfThen(condition: ExpressionInf, thenInst: Instruction, elseOpt: Option[Instruction] = None) extends Instruction
+  case class While(condition: ExpressionInf, instr: Instruction) extends Instruction
+
+  /**
+    * Specifies location of the functions and provides therefore access to methods
+    */
+  trait FunLocation
+  case class FunName(name: String) extends FunLocation
+  case class VTableLookup(expression: ExpressionInf, ident: String) extends FunLocation
+
 
   trait Expression {
     def isLiteral: Boolean = false
-    def getType: Type = VoidType
+    def getType: Type = VoidType  // TODO remove
   }
 
-  trait FunLocation
-  case class FunName(name: String) extends FunLocation
-  case class VTableLookup(expression: Expression, ident: String) extends FunLocation
-
-  case class FunctionCall(location: FunLocation, arguments: Seq[Expression]) extends Expression
-  case class GetValue(identifier: String) extends Expression
+  case class FunctionCall(location: FunLocationInf, arguments: Seq[ExpressionInf]) extends Expression
   case class ConstValue[+T](value: T) extends Expression {
     override def isLiteral: Boolean = true
 
@@ -30,33 +83,20 @@ object HighLatte extends Language {
       case _ => VoidType
     }
   }
-  case class Cast(t: Type, expression: Expression) extends Expression
-  case class ArrayAccess(array: Expression, element: Expression) extends Expression with Location
-  case class FieldAccess(place: Expression, element: String) extends Expression with Location
+  case class Cast(t: Type, expression: ExpressionInf) extends Expression
 
-  case class ArrayCreation(typeT: Type, size: Expression) extends Expression
+  case class ArrayCreation(typeT: Type, size: ExpressionInf) extends Expression
   case class InstanceCreation(typeT: Type) extends Expression
 
-  trait Location
+
+  trait Location extends Expression
   case class Variable(identifier: String) extends Location
-  implicit def namesAreVariables(identifier: String): Variable = Variable(identifier)
-  implicit def namesAreFunctionHandles(identifier: String): FunName = FunName(identifier)
+  case class ArrayAccess(array: ExpressionInf, element: ExpressionInf) extends Location
+  case class FieldAccess(place: ExpressionInf, element: String) extends Location
 
-  trait ClassMember
 
-  trait TopDefinition
-  case class Func(signature: FunctionSignature, code: Block) extends TopDefinition with ClassMember
-  case class Class(name: String, base: String, insides: List[ClassMember]) extends TopDefinition
+
 
   case class FunctionSignature(identifier: String, returnType: Type, arguments: List[(String, Type)])
-
-  trait Instruction
-  case class Declaration(identifier: String, typeValue: Type) extends Instruction with ClassMember
-  case class Assignment(location: Location, expr: Expression) extends Instruction
-  case class BlockInstruction(block: Block) extends Instruction
-  case class DiscardValue(expression: Expression) extends Instruction
-  case class Return(value: Option[Expression]) extends Instruction
-  case class IfThen(condition: Expression, thenInst: Instruction, elseOpt: Option[Instruction] = None) extends Instruction
-  case class While(condition: Expression, instr: Instruction) extends Instruction
 }
 
