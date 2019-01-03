@@ -5,7 +5,6 @@ import backend.jvm.{JVMOp, JasminRunner}
 import backend.llvm.LlvmRunner
 import compiler._
 import language.LLVM
-import parser.instant.InstantParser
 import parser.latte.LatteParser
 
 object Main extends App {
@@ -27,7 +26,7 @@ object Main extends App {
   }
 
   val compilers = args(0) match {
-    case "llvm" => LatteParser ~> TypePhase ~> LatteStaticAnalysis ~> LatteToQuadCode ~> saveLLVM
+    case "llvm" => LatteParser ~> TypePhase ~> UntypingPhase ~> LatteToQuadCode ~> saveLLVM
   }
 
   compilers compile directory

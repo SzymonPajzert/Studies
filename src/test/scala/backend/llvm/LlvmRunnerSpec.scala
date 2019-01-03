@@ -6,7 +6,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import language.Type._
 
 object Definitions {
-  def validBlock: LLVM.Block = LLVM.Block(LLVM.FunctionId("main", IntType), {
+  def validBlock: LLVM.Block = LLVM.Block(LLVM.FunctionId("main", IntType), List(), {
     import LLVM._
 
     Vector(Subblock(Vector(

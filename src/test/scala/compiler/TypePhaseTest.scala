@@ -22,7 +22,7 @@ class TypePhaseTest extends FlatSpec {
 
 
   def findGoodTypes(directory: Directory)(checkMain: TypedLatte.Func => Unit): Unit = {
-    it should s"find good types in ${directory.directory}" in {
+    it should s"find good types in ${directory.sourceFile.getName} ${directory.directory}" in {
       val typedCode = typer compile directory match {
         case Right(x) => x
         case Left(x) => fail(s"Parser failed: $x")
@@ -42,8 +42,8 @@ class TypePhaseTest extends FlatSpec {
   }
 
   findGoodTypes(typeTestDir("functions")) { mainFunction =>
-    assert(TypedLatte.findAssignment(mainFunction, "x").get._2 == IntType)
-    assert(TypedLatte.findAssignment(mainFunction, "y").get._2 == IntType)
-    assert(TypedLatte.findAssignment(mainFunction, "z").get._2 == IntType)
+    assert(TypedLatte.findAssignment(mainFunction, "x0").get._2 == IntType)
+    assert(TypedLatte.findAssignment(mainFunction, "y0").get._2 == IntType)
+    assert(TypedLatte.findAssignment(mainFunction, "z0").get._2 == IntType)
   }
 }

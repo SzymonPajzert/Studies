@@ -11,8 +11,10 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   case class CompilationState(globalCode: String = "",
                               tmpCounter: Int = 0,
                               currentSubstitutions: Registers = Map(),
+                              functionTypes: Functions,
                               code: Vector[LLVM.CodeBlock] = Vector())
 
+  type Functions = Map[String, FunctionType]
   type Registers = Map[String, LLVM.RegisterT]
   type StateOf[T] = State[CompilationState, T]
   type StateC = StateOf[List[LLVM.Instruction]]
@@ -99,7 +101,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     */
   def calculateArrayAddress(arrayAccess: Latte.ArrayAccess): StateOf[LLVM.RegisterT] = {
     arrayAccess match {
-      case Latte.ArrayAccess(Latte.GetValue(array), element) =>
+      case Latte.ArrayAccess(Latte.Variable(array), element) =>
         for {
           arrayLocation <- getLocation(array)      // t**
           arrayPtr <- loadRegister(arrayLocation)  // t*
@@ -129,12 +131,12 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           _ <- putLine(LLVM.Assign(register, LLVM.expression(LLVM.Value(value.toString, typeT))))
         } yield register
       }
-      case arrayAccess @ Latte.ArrayAccess(Latte.GetValue(_), _) => for {
+      case arrayAccess @ Latte.ArrayAccess(Latte.Variable(_), _) => for {
         valueLocation <- calculateArrayAddress(arrayAccess)
         value <- loadRegister(valueLocation)
       } yield value
 
-      case Latte.GetValue(identifier) => for {
+      case Latte.Variable(identifier) => for {
         valueLocation <- getLocation(identifier)
         returnRegister <- loadRegister(valueLocation)
       } yield returnRegister
@@ -179,16 +181,21 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       }
 
       case Latte.FunctionCall(Latte.FunName(name), arguments) =>
-        val identifier = name match {
-          case "printInt" => LLVM.FunctionId(name, VoidType)
-          case "printString" => LLVM.FunctionId(name, VoidType)
-        }
-
         for {
+          functions <- gets[CompilationState, Functions](_.functionTypes)
+
+          identifier = name match {
+            case "printInt" => LLVM.FunctionId(name, VoidType)
+            case "printString" => LLVM.FunctionId(name, VoidType)
+            case definedName if functions contains definedName => {
+              LLVM.FunctionId(definedName, transformType((functions get definedName).get.returnType))
+            }
+          }
+
           returnRegister <- getRegister(identifier.returnType)
           argsRegisters <- arguments.toList.traverseS(compileExpression)
           _ <- putLine(LLVM.AssignFuncall(returnRegister, identifier, argsRegisters))
-        } yield returnRegister
+        } yield returnRegister: LLVM.Expression
     }
   }
 
@@ -270,25 +277,40 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     else state[CompilationState, Unit](Unit)
   } yield Unit
 
+  def putSignature(signature: Latte.FunctionSignature): StateOf[Unit] = signature.arguments match {
+    case Nil => state(Unit)
+    case (identifier, t) :: rest => for {
+      _ <- allocate(identifier, transformType(t))
+      argRegister <- getLocation(identifier)
+      _ <- putLine(LLVM.Literal(s"store ${argRegister.typeId.deref} %${identifier}, ${argRegister.typeId} ${argRegister.name}"))
+    } yield Unit
+  }
+
   override def compile(code: Latte.Code): Either[List[CompileException], LLVM.Code] = {
+    val signatures = (code.definitions map (func => {
+      func.signature.identifier -> FunctionType(func.signature.returnType, func.signature.arguments map (_._2))
+    })).toMap
 
-    assert(code.definitions.lengthCompare(1) == 0)
-    val mainFunction = code.definitions.head
-
-    mainFunction match {
-      case Latte.Func(signature, codeBlock) => {
+    val mapFunction: Latte.Func => (String, LLVM.Block) = {
+      case (Latte.Func(signature, codeBlock)) => {
         val codeCalculation: StateOf[CompilationState] = for {
+          _ <- putSignature(signature)
           _ <- addManyLines(codeBlock)
           _ <- addReturn
           s <- get
         } yield s
 
-        val compiledFunction = codeCalculation(CompilationState())._2
+        val compiledFunction = codeCalculation(CompilationState(functionTypes = signatures))._2
 
-        Right(LLVM.Code(
-          compiledFunction.globalCode,
-          List(LLVM.Block(LLVM.FunctionId("main", IntType), compiledFunction.code))))
+        (compiledFunction.globalCode,
+          LLVM.Block(LLVM.FunctionId(signature.identifier, transformType(signature.returnType)),
+            signature.arguments map { case (name, t) => LLVM.register(name, transformType(t)) },
+            compiledFunction.code))
       }
     }
+
+    val (globals, blocks) = (code.definitions map mapFunction).unzip
+
+    Right(LLVM.Code(globals.mkString("\n"), blocks.toList))
   }
 }

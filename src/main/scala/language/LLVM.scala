@@ -12,7 +12,7 @@ object LLVM extends Language {
 
   case class Code(globalCode: String, blocks: List[Block])
   case class FunctionId(name: String, returnType: Type)
-  case class Block(funcId: FunctionId, code: Vector[CodeBlock])
+  case class Block(funcId: FunctionId, args: List[RegisterT], code: Vector[CodeBlock])
 
   trait CodeBlock
   case class JumpPoint(name: String) extends CodeBlock
@@ -125,9 +125,12 @@ object LLVM extends Language {
     case JumpPoint(name) => s"\n$name:"
   }
 
+  def makeArgs(args: List[RegisterT]): String =
+    (args map {register => s"${register.typeId} ${register.name}"}).mkString(", ")
+
   def serializeBlock(block: Block): String = {
     s"""
-       |define ${block.funcId.returnType} @${block.funcId.name}() {
+       |define ${block.funcId.returnType} @${block.funcId.name}(${makeArgs(block.args)}) {
        |${(block.code map serializeCodeBlock).mkString("\n")}
        |}""".stripMargin
   }

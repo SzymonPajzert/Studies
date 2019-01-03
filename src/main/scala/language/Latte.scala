@@ -28,7 +28,6 @@ object Latte extends Language {
   case class VTableLookup(expression: Expression, offset: Int) extends FunLocation
 
   case class FunctionCall(location: FunLocation, arguments: Seq[Expression]) extends Expression
-  case class GetValue(identifier: String) extends Expression
   case class ConstValue[+T](value: T) extends Expression {
     override def isLiteral: Boolean = true
 
@@ -41,12 +40,12 @@ object Latte extends Language {
   }
   case class ArrayAccess(array: Expression, element: Expression) extends Expression with Location
   case class FieldAccess(place: Expression, element: Int) extends Expression with Location
+  case class Variable(identifier: String) extends Expression with Location
 
   case class ArrayCreation(typeT: Type, size: Expression) extends Expression
   case class InstanceCreation(typeT: Type) extends Expression
 
   trait Location
-  case class Variable(identifier: String) extends Location
   implicit def namesAreVariables(identifier: String): Variable = Variable(identifier)
 
   case class Func(signature: FunctionSignature, code: Block)

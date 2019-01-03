@@ -34,6 +34,8 @@ object FileEnumerator {
     parserTest("virtual_methods.latte"),
 
     // TODO multidimenstional arrays
+    positiveTest("latte/pos/changing_func_args.latte", List("2")),
+    positiveTest("latte/pos/type/functions.latte", List("3")),
     positiveTest("latte/pos/array_access.latte", List("1")),
     positiveTest("latte/pos/array_assign.latte", List()),
     positiveTest("latte/pos/array_loop.latte", List("1", "2", "3")),
