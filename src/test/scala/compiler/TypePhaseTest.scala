@@ -14,8 +14,8 @@ class TypePhaseTest extends FlatSpec {
       .debug("parser", LatteParser)
       .nextStage("typing", TypePhase)
 
-  def typeTestDir(filename: String): Directory = OutputDirectory.createTemporary.withSourceFile(
-    s"$filename.latte", FileUtil.readFile(FileUtil.testFile(s"latte/pos/type/$filename.latte")))
+  def testDir(filename: String): Directory = OutputDirectory.createTemporary.withSourceFile(
+    s"$filename", FileUtil.readFile(FileUtil.testFile(s"latte/pos/$filename")))
 
   private val counterDirectory = OutputDirectory.createTemporary.withSourceFile(
     "counter.latte", FileUtil.readFile(FileUtil.testFile("latte/pos/class.latte")))
@@ -34,20 +34,35 @@ class TypePhaseTest extends FlatSpec {
     }
   }
 
+  def checkClasses(directory: Directory)(checkTypes: TypedLatte.CodeInformation => Unit): Unit = {
+    it should s"parse classes for ${directory.sourceFile.getName} (${directory.directory})" in {
+      val typedCode = typer compile directory match {
+        case Right(x) => x
+        case Left(x) => fail(s"Parser failed: $x")
+      }
+
+      checkTypes(typedCode._2)
+    }
+  }
+
   findGoodTypes(counterDirectory) { mainFunction =>
     val Some((_, cType)) = TypedLatte.findAssignment(mainFunction, "c")
     val Some((_, xType)) = TypedLatte.findAssignment(mainFunction, "x")
     assert(cType == ClassType("Counter"))
-    // TODO assert(xType == IntType)
+    assert(xType == IntType)
   }
 
-  findGoodTypes(typeTestDir("functions")) { mainFunction =>
+  findGoodTypes(testDir("type/functions.latte")) { mainFunction =>
     assert(TypedLatte.findAssignment(mainFunction, "x0").get._2 == IntType)
     assert(TypedLatte.findAssignment(mainFunction, "y0").get._2 == IntType)
     assert(TypedLatte.findAssignment(mainFunction, "z0").get._2 == IntType)
   }
 
-  findGoodTypes(typeTestDir("arrays")) { mainFunction =>
+  findGoodTypes(testDir("type/arrays.latte")) { mainFunction =>
     assert(TypedLatte.findAssignment(mainFunction, "x0").get._2 == ArrayType(ArrayType(IntType)))
+  }
+
+  checkClasses(testDir("struct/pair.latte")) { typeInformation =>
+    assert(typeInformation.containedClasses.head == ClassType("Pair"))
   }
 }

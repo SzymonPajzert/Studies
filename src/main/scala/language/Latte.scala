@@ -6,7 +6,11 @@ object Latte extends Language {
   import language.Type._
   LanguageRegister.register(Latte)
 
-  class TypeInformation(val defined: Map[ClassType, FieldOffset]) {
+  object TypeInformation {
+    def empty: TypeInformation = new TypeInformation(Map())
+  }
+
+  case class TypeInformation(defined: Map[ClassType, FieldOffset]) {
     def offsetForClass(className: ClassType): FieldOffset = defined(className)
 
     def fieldTypes(className: ClassType): Seq[Type] = defined(className).fieldTypes

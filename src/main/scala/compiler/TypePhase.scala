@@ -21,7 +21,9 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   type FunBinds = Map[String, Type]
   case class Binds(variables: VarBinds, functions: Map[String, Type])
 
-  type S[A] = State[Binds, A]
+  type KS = (Binds, TypeInformation)
+
+  type S[A] = State[KS, A]
   type TypeEnvironment[A] = EitherT[S, List[CompileException], A]
 
   implicit def viewableOnFirst[B, A <: B]
@@ -30,9 +32,10 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     (value, information) <- t
   } yield (value, information)
 
-  implicit def ok[A](value: A): TypeEnvironment[A] = EitherT[S, List[CompileException], A](state[Binds, List[CompileException] \/ A](\/-(value)))
+  implicit def ok[A](value: A): TypeEnvironment[A] =
+    EitherT[S, List[CompileException], A](state[KS, List[CompileException] \/ A](\/-(value)))
 
-  implicit def stateToEither[A](value: State[Binds, A]): TypeEnvironment[A] = {
+  implicit def stateToEither[A](value: State[KS, A]): TypeEnvironment[A] = {
     EitherT[S, List[CompileException], A](value map (\/-(_)))
   }
 
@@ -46,9 +49,17 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     } yield h :: t
   }
 
+  def getBinds: TypeEnvironment[Binds] = stateToEither(get[KS] map (_._1))
+
+  def modifyBinds(f: Binds => Binds): TypeEnvironment[Unit] =
+    modify[KS](ks => ks.copy(_1 =  f(ks._1)))
+
+  def modifyTypeInformation(f: TypeInformation => TypeInformation): TypeEnvironment[Unit] =
+    modify[KS](ks => ks.copy(_2 =  f(ks._2)))
+
   def location(loc: UntypedLatte.LocationInf): TypeEnvironment[TypedLatte.LocationInf] = loc._1 match {
     case UntypedLatte.Variable(ident) => for {
-      binds <- get[Binds] : TypeEnvironment[Binds]
+      binds <- getBinds
       (identifier, typeId) <- (binds.variables get ident match {
         case Some(state) => (ident + state.counter.toString, state.typeId)
         case None => createError(s"Undefined variable $ident")
@@ -68,7 +79,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
 
   def lookupFunctionSignature(functionName: String): TypeEnvironment[Type] = for {
-    signatures <- get[Binds] : TypeEnvironment[Binds]
+    signatures <- getBinds
 
     foundValue <- (signatures.functions get functionName match {
       case Some(value) => ok(value)
@@ -131,26 +142,31 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     case loc: UntypedLatte.Location => location((loc, Unit))
   }
 
-  def markAsOld(binds: Binds): Binds = {
-    binds.copy(variables = binds.variables.map {
+  def markBindsAsOld(state: KS): KS = {
+    val binds = state._1
+
+    val newBinds = binds.copy(variables = binds.variables.map {
       pair => (pair._1, pair._2.copy(fromCurrentBlock = false))
     })
+
+    (newBinds, state._2)
+  }
+
+  def setCounter(identifier: String, counter: Int, typeValue: Type): TypeEnvironment[Int] = {
+    (for {
+      _ <- modifyBinds { binds => binds.copy(
+        variables = binds.variables + (identifier -> VariableState(counter, true, typeValue)))
+      }
+    } yield counter) : TypeEnvironment[Int]
   }
 
   def instruction(ins: UntypedLatte.Instruction): TypeEnvironment[TypedLatte.Instruction] = ins match {
     case UntypedLatte.Declaration(identifier, typeValue) => for {
-      binds <- get[Binds]: TypeEnvironment[Binds]
+      binds <- getBinds
       counter <- (binds.variables get identifier match {
         case Some(state) if state.fromCurrentBlock => createError(s"$identifier already defined")
-        case Some(state) => for {
-          _ <- modify[Binds]{binds => binds.copy(
-            variables = binds.variables + (identifier -> VariableState(state.counter + 1, true, typeValue)))
-          }
-        } yield state.counter + 1
-        case None => for {
-          _ <- modify[Binds]{binds => binds.copy(
-          variables = binds.variables + (identifier -> VariableState(0, true, typeValue)))}
-        } yield 0
+        case Some(state) => setCounter(identifier, state.counter + 1, typeValue)
+        case None => setCounter(identifier, 0, typeValue)
         }) : TypeEnvironment[Int]
     } yield TypedLatte.Declaration(identifier + counter.toString , typeValue)
 
@@ -160,8 +176,8 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     } yield TypedLatte.Assignment(loc, expr)
 
     case UntypedLatte.BlockInstruction(blockU) => (for {
-      s <- get[Binds]: TypeEnvironment[Binds]
-      blockE = mapM(blockU, instruction).run(markAsOld(s))._2
+      s <- get[KS]: TypeEnvironment[KS]
+      blockE = mapM(blockU, instruction).run(markBindsAsOld(s))._2
       block <- EitherT[S, List[CompileException], List[TypedLatte.Instruction]](state(blockE)): TypeEnvironment[List[TypedLatte.Instruction]]
     } yield TypedLatte.BlockInstruction(block)): TypeEnvironment[TypedLatte.Instruction]
 
@@ -205,16 +221,23 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
   def subclass(name: String, base: String): TypeEnvironment[Unit] = ok(Unit)
 
-  def parseClassStructure(str: String, members: List[UntypedLatte.ClassMember]): TypeEnvironment[Unit] = ok(Unit)
+  def parseClassStructure(className: String, members: List[UntypedLatte.ClassMember]): TypeEnvironment[Unit] = {
+    val identifierTypePairs = members map {
+      case UntypedLatte.Declaration(value, typeId) => (value, typeId)
+    }
+
+    modifyTypeInformation { typeInformation =>
+      new TypeInformation(
+        typeInformation.defined + (ClassType(className) -> new FieldOffset(identifierTypePairs))
+      )
+    }
+  }
 
   def topDefinition: UntypedLatte.TopDefinition => TypeEnvironment[Option[TypedLatte.TopDefinition]] = {
     case func : UntypedLatte.Func => for {
       f <- toplevelFunc(func)
     } yield Some(f)
-    case UntypedLatte.Class(name, base, insidesU) => for {
-      _ <- subclass(name, base)
-      _ <- parseClassStructure(name, insidesU)
-    } yield None
+    case _ => ok(None)
   }
 
   def addTopDefinition: UntypedLatte.TopDefinition => TypeEnvironment[Unit] = {
@@ -222,38 +245,44 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       val name = signature.identifier
       val typeId = FunctionType(signature.returnType, signature.arguments.map(_._2))
       for {
-        binds <- get[Binds]: TypeEnvironment[Binds]
+        binds <- getBinds: TypeEnvironment[Binds]
         _ <- (binds.functions get name match {
           case Some(_) => createError(s"$name already defined")
-          case None => modify[Binds]{binds => binds.copy(functions = binds.functions + (name -> typeId))}
+          case None => modifyBinds { binds => binds.copy(
+            functions = binds.functions + (name -> typeId))}
         }) : TypeEnvironment[Unit]
       } yield Unit
-    case _ => ok(Unit)
+    case UntypedLatte.Class(name, base, insidesU) => for {
+      _ <- subclass(name, base)
+      _ <- parseClassStructure(name, insidesU)
+    } yield None
   }
 
   def runWithSeparateStates(defs: List[UntypedLatte.TopDefinition],
-                            state: Binds): List[CompileException] \/ List[TypedLatte.TopDefinition] = defs match {
+                            state: KS): List[CompileException] \/ List[TypedLatte.TopDefinition] = defs match {
     case Nil => \/-(Nil)
     case (hM :: tM) => for {
-      hO <- topDefinition(hM).run(state)._2
       tail <- runWithSeparateStates(tM, state)
+      hO <- topDefinition(hM).run(state)._2
     } yield hO match {
       case Some(h) => h :: tail
       case None => tail
     }
   }
 
+  def getTypeInformation: TypeEnvironment[TypeInformation] =
+    stateToEither(get[KS] map (_._2))
+
+  def emptyState: KS = (Binds(Map(), Map()), TypeInformation.empty)
 
   override def compile(code: UntypedLatte.Code): Either[List[CompileException], TypedLatte.Code] = {
     val typePhase: TypeEnvironment[TypedLatte.Code] = for {
       _ <- mapM(code._1.toList, addTopDefinition)
-      s <- get[Binds]: TypeEnvironment[Binds]
+      s <- get[KS]: TypeEnvironment[KS]
       typedCode <- EitherT[S, List[CompileException], List[TypedLatte.TopDefinition]](state(runWithSeparateStates(code._1.toList, s)))
-    } yield (typedCode, new Latte.TypeInformation(Map(
-      ClassType("Pair") -> new FieldOffset(List(("x", IntType), ("y", IntType))),
-      ClassType("Triple") -> new FieldOffset(List(("x", IntType), ("y", IntType), ("z", IntType)))
-    )))
+      typeInformation <- getTypeInformation
+    } yield (typedCode, typeInformation)
 
-    typePhase.run(Binds(Map(), Map()))._2.toEither
+    typePhase.run(emptyState)._2.toEither
   }
 }
