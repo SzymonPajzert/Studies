@@ -1,7 +1,7 @@
 package compiler
 
 import backend.{Directory, FileUtil, OutputDirectory}
-import language.Type.{ClassType, IntType}
+import language.Type.{ArrayType, ClassType, IntType}
 import language.TypedLatte
 import org.scalatest.FlatSpec
 import parser.latte.LatteParser
@@ -45,5 +45,9 @@ class TypePhaseTest extends FlatSpec {
     assert(TypedLatte.findAssignment(mainFunction, "x0").get._2 == IntType)
     assert(TypedLatte.findAssignment(mainFunction, "y0").get._2 == IntType)
     assert(TypedLatte.findAssignment(mainFunction, "z0").get._2 == IntType)
+  }
+
+  findGoodTypes(typeTestDir("arrays")) { mainFunction =>
+    assert(TypedLatte.findAssignment(mainFunction, "x0").get._2 == ArrayType(ArrayType(IntType)))
   }
 }

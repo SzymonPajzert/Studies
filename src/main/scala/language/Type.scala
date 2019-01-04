@@ -1,36 +1,53 @@
 package language
 
 object Type {
+  case class DerefException(t: Type) extends Exception(s"trying to deref: $t")
+
   sealed trait Type {
-    def deref: Type = throw new Exception(s"trying to deref: ${this}")
-  }
-  sealed trait LLVMType extends Type
-
-  sealed trait ValueType extends Type with LLVMType
-
-  case object IntType extends ValueType {
-    override def toString: String = "i32"
-  }
-  case object VoidType extends ValueType {
-    override def toString: String = "void"
-  }
-  case object CharType extends ValueType {
-    override def toString: String = "i8"
-  }
-  case class ArrayType(eltType: Type, size: Int) extends ValueType {
-    override def toString: String = s"[$size x $eltType]"
+    def deref: Type = throw new DerefException(this)
+    def llvmRepr: String
   }
 
-  case class ClassType(name: String) extends Type
-  case object StringType extends Type
-  case object BoolType extends ValueType
+  case object IntType extends Type {
+    override def llvmRepr: String = "i32"
+  }
+  case object VoidType extends Type {
+    override def llvmRepr: String = "void"
+  }
+  case object CharType extends Type {
+    override def llvmRepr: String = "i8"
+  }
+  case class ArrayType(eltType: Type) extends Type {
+    override def llvmRepr: String = ???
+  }
 
-  case class PointerType(t: Type) extends Type with LLVMType {
-    override def toString: String = s"${t.toString}*"
+  case class ConstArrayType(eltType: Type, size: Int) extends Type {
+    override def llvmRepr: String = s"[$size x ${eltType.llvmRepr}]"
+  }
+
+  case class ClassType(name: String) extends Type {
+    override def llvmRepr: String = s"%class.$name"
+  }
+
+  case class AggregateType(name: String, elements: Seq[Type]) extends Type {
+    override def llvmRepr: String = s"%class.$name"
+  }
+
+  case object StringType extends Type {
+    override def llvmRepr: String = ???
+  }
+
+  case object BoolType extends Type {
+    override def llvmRepr: String = ???
+  }
+
+  case class PointerType(t: Type) extends Type {
+    override def llvmRepr: String = s"${t.llvmRepr}*"
 
     override def deref: Type = t
   }
 
-
-  case class FunctionType(returnType: Type, argsType: Seq[Type]) extends Type
+  case class FunctionType(returnType: Type, argsType: Seq[Type]) extends Type {
+    override def llvmRepr: String = ???
+  }
 }

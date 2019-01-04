@@ -35,6 +35,8 @@ object FileEnumerator {
 
     // TODO multidimenstional arrays
     positiveTest("latte/pos/changing_func_args.latte", List("2")),
+    positiveTest("latte/pos/struct/simple.latte", List("1")),
+    positiveTest("latte/pos/struct/triple.latte", List("5")),
     positiveTest("latte/pos/type/functions.latte", List("3")),
     positiveTest("latte/pos/array_access.latte", List("1")),
     positiveTest("latte/pos/array_assign.latte", List()),

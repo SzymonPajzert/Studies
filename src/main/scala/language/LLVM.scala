@@ -7,7 +7,7 @@ import language.Type.PointerType
 import scala.language.implicitConversions
 
 object LLVM extends Language {
-  import language.Type.{LLVMType => Type, IntType, ValueType, VoidType}
+  import language.Type.{Type, IntType, VoidType}
   LanguageRegister.register(LLVM)
 
   case class Code(globalCode: String, blocks: List[Block])
@@ -33,7 +33,7 @@ object LLVM extends Language {
     override def typeId: Type = ???
   }
   case class Value(name: String, typeId: Type) extends Expression
-  class Register[+T <: Type](val value: String, val typeId: Type, val deref: String) extends Expression {
+  case class Register[+T <: Type](val value: String, val typeId: Type, val deref: String) extends Expression {
     def name: String = s"${deref}${value}"
   }
 
@@ -41,7 +41,6 @@ object LLVM extends Language {
   def constRegister[T <: Type](value: String, typeId: Type): Register[T] = new Register(value, typeId, "@.")
 
   type RegisterT = Register[Type]
-  type ValueRegister = Register[ValueType]
 
   sealed trait Operation { def name: String }
   case object Add extends Operation { val name = "add" }
@@ -59,25 +58,27 @@ object LLVM extends Language {
   // TODO it should check types of the incomming registers
   def getElementPtr[T <: Type](elementType: Type,
                                pointer: Register[T],
-                               indices: List[Expression] = List(Value("0", IntType), Value("0", IntType))): Func[T] = new Func[T] {
+                               indices: List[Expression] = List(Value("0", IntType), Value("0", IntType)),
+                               sourceTypeOpt: Option[Type] = None): Func[T] = new Func[T] {
     override def getLine: String = {
-      val accessTypes = s"$elementType, ${PointerType(elementType)}"
-      val indicesStr = (indices map (index => s"${index.typeId} ${index.name}")).mkString(", ")
+      val sourceType = sourceTypeOpt.getOrElse(PointerType(elementType))
+      val accessTypes = s"${elementType.llvmRepr}, ${sourceType.llvmRepr}"
+      val indicesStr = (indices map (index => s"${index.typeId.llvmRepr} ${index.name}")).mkString(", ")
       s"getelementptr $accessTypes ${pointer.name}, $indicesStr"
     }
   }
 
   def alloca(t: Type, size: Option[Expression] = None): Func[t.type] = new Func[t.type] {
     override def getLine: String = size match {
-      case None => s"alloca $t"
-      case Some(s) => s"alloca $t, ${s.typeId} ${s.name}"
+      case None => s"alloca ${t.llvmRepr}"
+      case Some(s) => s"alloca ${t.llvmRepr}, ${s.typeId.llvmRepr} ${s.name}"
     }
   }
   def load[T <: Type](valueLocation: Register[T]): Func[T] = new Func[T] {
-    override def getLine: String = s"load ${valueLocation.typeId.deref}, ${valueLocation.typeId} ${valueLocation.name}"
+    override def getLine: String = s"load ${valueLocation.typeId.deref.llvmRepr}, ${valueLocation.typeId.llvmRepr} ${valueLocation.name}"
   }
   def icmpSgt(left: Expression, right: Expression): Func[Nothing] = new Func[Nothing] {
-    override def getLine: String = s"icmp sgt ${left.typeId} ${left.name}, ${right.name}"
+    override def getLine: String = s"icmp sgt ${left.typeId.llvmRepr} ${left.name}, ${right.name}"
   }
   def expression(expr: Expression): Func[Nothing] = new Func[Nothing] {
     override def getLine: String = s"add i32 0, ${expr.name}"
@@ -99,39 +100,68 @@ object LLVM extends Language {
   }
 
   def convertArgs(expressions: List[LLVM.Expression]): String = {
-    (expressions map (exp => s"${exp.typeId} ${exp.name}")).mkString(", ")
+    (expressions map (exp => s"${exp.typeId.llvmRepr} ${exp.name}")).mkString(", ")
   }
 
-  def serializeInstruction(instruction: Instruction): String = instruction match {
-    case Literal(code) => code
+  def serializeInstruction(instruction: Instruction): Either[String, (String, String)] = instruction match {
+    case Literal(code) => Left(code)
     case JumpIf(expression, ifTrue, ifFalse) if expression.isConstTrue =>
-      s"br label %${ifTrue.name}"
+      Left(s"br label %${ifTrue.name}")
+
     case JumpIf(expression, ifTrue, ifFalse) =>
-      s"br i1 ${expression.name}, label %${ifTrue.name}, label %${ifFalse.name}"
-    case Assign(destination, code) => s"${destination.name} = ${code.getLine}  ; ${destination.typeId}"
+      Left(s"br i1 ${expression.name}, label %${ifTrue.name}, label %${ifFalse.name}")
+
+    case Assign(destination, code) =>
+      Right(s"${destination.name} = ${code.getLine}", s"${destination.typeId}")
+
     case AssignFuncall(_, functionId, arguments) if functionId.returnType == VoidType =>
-      s"call ${functionId.returnType} @${functionId.name}(${convertArgs(arguments)})"
-    case AssignFuncall(destination, functionId, arguments) => s"${destination.name} = call ${functionId.returnType} @${functionId.name}(${convertArgs(arguments)})"
+      Left(s"call ${functionId.returnType.llvmRepr} @${functionId.name}(${convertArgs(arguments)})")
+
+    case AssignFuncall(destination, functionId, arguments) =>
+      Left(s"${destination.name} = call ${functionId.returnType.llvmRepr} @${functionId.name}(${convertArgs(arguments)})")
+
     case AssignOp(destination, op, left, right) =>
-      s"${destination.name} = ${op.name} ${destination.typeId} ${left.name}, ${right.name}"
+      Left(s"${destination.name} = ${op.name} ${destination.typeId.llvmRepr} ${left.name}, ${right.name}")
+
     case PrintInt(expression) =>
-      s"""call void @printInt(${expression.typeId} ${expression.name})"""
+      Left(s"""call void @printInt(${expression.typeId.llvmRepr} ${expression.name})""")
+
     case Return(expression) =>
-      s"""ret ${expression.typeId} ${expression.name}"""
+      Left(s"""ret ${expression.typeId.llvmRepr} ${expression.name}""")
   }
 
   def serializeCodeBlock(codeBlock: CodeBlock): String = codeBlock match {
-    case Subblock(instructions) => (instructions map ("  " + serializeInstruction(_))).mkString("\n")
+    case Subblock(instructions) => {
+      val serializedWithGaps = instructions map serializeInstruction
+      val maxWidth = (serializedWithGaps map {
+        case Left(a) => a.length
+        case Right((a, b)) => a.length
+      }).max + 2
+
+      val serialized = serializedWithGaps map {
+        case Left(a) => a
+        case Right((a, b)) => a + (" " * (maxWidth - a.length)) + "; " + b
+      }
+
+      (serialized map ("  " + _)).mkString("\n")
+    }
     case JumpPoint(name) => s"\n$name:"
   }
 
   def makeArgs(args: List[RegisterT]): String =
-    (args map {register => s"${register.typeId} ${register.name}"}).mkString(", ")
+    (args map {register => s"${register.typeId.llvmRepr} ${register.name}"}).mkString(", ")
+
+  def mergeSubblocks(blocks: List[LLVM.CodeBlock]): Vector[LLVM.CodeBlock] =
+    blocks match {
+      case Subblock(a) :: Subblock(b) :: t => mergeSubblocks(Subblock(a ++ b) :: t)
+      case a :: t => (a :: mergeSubblocks(t).toList).toVector
+      case Nil => Vector()
+    }
 
   def serializeBlock(block: Block): String = {
     s"""
-       |define ${block.funcId.returnType} @${block.funcId.name}(${makeArgs(block.args)}) {
-       |${(block.code map serializeCodeBlock).mkString("\n")}
+       |define ${block.funcId.returnType.llvmRepr} @${block.funcId.name}(${makeArgs(block.args)}) {
+       |${(mergeSubblocks(block.code.toList) map serializeCodeBlock).mkString("\n")}
        |}""".stripMargin
   }
 

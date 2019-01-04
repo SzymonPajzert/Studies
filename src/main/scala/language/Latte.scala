@@ -6,16 +6,28 @@ object Latte extends Language {
   import language.Type._
   LanguageRegister.register(Latte)
 
-  class TypeInformation {
-    def offsetForClass(className: Type): FieldOffset = ???
+  class TypeInformation(val defined: Map[ClassType, FieldOffset]) {
+    def offsetForClass(className: ClassType): FieldOffset = defined(className)
+
+    def fieldTypes(className: ClassType): Seq[Type] = defined(className).fieldTypes
+
+    def containedClasses: List[ClassType] = defined.keys.toList
   }
 
-  class FieldOffset {
-    def fieldOffset(field: String): Option[Int] = None
-    def methodOffset(method: String): Option[Int] = None
+  class FieldOffset(val fields: List[(String, Type)]) {
+    def fieldTypes: Seq[Type] = fields map (_._2)
+
+    def fieldOffset(field: String): Option[Int] =
+      fields
+        .map(_._1)
+        .zipWithIndex
+        .find(_._1 == field)
+        .map (_._2)
+
+    def methodOffset(method: String): Option[Int] = Some(0)
   }
 
-  case class Code(definitions: Seq[Func])
+  case class Code(definitions: Seq[Func], globalLLVM: String = "")
 
   type Block = List[Instruction]
 
@@ -38,14 +50,14 @@ object Latte extends Language {
       case _ => VoidType
     }
   }
-  case class ArrayAccess(array: Expression, element: Expression) extends Expression with Location
-  case class FieldAccess(place: Expression, element: Int) extends Expression with Location
-  case class Variable(identifier: String) extends Expression with Location
+  case class ArrayAccess(array: Expression, element: Expression) extends Location
+  case class FieldAccess(place: Expression, element: Int) extends Location
+  case class Variable(identifier: String) extends Location
 
   case class ArrayCreation(typeT: Type, size: Expression) extends Expression
   case class InstanceCreation(typeT: Type) extends Expression
 
-  trait Location
+  trait Location extends Expression
   implicit def namesAreVariables(identifier: String): Variable = Variable(identifier)
 
   case class Func(signature: FunctionSignature, code: Block)

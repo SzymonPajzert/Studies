@@ -1,9 +1,9 @@
 package compiler
 
 import compiler.TypePhase.TypeEnvironment
-import language.Latte.TypeInformation
+import language.Latte.{FieldOffset, TypeInformation}
 import language.Type._
-import language.{Type, TypedLatte, UntypedLatte}
+import language.{Latte, Type, TypedLatte, UntypedLatte}
 
 import scala.language.implicitConversions
 import scalaz.Scalaz._
@@ -31,6 +31,10 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   } yield (value, information)
 
   implicit def ok[A](value: A): TypeEnvironment[A] = EitherT[S, List[CompileException], A](state[Binds, List[CompileException] \/ A](\/-(value)))
+
+  implicit def stateToEither[A](value: State[Binds, A]): TypeEnvironment[A] = {
+    EitherT[S, List[CompileException], A](value map (\/-(_)))
+  }
 
   def createError[A](str: String): TypeEnvironment[A] = EitherT[S, List[CompileException], A](state(-\/(List(ErrorString(str)))))
 
@@ -61,9 +65,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     } yield (TypedLatte.FieldAccess(place, element), VoidType)
   }
 
-  implicit def stateToEither[A](value: State[Binds, A]): TypeEnvironment[A] = {
-    EitherT[S, List[CompileException], A](value map (\/-(_)))
-  }
+
 
   def lookupFunctionSignature(functionName: String): TypeEnvironment[Type] = for {
     signatures <- get[Binds] : TypeEnvironment[Binds]
@@ -104,6 +106,9 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     case _ => createError(s"$functionName is not callable")
   }
 
+  def assertType(inf: TypedLatte.ExpressionInf, expectedType: Type): TypeEnvironment[Unit] =
+    if (inf._2 == expectedType) ok(Unit) else createError("Wrong type")
+
   def expression(expr: UntypedLatte.ExpressionInf): TypeEnvironment[TypedLatte.ExpressionInf] = expr._1 match {
     case UntypedLatte.FunctionCall(locU , arguments) => for {
       loc <- funLocation(locU._1)
@@ -117,15 +122,12 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
     case UntypedLatte.ArrayCreation(elementType, size) => for {
       typedSize <- expression(size)
-      result = (typedSize match {
-        case (TypedLatte.ConstValue(v), Type.IntType) => {
-          val arrayType = ArrayType(elementType, v.asInstanceOf[Int])
-          (TypedLatte.ArrayCreation(elementType, typedSize), arrayType)
-        }
-      }) : TypedLatte.ExpressionInf
-    } yield result
+      _ <- assertType(typedSize, IntType)
+      arrayType = ArrayType(elementType)
+    } yield (TypedLatte.ArrayCreation(elementType, typedSize), arrayType)
 
     case UntypedLatte.InstanceCreation(typeT) => (TypedLatte.InstanceCreation(typeT), typeT)
+
     case loc: UntypedLatte.Location => location((loc, Unit))
   }
 
@@ -201,21 +203,18 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     }
   }
 
-  def member: UntypedLatte.ClassMember => TypeEnvironment[TypedLatte.ClassMember] = {
-    case func : UntypedLatte.Func => for {
-      f <- toplevelFunc(func)
-    } yield f
-    case UntypedLatte.Declaration(identifier, typeValue) =>
-      TypedLatte.Declaration(identifier, typeValue)
-  }
+  def subclass(name: String, base: String): TypeEnvironment[Unit] = ok(Unit)
 
-  def topDefinition: UntypedLatte.TopDefinition => TypeEnvironment[TypedLatte.TopDefinition] = {
+  def parseClassStructure(str: String, members: List[UntypedLatte.ClassMember]): TypeEnvironment[Unit] = ok(Unit)
+
+  def topDefinition: UntypedLatte.TopDefinition => TypeEnvironment[Option[TypedLatte.TopDefinition]] = {
     case func : UntypedLatte.Func => for {
       f <- toplevelFunc(func)
-    } yield f
+    } yield Some(f)
     case UntypedLatte.Class(name, base, insidesU) => for {
-      insides <- mapM(insidesU, member)
-    } yield TypedLatte.Class(name, base, insides)
+      _ <- subclass(name, base)
+      _ <- parseClassStructure(name, insidesU)
+    } yield None
   }
 
   def addTopDefinition: UntypedLatte.TopDefinition => TypeEnvironment[Unit] = {
@@ -233,12 +232,15 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   }
 
   def runWithSeparateStates(defs: List[UntypedLatte.TopDefinition],
-                            state: Binds): TypeEnvironment[List[TypedLatte.TopDefinition]] = defs match {
-    case Nil => Nil
+                            state: Binds): List[CompileException] \/ List[TypedLatte.TopDefinition] = defs match {
+    case Nil => \/-(Nil)
     case (hM :: tM) => for {
-      h <- topDefinition(hM)
-      t <- runWithSeparateStates(tM, state)
-    } yield h :: t
+      hO <- topDefinition(hM).run(state)._2
+      tail <- runWithSeparateStates(tM, state)
+    } yield hO match {
+      case Some(h) => h :: tail
+      case None => tail
+    }
   }
 
 
@@ -246,8 +248,11 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     val typePhase: TypeEnvironment[TypedLatte.Code] = for {
       _ <- mapM(code._1.toList, addTopDefinition)
       s <- get[Binds]: TypeEnvironment[Binds]
-      typedCode <- runWithSeparateStates(code._1.toList, s)
-    } yield (typedCode, new TypeInformation)
+      typedCode <- EitherT[S, List[CompileException], List[TypedLatte.TopDefinition]](state(runWithSeparateStates(code._1.toList, s)))
+    } yield (typedCode, new Latte.TypeInformation(Map(
+      ClassType("Pair") -> new FieldOffset(List(("x", IntType), ("y", IntType))),
+      ClassType("Triple") -> new FieldOffset(List(("x", IntType), ("y", IntType), ("z", IntType)))
+    )))
 
     typePhase.run(Binds(Map(), Map()))._2.toEither
   }

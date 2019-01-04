@@ -2,16 +2,24 @@
 
 package compiler
 
+import language.Latte.FieldOffset
+import language.Type._
 import language.{Latte, TypedLatte}
 
+import scala.language.implicitConversions
 import scalaz.Scalaz._
 import scalaz._
 
 object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
-  type S[A] = State[Unit, A]
+  type KS = TypedLatte.CodeInformation
+  type S[A] = State[KS, A]
   type Compiler[E] = EitherT[S, List[CompileException], E]
 
-  implicit def ok[A](value: A): Compiler[A] = EitherT[S, List[CompileException], A](state[Unit, List[CompileException] \/ A](\/-(value)))
+  implicit def ok[A](value: A): Compiler[A] = EitherT[S, List[CompileException], A](state[KS, List[CompileException] \/ A](\/-(value)))
+
+  implicit def stateToEither[A](value: State[KS, A]): Compiler[A] = {
+    EitherT[S, List[CompileException], A](value map (\/-(_)))
+  }
 
   def mapM[A, B](list: List[A], f: A => Compiler[B]): Compiler[List[B]] =
     (list foldRight (ok(List()): Compiler[List[B]])) { (elt, acc) => for {
@@ -20,29 +28,56 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       } yield newElt :: okAcc
     }
 
+  def location: TypedLatte.Location => Compiler[Latte.Location] = {
+    case TypedLatte.ArrayAccess((TypedLatte.Variable(name), _), index) =>
+      compileExpr(index) map (Latte.ArrayAccess(Latte.Variable(name), _))
+    case TypedLatte.Variable(identifier) => Latte.Variable(identifier)
+    case TypedLatte.FieldAccess(expressionInf, element) =>
+      val (_, className @ ClassType(_)) = expressionInf
+      (for {
+        codeInformation <- get[TypedLatte.CodeInformation]: Compiler[TypedLatte.CodeInformation]
+        offset = codeInformation.offsetForClass(className).fieldOffset(element).get
+        expression <- compileExpr(expressionInf)
+      } yield Latte.FieldAccess(expression, offset)): Compiler[Latte.Location]
+  }
+
+  def transformType: Type => Compiler[Type] = {
+    case ClassType(className) => for {
+      codeInformation <- get[TypedLatte.CodeInformation]: Compiler[TypedLatte.CodeInformation]
+    } yield AggregateType(className, codeInformation.fieldTypes(ClassType(className)))
+    case a => a
+  }
+
   def compileExpr(expression: TypedLatte.ExpressionInf): Compiler[Latte.Expression] = {
     expression._1 match {
-      case TypedLatte.Variable(identifier) => Latte.Variable(identifier)
       case TypedLatte.FunctionCall((TypedLatte.FunName(functionName), _), a) => for {
         arguments <- mapM(a.toList, compileExpr)
       } yield Latte.FunctionCall(Latte.FunName(functionName), arguments)
+
       case TypedLatte.ConstValue(v) => Latte.ConstValue(v)
+
       case TypedLatte.ArrayCreation(a, b) => compileExpr(b) map (Latte.ArrayCreation(a, _))
-      case TypedLatte.ArrayAccess((TypedLatte.Variable(name), _), index) =>
-        compileExpr(index) map (Latte.ArrayAccess(Latte.Variable(name), _))
+
+      case TypedLatte.InstanceCreation(classType: ClassType) =>
+        transformType(classType) map Latte.InstanceCreation
+
+      case locU: TypedLatte.Location => for {
+        loc <- location(locU)
+      } yield loc
     }
   }
 
   def instruction: TypedLatte.Instruction => Compiler[Latte.Instruction] = {
-    case TypedLatte.Declaration(name, typeDecl) => Latte.Declaration(name, typeDecl)
-    case TypedLatte.Assignment((TypedLatte.ArrayAccess((TypedLatte.Variable(name), _), indexE), _), expressionE) => for {
-      index <- compileExpr(indexE)
-      expression <- compileExpr(expressionE)
-    } yield Latte.Assignment(Latte.ArrayAccess(Latte.Variable(name), index), expression)
+    case TypedLatte.Declaration(name, typeDecl) =>
+      transformType(typeDecl) map {
+        case t: AggregateType => Latte.Declaration(name, PointerType(t))
+        case t => Latte.Declaration(name, t)
+      }
 
-    case TypedLatte.Assignment((TypedLatte.Variable(name), _), expressionE) => for {
-      expression<- compileExpr(expressionE)
-    } yield Latte.Assignment(name, expression): Latte.Instruction
+    case TypedLatte.Assignment((locU, _), expressionE) => for {
+      loc <- location(locU)
+      expression <- compileExpr(expressionE)
+    } yield Latte.Assignment(loc, expression)
 
     case TypedLatte.BlockInstruction(instructionsE) => mapM(instructionsE, instruction) map Latte.BlockInstruction
 
@@ -70,11 +105,18 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
     }
   }
 
+  def exportStructures(information: Latte.TypeInformation): Compiler[String] = (for {
+    className <- information.containedClasses
+    result = s"${className.llvmRepr} = type { ${information.fieldTypes(className).map(_.llvmRepr).mkString(", ")} }"
+  } yield result).mkString("\n")
+
+
   override def compile(code: TypedLatte.Code): Either[List[CompileException], Latte.Code] = {
     val untyping = for {
       latteCode <- mapM(code._1.toList, compileFunc)
-    } yield Latte.Code(latteCode)
+      allStructures <- exportStructures(code._2)
+    } yield Latte.Code(latteCode, allStructures)
 
-    untyping.run(Unit)._2.toEither
+    untyping.run(code._2)._2.toEither
   }
 }

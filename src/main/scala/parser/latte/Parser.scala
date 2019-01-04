@@ -241,7 +241,7 @@ object Transformations {
       override def visit(p: Bool, arg: Any): Type = BoolType
       override def visit(p: Void, arg: Any): Type = VoidType
       override def visit(p: Fun, arg: Any): Type = funType(p)
-      override def visit(p: ArrayT, arg: Any): Type = ArrayType(convertType(p.type_), 0)
+      override def visit(p: ArrayT, arg: Any): Type = ArrayType(convertType(p.type_))
       override def visit(p: latte.Absyn.Class, arg: Any): Type = ClassType(p.ident_)
     }
 
