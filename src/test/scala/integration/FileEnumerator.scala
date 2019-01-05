@@ -35,6 +35,7 @@ object FileEnumerator {
 
     // TODO multidimenstional arrays
     positiveTest("latte/pos/changing_func_args.latte", List("2")),
+    positiveTest("latte/pos/struct/recursive.latte", ((1 to 8) map (_.toString)).toList),
     positiveTest("latte/pos/struct/wrapper.latte", List("1")),
     positiveTest("latte/pos/struct/pair.latte", List("1")),
     positiveTest("latte/pos/struct/triple.latte", List("5")),

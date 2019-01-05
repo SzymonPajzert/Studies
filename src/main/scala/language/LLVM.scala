@@ -112,7 +112,7 @@ object LLVM extends Language {
       Left(s"br i1 ${expression.name}, label %${ifTrue.name}, label %${ifFalse.name}")
 
     case Assign(destination, code) =>
-      Right(s"${destination.name} = ${code.getLine}", s"${destination.typeId}")
+      Right(s"${destination.name} = ${code.getLine}", s"${destination.typeId.llvmRepr}")
 
     case AssignFuncall(_, functionId, arguments) if functionId.returnType == VoidType =>
       Left(s"call ${functionId.returnType.llvmRepr} @${functionId.name}(${convertArgs(arguments)})")

@@ -13,12 +13,15 @@ object Latte extends Language {
   case class TypeInformation(defined: Map[ClassType, FieldOffset]) {
     def offsetForClass(className: ClassType): FieldOffset = defined(className)
 
+    def fieldType(className: ClassType, field: String): Option[Type] =
+      defined(className).fields.find(_._1 == field).map(_._2)
+
     def fieldTypes(className: ClassType): Seq[Type] = defined(className).fieldTypes
 
     def containedClasses: List[ClassType] = defined.keys.toList
   }
 
-  class FieldOffset(val fields: List[(String, Type)]) {
+  case class FieldOffset(val fields: List[(String, Type)]) {
     def fieldTypes: Seq[Type] = fields map (_._2)
 
     def fieldOffset(field: String): Option[Int] =

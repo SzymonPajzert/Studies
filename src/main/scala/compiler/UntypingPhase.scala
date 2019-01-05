@@ -33,7 +33,11 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       compileExpr(index) map (Latte.ArrayAccess(Latte.Variable(name), _))
     case TypedLatte.Variable(identifier) => Latte.Variable(identifier)
     case TypedLatte.FieldAccess(expressionInf, element) =>
-      val (_, className @ ClassType(_)) = expressionInf
+      val className = expressionInf._2 match {
+        case c: ClassType => c
+        case PointerType(c: ClassType) => c
+      }
+
       (for {
         codeInformation <- get[TypedLatte.CodeInformation]: Compiler[TypedLatte.CodeInformation]
         offset = codeInformation.offsetForClass(className).fieldOffset(element).get
@@ -41,10 +45,13 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       } yield Latte.FieldAccess(expression, offset)): Compiler[Latte.Location]
   }
 
-  def transformType: Type => Compiler[Type] = {
+  def transformType(addPtr: Boolean): Type => Compiler[Type] = {
     case ClassType(className) => for {
       codeInformation <- get[TypedLatte.CodeInformation]: Compiler[TypedLatte.CodeInformation]
-    } yield AggregateType(className, codeInformation.fieldTypes(ClassType(className)))
+      types <- mapM(codeInformation.fieldTypes(ClassType(className)).toList, transformType(true))
+      result = AggregateType(className, types)
+    } yield if(addPtr) PointerType(result) else result
+    case PointerType(t) => transformType(false)(t) map PointerType
     case a => a
   }
 
@@ -59,7 +66,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       case TypedLatte.ArrayCreation(a, b) => compileExpr(b) map (Latte.ArrayCreation(a, _))
 
       case TypedLatte.InstanceCreation(classType: ClassType) =>
-        transformType(classType) map Latte.InstanceCreation
+        transformType(false)(classType) map Latte.InstanceCreation
 
       case locU: TypedLatte.Location => for {
         loc <- location(locU)
@@ -69,7 +76,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
 
   def instruction: TypedLatte.Instruction => Compiler[Latte.Instruction] = {
     case TypedLatte.Declaration(name, typeDecl) =>
-      transformType(typeDecl) map {
+      transformType(false)(typeDecl) map {
         case t: AggregateType => Latte.Declaration(name, PointerType(t))
         case t => Latte.Declaration(name, t)
       }

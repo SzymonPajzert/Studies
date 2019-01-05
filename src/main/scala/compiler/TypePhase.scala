@@ -73,7 +73,19 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
     case UntypedLatte.FieldAccess(placeU, element) => for {
       place <- expression(placeU)
-    } yield (TypedLatte.FieldAccess(place, element), VoidType)
+      typeInformation <- getTypeInformation
+      elementType <- (place._2 match {
+        case c @ ClassType(_) => typeInformation.fieldType(c, element) match {
+          case Some(t) => t
+          case None => createError(s"No field $element in $c")
+        }
+        case PointerType(c @ ClassType(_)) => typeInformation.fieldType(c, element) match {
+          case Some(t) => t
+          case None => createError(s"No field $element in $c")
+        }
+        case t => createError(s"Expected class, instead: $t")
+      }) : TypeEnvironment[Type]
+    } yield (TypedLatte.FieldAccess(place, element), elementType)
   }
 
 
@@ -223,12 +235,13 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
   def parseClassStructure(className: String, members: List[UntypedLatte.ClassMember]): TypeEnvironment[Unit] = {
     val identifierTypePairs = members map {
-      case UntypedLatte.Declaration(value, typeId) => (value, typeId)
+      case UntypedLatte.Declaration(value, c : ClassType) => (value, PointerType(c))
+      case UntypedLatte.Declaration(value, t) => (value, t)
     }
 
     modifyTypeInformation { typeInformation =>
       new TypeInformation(
-        typeInformation.defined + (ClassType(className) -> new FieldOffset(identifierTypePairs))
+        typeInformation.defined + (ClassType(className) -> FieldOffset(identifierTypePairs))
       )
     }
   }
