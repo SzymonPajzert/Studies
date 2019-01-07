@@ -34,7 +34,9 @@ object Latte extends Language {
     def methodOffset(method: String): Option[Int] = Some(0)
   }
 
-  case class Code(definitions: Seq[Func], globalLLVM: String = "")
+  case class Code(definitions: Seq[Func],
+                  globalLLVM: String = "",
+                  typeInformation: TypeInformation)
 
   type Block = List[Instruction]
 
@@ -42,6 +44,7 @@ object Latte extends Language {
     def isLiteral: Boolean = false
     def getType: Type = VoidType
   }
+  case object Void extends Expression
   trait FunLocation
   case class FunName(name: String) extends FunLocation
   case class VTableLookup(expression: Expression, offset: Int) extends FunLocation

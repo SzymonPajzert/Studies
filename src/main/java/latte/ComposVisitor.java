@@ -239,6 +239,9 @@ public class ComposVisitor<A> implements
     {
       String ident_ = p.ident_;
       return new latte.Absyn.IVar(ident_);
+    }    public Expr visit(latte.Absyn.ENull p, A arg)
+    {
+      return new latte.Absyn.ENull();
     }    public Expr visit(latte.Absyn.AVar p, A arg)
     {
       ArrayE arraye_ = p.arraye_.accept(this, arg);

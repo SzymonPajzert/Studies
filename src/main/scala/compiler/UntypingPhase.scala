@@ -48,8 +48,13 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
   def transformType(addPtr: Boolean): Type => Compiler[Type] = {
     case ClassType(className) => for {
       codeInformation <- get[TypedLatte.CodeInformation]: Compiler[TypedLatte.CodeInformation]
-      types <- mapM(codeInformation.fieldTypes(ClassType(className)).toList, transformType(true))
-      result = AggregateType(className, types)
+
+      types = codeInformation.fieldTypes(ClassType(className)) map {
+        case c : ClassType => PointerType(c)
+        case t => t
+      }
+
+      result = AggregateType(className, types) : Type
     } yield if(addPtr) PointerType(result) else result
     case PointerType(t) => transformType(false)(t) map PointerType
     case a => a
@@ -71,6 +76,10 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       case locU: TypedLatte.Location => for {
         loc <- location(locU)
       } yield loc
+
+      case TypedLatte.Null => Latte.ConstValue(0)
+
+      case TypedLatte.Void => Latte.Void
     }
   }
 
@@ -94,6 +103,15 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       case None => Latte.Return(None)
       case Some(v) => compileExpr(v) map (vE => Latte.Return(Some(vE)))
     }
+
+    case TypedLatte.IfThen(conditionU, thenInstU, elseOptU) => for {
+      condition <- compileExpr(conditionU)
+      thenInst <- instruction(thenInstU)
+      elseOpt <- (elseOptU match {
+        case Some(elseU) => instruction(elseU) map (Some(_))
+        case None => None
+      }) : Compiler[Option[Latte.Instruction]]
+    } yield Latte.IfThen(condition, thenInst, elseOpt)
 
     case TypedLatte.While(conditionE, instructionsE) => for {
       condition <- compileExpr(conditionE)
@@ -122,7 +140,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
     val untyping = for {
       latteCode <- mapM(code._1.toList, compileFunc)
       allStructures <- exportStructures(code._2)
-    } yield Latte.Code(latteCode, allStructures)
+    } yield Latte.Code(latteCode, allStructures, code._2)
 
     untyping.run(code._2)._2.toEither
   }

@@ -83,6 +83,15 @@ object LLVM extends Language {
   def expression(expr: Expression): Func[Nothing] = new Func[Nothing] {
     override def getLine: String = s"add i32 0, ${expr.name}"
   }
+  def phi(blocks: (JumpPoint, Expression)*): Func[Nothing] = new Func[Nothing] {
+    def elts: String = (blocks map {
+      case (jmpPoint, value) => s"[${value.name}, %${jmpPoint.name}]"
+    }).mkString(", ")
+
+    override def getLine: String = {
+      s"phi ${blocks.head._2.typeId.llvmRepr} $elts"
+    }
+  }
 
   sealed trait Instruction
   case class JumpIf(expression: Expression, ifTrue: JumpPoint, ifFalse: JumpPoint) extends Instruction
@@ -90,7 +99,7 @@ object LLVM extends Language {
   case class AssignFuncall(destination: RegisterT, functionId: FunctionId, args: List[Expression]) extends Instruction
   case class AssignOp(destination: RegisterT, op: Operation, left: Expression, right: Expression) extends Instruction
   case class PrintInt(expression: Expression) extends Instruction
-  case class Return(expression: Expression) extends Instruction
+  case class Return(expression: Option[Expression]) extends Instruction
   case class Literal(code: String) extends Instruction
 
   def empty: Code = Code("", List())
@@ -120,14 +129,11 @@ object LLVM extends Language {
     case AssignFuncall(destination, functionId, arguments) =>
       Left(s"${destination.name} = call ${functionId.returnType.llvmRepr} @${functionId.name}(${convertArgs(arguments)})")
 
-    case AssignOp(destination, op, left, right) =>
-      Left(s"${destination.name} = ${op.name} ${destination.typeId.llvmRepr} ${left.name}, ${right.name}")
-
     case PrintInt(expression) =>
       Left(s"""call void @printInt(${expression.typeId.llvmRepr} ${expression.name})""")
 
-    case Return(expression) =>
-      Left(s"""ret ${expression.typeId.llvmRepr} ${expression.name}""")
+    case Return(None) => Left(s"ret void")
+    case Return(Some(expression)) => Left(s"ret ${expression.typeId.llvmRepr} ${expression.name}")
   }
 
   def serializeCodeBlock(codeBlock: CodeBlock): String = codeBlock match {

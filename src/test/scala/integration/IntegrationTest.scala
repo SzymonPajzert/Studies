@@ -10,6 +10,16 @@ import parser.latte.LatteParser
 class IntegrationTest extends FlatSpec with Matchers {
   behavior of "Integration test"
 
+  def checkListEq[A](result: List[A], expected: List[A]): Unit = {
+    assert(result.length == expected.length, s"wrong list length: $result")
+
+    for (((resultElt, expectedElt), index) <- result.zip(expected).zipWithIndex) {
+      if (resultElt != expectedElt) {
+        fail(s"$resultElt != $expectedElt at line $index, $result")
+      }
+    }
+  }
+
   for (fileWithResult <- FileEnumerator.getWithResult) {
 
     val llvmCompiler =
@@ -35,8 +45,8 @@ class IntegrationTest extends FlatSpec with Matchers {
           case Right(llvmCode) => {
             val result = LlvmRunner.compile(llvmCode, directory)
             if (result.success) {
-              println(directory.directory)
-              assert(Right(LlvmRunner.run(directory)) == fileWithResult.expectedResult.get)
+
+              checkListEq(LlvmRunner.run(directory), fileWithResult.expectedResult.get.right.get)
             } else {
               fail(result.stdout ++ result.stderr)
             }

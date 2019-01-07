@@ -85,7 +85,9 @@ separator  Type "," ;
 ArrAccess. ArrayE ::= Expr5 "[" Expr "]" ;
 FldAccess. FieldE ::= Expr5 "." Ident ;
 
-IVar.        Expr7 ::= Ident;
+IVar.        Expr7 ::= Ident ;
+
+ENull.       Expr7 ::= "null" ;
 
 AVar.        Expr7 ::= ArrayE ;
 FVar.        Expr7 ::= FieldE ;

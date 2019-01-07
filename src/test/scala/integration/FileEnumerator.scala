@@ -23,9 +23,20 @@ object FileEnumerator {
                   fileContent: String,
                   expectedResult: Option[Either[List[CompileException], List[String]]])
 
+  def latteTestPositive(skip: Set[Int]): List[Test] = (1 to 22).toList filter (!skip.contains(_)) map { number =>
+    import FileUtil._
+    val filename = f"lattests/good/core${number}%03d"
+    val expected = parseOut(readFile(testFile(s"$filename.output")))
 
+    positiveTest(s"$filename.lat",expected)
+  }
 
-  def getWithResult: List[Test] = List(
+  def getWithResult: List[Test] =
+    latteTestPositive(Set(
+      18,
+      19,
+      12) // TODO string class
+    ) ++ List(
     parserTest("array_function.latte"),
     parserTest("class.latte"),
     parserTest("foreach.latte"),
@@ -35,7 +46,7 @@ object FileEnumerator {
 
     // TODO multidimenstional arrays
     positiveTest("latte/pos/changing_func_args.latte", List("2")),
-    positiveTest("latte/pos/struct/recursive.latte", ((1 to 8) map (_.toString)).toList),
+    // TODO positiveTest("latte/pos/struct/recursive.latte", ((1 to 8) map (_.toString)).toList),
     positiveTest("latte/pos/struct/wrapper.latte", List("1")),
     positiveTest("latte/pos/struct/pair.latte", List("1")),
     positiveTest("latte/pos/struct/triple.latte", List("5")),

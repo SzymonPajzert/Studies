@@ -99,15 +99,28 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     }) : TypeEnvironment[Type]
   } yield foundValue
 
+  def primitiveFunctions: Map[String, Type] = Map (
+    "int_add" -> FunctionType (IntType, Seq (IntType, IntType)),
+    "int_sub" -> FunctionType (IntType, Seq (IntType, IntType)),
+    "int_div" -> FunctionType (IntType, Seq (IntType, IntType)),
+    "int_mul" -> FunctionType (IntType, Seq (IntType, IntType)),
+    "gen_neq" -> FunctionType (BoolType, Seq (IntType, IntType)),
+    "gen_gt" -> FunctionType (BoolType, Seq (IntType, IntType)),
+    "gen_eq" -> FunctionType (BoolType, Seq (IntType, IntType)),
+    "gen_lt" -> FunctionType (BoolType, Seq (IntType, IntType)),
+    "gen_le" -> FunctionType (BoolType, Seq (IntType, IntType)),
+    "bool_or" -> FunctionType (BoolType, Seq (BoolType, BoolType)),
+    "bool_and" -> FunctionType (BoolType, Seq (BoolType, BoolType)),
+    "int_mod" -> FunctionType (IntType, Seq(IntType, IntType))
+  )
+
   def funLocation(fLoc: UntypedLatte.FunLocation): TypeEnvironment[TypedLatte.FunLocationInf] = fLoc match {
     case UntypedLatte.FunName(name: String) => for {
       functionType <- (name match {
-        case "printInt" => FunctionType(VoidType, Seq(IntType))
+        case "printInt" => FunctionType (VoidType, Seq (IntType))
         case "printString" => FunctionType (VoidType, Seq (StringType))
-        case "int_add" => FunctionType (IntType, Seq (IntType, IntType))
-        case "int_sub" => FunctionType (IntType, Seq (IntType, IntType))
-        case "gen_gt" => FunctionType (BoolType, Seq (IntType, IntType))
-        case "gen_lt" => FunctionType (BoolType, Seq (IntType, IntType))
+        case _ if primitiveFunctions contains name => primitiveFunctions(name)
+        case "bool_not" => FunctionType (BoolType, Seq (BoolType))
         case userDefinedName => lookupFunctionSignature(userDefinedName)
       }) : TypeEnvironment[Type]
     } yield (TypedLatte.FunName(name), functionType)
@@ -148,6 +161,8 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       _ <- assertType(typedSize, IntType)
       arrayType = ArrayType(elementType)
     } yield (TypedLatte.ArrayCreation(elementType, typedSize), arrayType)
+
+    case UntypedLatte.Null => (TypedLatte.Null, VoidType)
 
     case UntypedLatte.InstanceCreation(typeT) => (TypedLatte.InstanceCreation(typeT), typeT)
 
@@ -207,12 +222,26 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
         case None => None
         case Some(els) => instruction(els) map (Some(_))
       }): TypeEnvironment[Option[TypedLatte.Instruction]]
-    } yield TypedLatte.IfThen(condition, thenInst, elseOpt)
+    } yield condition._1 match {
+      case TypedLatte.ConstValue(true) => thenInst
+      case TypedLatte.ConstValue(false) => TypedLatte.BlockInstruction(elseOpt.toList)
+      case _ => TypedLatte.IfThen(condition, thenInst, elseOpt)
+    }
 
     case UntypedLatte.While(conditionU, instrU) => for {
       condition <- expression(conditionU)
       instr <- instruction(instrU)
     } yield TypedLatte.While(condition, instr)
+  }
+
+  def addReturn(instructions: TypedLatte.Block, returnType: Type.Type): TypedLatte.Block = {
+    if(instructions.isEmpty || !instructions.last.isInstanceOf[TypedLatte.Return]) {
+      val returnInst = returnType match {
+        case VoidType => TypedLatte.Return(None)
+        case IntType => TypedLatte.Return(Some((TypedLatte.ConstValue(0), returnType)))
+      }
+      instructions ::: List(returnInst)
+    } else instructions
   }
 
   def toplevelFunc: UntypedLatte.Func => TypeEnvironment[TypedLatte.Func] = {
@@ -222,7 +251,8 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
       for {
         _ <- mapM(definitions, instruction)
-        code <- mapM(codeU, instruction)
+        codeWithoutReturn <- mapM(codeU, instruction)
+        code = addReturn(codeWithoutReturn, signature.returnType)
       } yield {
         val sig = signature.asInstanceOf[TypedLatte.FunctionSignature]
         val args = sig.arguments map {case (name, t) => (name + "0", t)}

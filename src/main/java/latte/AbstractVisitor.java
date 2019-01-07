@@ -79,6 +79,7 @@ public class AbstractVisitor<R,A> implements AllVisitor<R,A> {
     }
 /* Expr */
     public R visit(latte.Absyn.IVar p, A arg) { return visitDefault(p, arg); }
+    public R visit(latte.Absyn.ENull p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.AVar p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.FVar p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.ELitInt p, A arg) { return visitDefault(p, arg); }

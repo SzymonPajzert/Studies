@@ -829,6 +829,13 @@ public class PrettyPrinter
        pp(_ivar.ident_, 0);
        if (_i_ > 7) render(_R_PAREN);
     }
+    else     if (foo instanceof latte.Absyn.ENull)
+    {
+       latte.Absyn.ENull _enull = (latte.Absyn.ENull) foo;
+       if (_i_ > 7) render(_L_PAREN);
+       render("null");
+       if (_i_ > 7) render(_R_PAREN);
+    }
     else     if (foo instanceof latte.Absyn.AVar)
     {
        latte.Absyn.AVar _avar = (latte.Absyn.AVar) foo;
@@ -1503,6 +1510,11 @@ public class PrettyPrinter
        render("IVar");
        sh(_ivar.ident_);
        render(")");
+    }
+    if (foo instanceof latte.Absyn.ENull)
+    {
+       latte.Absyn.ENull _enull = (latte.Absyn.ENull) foo;
+       render("ENull");
     }
     if (foo instanceof latte.Absyn.AVar)
     {

@@ -242,6 +242,10 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       return r;
     }
+    public R visit(latte.Absyn.ENull p, A arg) {
+      R r = leaf(arg);
+      return r;
+    }
     public R visit(latte.Absyn.AVar p, A arg) {
       R r = leaf(arg);
       r = combine(p.arraye_.accept(this, arg), r, arg);

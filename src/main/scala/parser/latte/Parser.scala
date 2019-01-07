@@ -110,6 +110,8 @@ object Transformations {
 
 
       override def visit(p: ECast, arg: Any): Expression = Cast(convertType(p.type_), expression(p.expr_))
+
+      override def visit(p: ENull, arg: Any): HighLatte.Expression = UntypedLatte.Null
     }
 
     (expr.accept(visitor, Unit), Unit)
@@ -154,9 +156,10 @@ object Transformations {
 
       override def visit(p: Decl, arg: Any): ReturnT = (p.listitem_.asScala flatMap (pItem => {
         val item = extractItem(pItem)
-        val declaration = Declaration(item._1, convertType(p.type_))
-        val maybeAssignment = item._2.toList map (value => Assignment(item._1, value))
-        declaration :: maybeAssignment
+        val t = convertType(p.type_)
+        val declaration = Declaration(item._1, t)
+        val value = item._2 getOrElse UntypedLatte.defaultValue(t)
+        declaration :: List(Assignment(item._1, value))
       })).toList
 
       override def visit(p: Ass, arg: Any): ReturnT = List(Assignment(p.ident_, expression(p.expr_)))
@@ -189,7 +192,7 @@ object Transformations {
         IfThen(
           expression(p.expr_),
           BlockInstruction(instruction(p.stmt_1)),
-          Some(BlockInstruction(instruction(p.stmt_1))))
+          Some(BlockInstruction(instruction(p.stmt_2))))
       )
 
       override def visit(p: latte.Absyn.While, arg: Any): ReturnT = List(
@@ -305,11 +308,16 @@ object LatteParser extends Parser[UntypedLatte.Code] {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
+    Right(Transformations.program(p.pProgram))
+
+    /*
+
     try {
       Right(Transformations.program(p.pProgram))
     } catch {
       case e: Exception => Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
     }
-    // Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
+
+    */
   }
 }

@@ -38,7 +38,7 @@ object Type {
   }
 
   case object BoolType extends Type {
-    override def llvmRepr: String = ???
+    override def llvmRepr: String = "i1"
   }
 
   case class PointerType(t: Type) extends Type {

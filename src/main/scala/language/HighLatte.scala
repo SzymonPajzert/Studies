@@ -11,6 +11,13 @@ object UntypedLatte extends HighLatte {
 
   implicit def namesAreVariables(identifier: String): LocationInf = (Variable(identifier), Unit)
   implicit def namesAreFunctionHandles(identifier: String): FunLocationInf = (FunName(identifier), Unit)
+
+  def defaultValue(t: Type): UntypedLatte.ExpressionInf = t match {
+    case Type.IntType => (UntypedLatte.ConstValue(0), t)
+    case Type.PointerType(_) => (UntypedLatte.Null, t)
+    case Type.StringType => (UntypedLatte.ConstValue(""), t)
+    case Type.ClassType(_) => (UntypedLatte.Null, t)
+  }
 }
 
 object TypedLatte extends HighLatte {
@@ -72,6 +79,8 @@ trait HighLatte extends Language {
     def getType: Type = VoidType  // TODO remove
   }
 
+  case object Null extends Expression
+  case object Void extends Expression
   case class FunctionCall(location: FunLocationInf, arguments: Seq[ExpressionInf]) extends Expression
   case class ConstValue[+T](value: T) extends Expression {
     override def isLiteral: Boolean = true

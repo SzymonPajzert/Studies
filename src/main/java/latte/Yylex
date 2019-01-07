@@ -61,11 +61,12 @@ IDENT = ({LETTER}|{DIGIT}|['_])
 <YYINITIAL>if { return new Symbol(sym._SYMB_34); }
 <YYINITIAL>int { return new Symbol(sym._SYMB_35); }
 <YYINITIAL>new { return new Symbol(sym._SYMB_36); }
-<YYINITIAL>return { return new Symbol(sym._SYMB_37); }
-<YYINITIAL>string { return new Symbol(sym._SYMB_38); }
-<YYINITIAL>true { return new Symbol(sym._SYMB_39); }
-<YYINITIAL>void { return new Symbol(sym._SYMB_40); }
-<YYINITIAL>while { return new Symbol(sym._SYMB_41); }
+<YYINITIAL>null { return new Symbol(sym._SYMB_37); }
+<YYINITIAL>return { return new Symbol(sym._SYMB_38); }
+<YYINITIAL>string { return new Symbol(sym._SYMB_39); }
+<YYINITIAL>true { return new Symbol(sym._SYMB_40); }
+<YYINITIAL>void { return new Symbol(sym._SYMB_41); }
+<YYINITIAL>while { return new Symbol(sym._SYMB_42); }
 <YYINITIAL>"#"[^\n]*\n { /* BNFC single-line comment */ }
 <YYINITIAL>"//"[^\n]*\n { /* BNFC single-line comment */ }
 <YYINITIAL>"/*" { yybegin(COMMENT); }

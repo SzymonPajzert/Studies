@@ -226,6 +226,9 @@ public class VisitSkel
     { /* Code For IVar Goes Here */
       //p.ident_;
       return null;
+    }    public R visit(latte.Absyn.ENull p, A arg)
+    { /* Code For ENull Goes Here */
+      return null;
     }    public R visit(latte.Absyn.AVar p, A arg)
     { /* Code For AVar Goes Here */
       p.arraye_.accept(new ArrayEVisitor<R,A>(), arg);

@@ -88,11 +88,12 @@ terminal _SYMB_33;    //   for
 terminal _SYMB_34;    //   if
 terminal _SYMB_35;    //   int
 terminal _SYMB_36;    //   new
-terminal _SYMB_37;    //   return
-terminal _SYMB_38;    //   string
-terminal _SYMB_39;    //   true
-terminal _SYMB_40;    //   void
-terminal _SYMB_41;    //   while
+terminal _SYMB_37;    //   null
+terminal _SYMB_38;    //   return
+terminal _SYMB_39;    //   string
+terminal _SYMB_40;    //   true
+terminal _SYMB_41;    //   void
+terminal _SYMB_42;    //   while
 
 terminal String _STRING_;
 
@@ -139,11 +140,11 @@ Stmt ::= _SYMB_4  {: RESULT = new latte.Absyn.Empty(); :}
   | FieldE:p_1 _SYMB_6 Expr:p_3 _SYMB_4  {: RESULT = new latte.Absyn.AssFie(p_1,p_3); :}
   | _IDENT_:p_1 _SYMB_7 _SYMB_4  {: RESULT = new latte.Absyn.Incr(p_1); :}
   | _IDENT_:p_1 _SYMB_8 _SYMB_4  {: RESULT = new latte.Absyn.Decr(p_1); :}
-  | _SYMB_37 Expr:p_2 _SYMB_4  {: RESULT = new latte.Absyn.Ret(p_2); :}
-  | _SYMB_37 _SYMB_4  {: RESULT = new latte.Absyn.VRet(); :}
+  | _SYMB_38 Expr:p_2 _SYMB_4  {: RESULT = new latte.Absyn.Ret(p_2); :}
+  | _SYMB_38 _SYMB_4  {: RESULT = new latte.Absyn.VRet(); :}
   | _SYMB_34 _SYMB_0 Expr:p_3 _SYMB_1 Stmt:p_5  {: RESULT = new latte.Absyn.Cond(p_3,p_5); :}
   | _SYMB_34 _SYMB_0 Expr:p_3 _SYMB_1 Stmt:p_5 _SYMB_30 Stmt:p_7  {: RESULT = new latte.Absyn.CondElse(p_3,p_5,p_7); :}
-  | _SYMB_41 _SYMB_0 Expr:p_3 _SYMB_1 Stmt:p_5  {: RESULT = new latte.Absyn.While(p_3,p_5); :}
+  | _SYMB_42 _SYMB_0 Expr:p_3 _SYMB_1 Stmt:p_5  {: RESULT = new latte.Absyn.While(p_3,p_5); :}
   | _SYMB_33 _SYMB_0 Stmt:p_3 Expr:p_4 _SYMB_4 Stmt:p_6 _SYMB_1 Stmt:p_8  {: RESULT = new latte.Absyn.For(p_3,p_4,p_6,p_8); :}
   | _SYMB_33 _SYMB_0 Type:p_3 _IDENT_:p_4 _SYMB_9 Expr:p_6 _SYMB_1 Stmt:p_8  {: RESULT = new latte.Absyn.ForAbb(p_3,p_4,p_6,p_8); :}
   | Expr:p_1 _SYMB_4  {: RESULT = new latte.Absyn.SExp(p_1); :}
@@ -155,9 +156,9 @@ ListItem ::= Item:p_1  {: RESULT = new latte.Absyn.ListItem(); RESULT.addLast(p_
   | Item:p_1 _SYMB_5 ListItem:p_3  {: RESULT = p_3; p_3.addFirst(p_1); :}
 ;
 Type ::= _SYMB_35  {: RESULT = new latte.Absyn.Int(); :} 
-  | _SYMB_38  {: RESULT = new latte.Absyn.Str(); :}
+  | _SYMB_39  {: RESULT = new latte.Absyn.Str(); :}
   | _SYMB_28  {: RESULT = new latte.Absyn.Bool(); :}
-  | _SYMB_40  {: RESULT = new latte.Absyn.Void(); :}
+  | _SYMB_41  {: RESULT = new latte.Absyn.Void(); :}
   | _IDENT_:p_1  {: RESULT = new latte.Absyn.Class(p_1); :}
   | Type:p_1 _SYMB_10  {: RESULT = new latte.Absyn.ArrayT(p_1); :}
 ;
@@ -170,10 +171,11 @@ ArrayE ::= Expr5:p_1 _SYMB_11 Expr:p_3 _SYMB_12  {: RESULT = new latte.Absyn.Arr
 FieldE ::= Expr5:p_1 _SYMB_13 _IDENT_:p_3  {: RESULT = new latte.Absyn.FldAccess(p_1,p_3); :} 
 ;
 Expr7 ::= _IDENT_:p_1  {: RESULT = new latte.Absyn.IVar(p_1); :} 
+  | _SYMB_37  {: RESULT = new latte.Absyn.ENull(); :}
   | ArrayE:p_1  {: RESULT = new latte.Absyn.AVar(p_1); :}
   | FieldE:p_1  {: RESULT = new latte.Absyn.FVar(p_1); :}
   | _INTEGER_:p_1  {: RESULT = new latte.Absyn.ELitInt(p_1); :}
-  | _SYMB_39  {: RESULT = new latte.Absyn.ELitTrue(); :}
+  | _SYMB_40  {: RESULT = new latte.Absyn.ELitTrue(); :}
   | _SYMB_32  {: RESULT = new latte.Absyn.ELitFalse(); :}
   | _SYMB_0 Expr:p_2 _SYMB_1  {: RESULT = p_2; :}
 ;
