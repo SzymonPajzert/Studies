@@ -15,7 +15,8 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
                               currentSubstitutions: Registers = Map(),
                               functionTypes: Functions,
                               typeInformation: TypeInformation,
-                              code: Vector[LLVM.CodeBlock] = Vector())
+                              code: Vector[LLVM.CodeBlock] = Vector(),
+                              lastJumpPoint: LLVM.JumpPoint = null)
 
   type Functions = Map[String, FunctionType]
   type Registers = Map[String, LLVM.RegisterT]
@@ -40,7 +41,14 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   } yield Unit
 
   def getLocation(identifier: String): StateOf[LLVM.RegisterT] = for {
-    location <- gets[CompilationState, LLVM.RegisterT] (_.currentSubstitutions(identifier))
+    compilationState <- get[CompilationState]
+    locationMaybe <- gets[CompilationState, Option[LLVM.RegisterT]] (_.currentSubstitutions.get(identifier))
+
+    location: LLVM.RegisterT = locationMaybe match {
+      case None => throw new Exception(s"No variable: $identifier in $compilationState")
+      case Some(loc) => loc
+    }
+
   } yield location
 
   def getRegister(t : Type = IntType): StateOf[LLVM.Register[t.type]] = for {
@@ -116,7 +124,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
     def lookupTypeStructure(c: ClassType): StateOf[AggregateType] = for {
       typeInformation <- gets[CompilationState, TypeInformation](_.typeInformation)
-    } yield AggregateType(c.name, typeInformation.defined(c).fieldTypes)
+    } yield AggregateType(c.name, typeInformation.fieldTypes(c))
 
     /**
     * Given field access, calculate address where it is stored
@@ -184,14 +192,21 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
           _ <- putLine(LLVM.jump(header))
           _ <- putJumpPoint(header)
+
           leftValue <- compileExpression(left)
+          leftValueLabel <- gets[CompilationState, LLVM.JumpPoint](_.lastJumpPoint)
           _ <- putLine(LLVM.JumpIf(leftValue, finished, leftFalse))
+
           _ <- putJumpPoint(leftFalse)
           rightValue <- compileExpression(right)
+          rightValueLabel <- gets[CompilationState, LLVM.JumpPoint](_.lastJumpPoint)
           _ <- putLine(LLVM.jump(finished))
+
           _ <- putJumpPoint(finished)
           returnRegister <- getRegister(leftValue.typeId)
-          _ <- putLine(LLVM.Assign(returnRegister, LLVM.phi(header -> leftValue, leftFalse -> rightValue)))
+          _ <- putLine(LLVM.Assign(returnRegister, LLVM.phi(
+            leftValueLabel -> leftValue,
+            rightValueLabel -> rightValue)))
         } yield returnRegister
 
         case Latte.FunctionCall(Latte.FunName("bool_and"), Seq(left, right)) => for {
@@ -201,14 +216,20 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
           _ <- putLine(LLVM.jump(header))
           _ <- putJumpPoint(header)
+
           leftValue <- compileExpression(left)
+          leftValueLabel <- gets[CompilationState, LLVM.JumpPoint](_.lastJumpPoint)
           _ <- putLine(LLVM.JumpIf(leftValue, leftTrue, finished))
           _ <- putJumpPoint(leftTrue)
+
           rightValue <- compileExpression(right)
+          rightValueLabel <- gets[CompilationState, LLVM.JumpPoint](_.lastJumpPoint)
           _ <- putLine(LLVM.jump(finished))
           _ <- putJumpPoint(finished)
           returnRegister <- getRegister(leftValue.typeId)
-          _ <- putLine(LLVM.Assign(returnRegister, LLVM.phi(header -> leftValue, leftTrue -> rightValue)))
+          _ <- putLine(LLVM.Assign(returnRegister, LLVM.phi(
+            leftValueLabel -> leftValue,
+            rightValueLabel -> rightValue)))
         } yield returnRegister
 
         case Latte.FunctionCall(primitiveName, arguments) if isPrimitiveName(primitiveName) => {
@@ -290,7 +311,11 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
     def putJumpPoint(jumpPoint: LLVM.JumpPoint): StateOf[Unit] = for {
       state <- get[CompilationState]
-      _ <- put (state.copy(code = state.code :+ jumpPoint))
+      _ <- modify[CompilationState](x => x.copy(lastJumpPoint = jumpPoint))
+      _ <- put (state.copy(
+        code = state.code :+ jumpPoint,
+        lastJumpPoint = jumpPoint
+      ))
     } yield Unit
 
     /**
@@ -384,12 +409,13 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       } yield Unit
     }
 
-    def putSignature(signature: Latte.FunctionSignature): StateOf[Unit] = signature.arguments match {
+    def putSignature(signatureArgs: List[(String, Type)]): StateOf[Unit] = signatureArgs match {
       case Nil => state(Unit)
       case (identifier, t) :: rest => for {
         _ <- allocate(identifier, transformType(t))
         argRegister <- getLocation(identifier)
         _ <- putLine(LLVM.Literal(s"store ${argRegister.typeId.deref.llvmRepr} %$identifier, ${argRegister.typeId.llvmRepr} ${argRegister.name}"))
+        _ <- putSignature(rest)
       } yield Unit
     }
 
@@ -401,7 +427,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     val mapFunction: Latte.Func => (String, LLVM.Block) = {
       case (Latte.Func(signature, codeBlock)) => {
         val codeCalculation: StateOf[CompilationState] = for {
-          _ <- putSignature(signature)
+          _ <- putSignature(signature.arguments)
           _ <- addManyLines(codeBlock)
           s <- get
         } yield s

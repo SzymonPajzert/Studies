@@ -1,9 +1,8 @@
 package compiler
 
-import compiler.TypePhase.TypeEnvironment
-import language.Latte.{FieldOffset, TypeInformation}
+import language.Latte.{Offset, OffsetContainer, TypeInformation}
 import language.Type._
-import language.{Latte, Type, TypedLatte, UntypedLatte}
+import language.{Type, TypedLatte, UntypedLatte}
 
 import scala.language.implicitConversions
 import scalaz.Scalaz._
@@ -88,8 +87,6 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     } yield (TypedLatte.FieldAccess(place, element), elementType)
   }
 
-
-
   def lookupFunctionSignature(functionName: String): TypeEnvironment[Type] = for {
     signatures <- getBinds
 
@@ -125,9 +122,19 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       }) : TypeEnvironment[Type]
     } yield (TypedLatte.FunName(name), functionType)
 
-    case UntypedLatte.VTableLookup(exprU, ident) => for {
+    case vtable @ UntypedLatte.VTableLookup(exprU, ident) => for {
       expr <- expression(exprU)
-    } yield (TypedLatte.VTableLookup(expr, ident), VoidType)
+      expressionType = expr._2
+      typeInformation <- getTypeInformation
+
+      methodType <- expr._2 match {
+        case expressionType: ClassType => typeInformation.methodType (expressionType, ident) match {
+          case None => createError (s"$expressionType has no field $ident")
+          case Some (t) => ok (t)
+          }
+        case _ => createError(s"Wrong type: $vtable")
+      }
+    } yield (TypedLatte.VTableLookup(expr, ident), methodType)
   }
 
   def extractType(value: Any): Type = value match {
@@ -137,9 +144,9 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   }
 
 
-  def returnType(functionName: String, t: Type): TypeEnvironment[Type] = t match {
+  def returnType(functionLoc: TypedLatte.FunLocationInf): TypeEnvironment[Type] = functionLoc._2 match {
     case FunctionType(rT, _) => rT
-    case _ => createError(s"$functionName is not callable")
+    case _ => createError(s"${functionLoc._1} is not callable")
   }
 
   def assertType(inf: TypedLatte.ExpressionInf, expectedType: Type): TypeEnvironment[Unit] =
@@ -149,7 +156,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     case UntypedLatte.FunctionCall(locU , arguments) => for {
       loc <- funLocation(locU._1)
       args <- mapM(arguments.toList, expression)
-      rt <- returnType(locU.toString, loc._2)
+      rt <- returnType(loc)
 
       // TODO check args match
     } yield (TypedLatte.FunctionCall(loc, args), rt)
@@ -263,17 +270,37 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
   def subclass(name: String, base: String): TypeEnvironment[Unit] = ok(Unit)
 
-  def parseClassStructure(className: String, members: List[UntypedLatte.ClassMember]): TypeEnvironment[Unit] = {
-    val identifierTypePairs = members map {
-      case UntypedLatte.Declaration(value, c : ClassType) => (value, PointerType(c))
-      case UntypedLatte.Declaration(value, t) => (value, t)
+  def parseClassStructure(className: String,
+                          members: List[UntypedLatte.ClassMember]): TypeEnvironment[List[UntypedLatte.Func]] = {
+    val identifierTypePairs = members flatMap {
+      case UntypedLatte.Declaration(value, c : ClassType) => Seq((value, PointerType(c)))
+      case UntypedLatte.Declaration(value, t) => Seq((value, t))
+      case _ => Seq()
     }
 
-    modifyTypeInformation { typeInformation =>
-      new TypeInformation(
-        typeInformation.defined + (ClassType(className) -> FieldOffset(identifierTypePairs))
-      )
+    val memberFunctions: Seq[(String, UntypedLatte.Func)] = members flatMap {
+      case f: UntypedLatte.Func => {
+        val sig = f.signature
+        val newSignature = sig.copy(
+          arguments = ("this", ClassType(className)) :: sig.arguments,
+          identifier = s"method_${className}_${sig.identifier}")
+        Seq((sig.identifier, f.copy(signature = newSignature)))
+      }
+      case UntypedLatte.Declaration(_, _) => Seq()
     }
+
+    val memberFunctionsPairs = memberFunctions map {
+      case (identifier, func) => (identifier, func.signature.getType)
+    }
+
+    for {
+      _ <- modifyTypeInformation { typeInformation => new TypeInformation(
+        typeInformation.defined + (ClassType(className) -> Offset(
+          fields = OffsetContainer(identifierTypePairs),
+          methods = OffsetContainer(memberFunctionsPairs.toList)
+        )
+      ))}
+    } yield memberFunctions.map(_._2).toList
   }
 
   def topDefinition: UntypedLatte.TopDefinition => TypeEnvironment[Option[TypedLatte.TopDefinition]] = {
@@ -283,7 +310,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     case _ => ok(None)
   }
 
-  def addTopDefinition: UntypedLatte.TopDefinition => TypeEnvironment[Unit] = {
+  def addTopDefinition: UntypedLatte.TopDefinition => TypeEnvironment[List[UntypedLatte.Func]] = {
     case UntypedLatte.Func(signature, _) =>
       val name = signature.identifier
       val typeId = FunctionType(signature.returnType, signature.arguments.map(_._2))
@@ -294,11 +321,11 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
           case None => modifyBinds { binds => binds.copy(
             functions = binds.functions + (name -> typeId))}
         }) : TypeEnvironment[Unit]
-      } yield Unit
+      } yield List()
     case UntypedLatte.Class(name, base, insidesU) => for {
       _ <- subclass(name, base)
-      _ <- parseClassStructure(name, insidesU)
-    } yield None
+      methods <- parseClassStructure(name, insidesU)
+    } yield methods
   }
 
   def runWithSeparateStates(defs: List[UntypedLatte.TopDefinition],

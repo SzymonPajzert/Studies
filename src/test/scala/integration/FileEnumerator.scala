@@ -23,12 +23,16 @@ object FileEnumerator {
                   fileContent: String,
                   expectedResult: Option[Either[List[CompileException], List[String]]])
 
-  def latteTestPositive(skip: Set[Int]): List[Test] = (1 to 22).toList filter (!skip.contains(_)) map { number =>
+  def testOnPath(path: String): Test = {
     import FileUtil._
-    val filename = f"lattests/good/core${number}%03d"
-    val expected = parseOut(readFile(testFile(s"$filename.output")))
 
-    positiveTest(s"$filename.lat",expected)
+    val expected = parseOut(readFile(testFile(s"$path.output")))
+    positiveTest(s"$path.lat",expected)
+  }
+
+  def latteTestPositive(skip: Set[Int]): List[Test] = (1 to 22).toList filter (!skip.contains(_)) map { number =>
+    val filename = f"lattests/good/core$number%03d"
+    testOnPath(filename)
   }
 
   def getWithResult: List[Test] =
@@ -44,7 +48,18 @@ object FileEnumerator {
     parserTest("structures.latte"),
     parserTest("virtual_methods.latte"),
 
-    // TODO multidimenstional arrays
+    testOnPath("lattests/extensions/arrays1/array001"),
+    testOnPath("lattests/extensions/arrays1/array002"),
+    testOnPath("lattests/extensions/objects1/counter"),
+    testOnPath("lattests/extensions/objects1/linked"),
+    testOnPath("lattests/extensions/objects1/points"),
+    testOnPath("lattests/extensions/objects1/queue"),
+
+    testOnPath("lattests/extensions/objects2/shapes"),
+    testOnPath("lattests/extensions/struct/list"),
+
+
+      // TODO multidimenstional arrays
     positiveTest("latte/pos/changing_func_args.latte", List("2")),
     // TODO positiveTest("latte/pos/struct/recursive.latte", ((1 to 8) map (_.toString)).toList),
     positiveTest("latte/pos/struct/wrapper.latte", List("1")),

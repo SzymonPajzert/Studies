@@ -98,7 +98,7 @@ ELitFalse.   Expr7 ::= "false" ;
 
 EApp.        Expr6 ::= Ident "(" [Expr] ")" ;
 
-EMethod.     Expr6 ::= Expr5 "." Ident "(" [Expr] ")" ;
+EMethod.     Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 
 EString.     Expr6 ::= String ;
 

@@ -33,8 +33,8 @@ object LLVM extends Language {
     override def typeId: Type = ???
   }
   case class Value(name: String, typeId: Type) extends Expression
-  case class Register[+T <: Type](val value: String, val typeId: Type, val deref: String) extends Expression {
-    def name: String = s"${deref}${value}"
+  case class Register[+T <: Type](value: String, typeId: Type, deref: String) extends Expression {
+    def name: String = s"$deref$value"
   }
 
   def register[T <: Type](value: String, typeId: Type): Register[T] = new Register(value, typeId, "%")

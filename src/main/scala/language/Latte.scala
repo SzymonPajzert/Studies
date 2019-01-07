@@ -10,28 +10,31 @@ object Latte extends Language {
     def empty: TypeInformation = new TypeInformation(Map())
   }
 
-  case class TypeInformation(defined: Map[ClassType, FieldOffset]) {
-    def offsetForClass(className: ClassType): FieldOffset = defined(className)
+  case class TypeInformation(defined: Map[ClassType, Offset]) {
+    def fieldOffset(className: ClassType): OffsetContainer = defined(className).fields
+    def methodOffset(className: ClassType): OffsetContainer = defined(className).methods
 
     def fieldType(className: ClassType, field: String): Option[Type] =
-      defined(className).fields.find(_._1 == field).map(_._2)
+      fieldOffset(className).elts.find(_._1 == field).map(_._2)
+    def methodType(className: ClassType, field: String): Option[Type] =
+      methodOffset(className).elts.find(_._1 == field).map(_._2)
 
-    def fieldTypes(className: ClassType): Seq[Type] = defined(className).fieldTypes
+    def fieldTypes(className: ClassType): Seq[Type] = fieldOffset(className).types
 
     def containedClasses: List[ClassType] = defined.keys.toList
   }
 
-  case class FieldOffset(val fields: List[(String, Type)]) {
-    def fieldTypes: Seq[Type] = fields map (_._2)
+  case class Offset(fields: OffsetContainer, methods: OffsetContainer)
 
-    def fieldOffset(field: String): Option[Int] =
-      fields
+  case class OffsetContainer(elts: List[(String, Type)]) {
+    def types: Seq[Type] = elts map (_._2)
+
+    def offset(elt: String): Option[Int] =
+      elts
         .map(_._1)
         .zipWithIndex
-        .find(_._1 == field)
+        .find(_._1 == elt)
         .map (_._2)
-
-    def methodOffset(method: String): Option[Int] = Some(0)
   }
 
   case class Code(definitions: Seq[Func],

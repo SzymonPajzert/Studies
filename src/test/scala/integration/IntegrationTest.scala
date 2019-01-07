@@ -25,8 +25,8 @@ class IntegrationTest extends FlatSpec with Matchers {
     val llvmCompiler =
       Compiler
         .debug("parser", LatteParser)
-        .nextStage("typer", TypePhase)
-        .nextStage("staticAnalysis", compiler.UntypingPhase)
+        .nextStage("typed", TypePhase)
+        .nextStage("untyped", compiler.UntypingPhase)
         .nextStage("quad", compiler.LatteToQuadCode)
 
     val directory = OutputDirectory.createTemporary.withSourceFile(

@@ -2,7 +2,6 @@
 
 package compiler
 
-import language.Latte.FieldOffset
 import language.Type._
 import language.{Latte, TypedLatte}
 
@@ -40,7 +39,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
 
       (for {
         codeInformation <- get[TypedLatte.CodeInformation]: Compiler[TypedLatte.CodeInformation]
-        offset = codeInformation.offsetForClass(className).fieldOffset(element).get
+        offset = codeInformation.fieldOffset(className).offset(element).get
         expression <- compileExpr(expressionInf)
       } yield Latte.FieldAccess(expression, offset)): Compiler[Latte.Location]
   }

@@ -1,6 +1,6 @@
 package language
 
-import language.Latte.{FieldOffset, TypeInformation}
+import language.Latte.TypeInformation
 import language.Type.Type
 
 import scala.language.implicitConversions
@@ -106,6 +106,8 @@ trait HighLatte extends Language {
 
 
 
-  case class FunctionSignature(identifier: String, returnType: Type, arguments: List[(String, Type)])
+  case class FunctionSignature(identifier: String, returnType: Type, arguments: List[(String, Type)]) {
+    def getType: Type = FunctionType(returnType, arguments map (_._2))
+  }
 }
 
