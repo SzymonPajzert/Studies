@@ -140,8 +140,14 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
   def exportConstructors(information: TypedLatte.CodeInformation): Compiler[List[Latte.Func]] = {
     val constructors: List[Latte.Func] = for {
       className <- information.defined.keys.toList
+
       vtableAssignment = information.methodOffset(className).elts
-      signature = Latte.FunctionSignature(className.constructor, VoidType, List(("this", PointerType(className))))
+
+      signature = Latte.FunctionSignature(
+        className.constructor,
+        VoidType,
+        List(("this", PointerType(className))))
+
     } yield Latte.Func(signature, Latte.VtableFuncAssignment(vtableAssignment))
 
     ok(constructors)

@@ -270,6 +270,39 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
   def subclass(name: String, base: String): TypeEnvironment[Unit] = ok(Unit)
 
+  def convertMemberFunction(identifierTypePairs: List[(String, Type)], className: String): UntypedLatte.ClassMember => Seq[(String, UntypedLatte.Func)] = {
+    case f: UntypedLatte.Func =>
+      val sig = f.signature
+      val newSignature = sig.copy(
+        arguments = ("this", PointerType(ClassType(className))) :: sig.arguments,
+        identifier = s"method_${className}_${sig.identifier}")
+
+      val fields: Map[String, Type] = identifierTypePairs.toMap
+
+      def locationMap: UntypedLatte.Location => UntypedLatte.Location = {
+        case UntypedLatte.Variable(identifier) if fields contains identifier => {
+          UntypedLatte.FieldAccess((UntypedLatte.Variable("this"), ()), identifier)
+        }
+        case UntypedLatte.Variable(identifier) => UntypedLatte.Variable(identifier)
+
+        case UntypedLatte.ArrayAccess(array, element) =>
+          UntypedLatte.ArrayAccess(UntypedLatte.mapExpressionOnLocation(locationMap)(array), element)
+
+        case UntypedLatte.FieldAccess(place, element) =>
+          UntypedLatte.ArrayAccess(UntypedLatte.mapExpressionOnLocation(locationMap)(place), element)
+      }
+
+      val newCode = UntypedLatte.mapBlockOnLocation(locationMap)(f.code)
+
+      val newFunction = f.copy(
+        signature = newSignature,
+        code = newCode)
+
+
+      Seq((sig.identifier, newFunction))
+    case UntypedLatte.Declaration(_, _) => Seq()
+  }
+
   def parseClassStructure(className: String,
                           members: List[UntypedLatte.ClassMember]): TypeEnvironment[List[UntypedLatte.Func]] = {
     val identifierTypePairs = members flatMap {
@@ -278,16 +311,8 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       case _ => Seq()
     }
 
-    val memberFunctions: Seq[(String, UntypedLatte.Func)] = members flatMap {
-      case f: UntypedLatte.Func => {
-        val sig = f.signature
-        val newSignature = sig.copy(
-          arguments = ("this", PointerType(ClassType(className))) :: sig.arguments,
-          identifier = s"method_${className}_${sig.identifier}")
-        Seq((sig.identifier, f.copy(signature = newSignature)))
-      }
-      case UntypedLatte.Declaration(_, _) => Seq()
-    }
+    val memberFunctions: Seq[(String, UntypedLatte.Func)] =
+      members flatMap convertMemberFunction(identifierTypePairs, className)
 
     val memberFunctionsPairs = memberFunctions map {
       case (identifier, func) => (identifier, func.signature.getType)

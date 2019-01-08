@@ -52,6 +52,31 @@ trait HighLatte extends Language {
   trait ClassMember
 
   type Block = List[Instruction]
+  def mapExpressionOnLocation(locF: Location => Location): ExpressionInf => ExpressionInf =
+    {
+      case (FunctionCall(location, arguments), i) => (FunctionCall(location, arguments map mapExpressionOnLocation(locF)), i)
+
+      case (Cast(typeT, expression), i) => (Cast(typeT, mapExpressionOnLocation(locF)(expression)), i)
+      case (ArrayCreation(typeT, size), i) => (ArrayCreation(typeT, mapExpressionOnLocation(locF)(size)), i)
+      case (loc: Location, i) => (locF(loc), i)
+      case a => a
+    }
+
+  def mapBlockOnLocation(locF: Location => Location): Block => Block = { block =>
+    def e: ExpressionInf => ExpressionInf = mapExpressionOnLocation(locF)
+
+    def i: Instruction => Instruction = {
+      case Assignment(loc, expr) => Assignment((locF(loc._1), loc._2), e(expr))
+      case BlockInstruction(b) => BlockInstruction(b map i)
+      case DiscardValue(expression) => DiscardValue(e(expression))
+      case Return(value: Option[ExpressionInf]) => Return(value map e)
+      case IfThen(condition, thenInst, elseOpt) => IfThen(e(condition), i(thenInst), elseOpt map i)
+      case While(condition, instr) => While(e(condition), i(instr))
+      case any => any
+    }
+
+    block map i
+  }
 
   sealed trait Instruction
   type ExpressionInf = (Expression, ExpressionInformation)
