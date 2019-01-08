@@ -231,11 +231,13 @@ object Transformations {
     }, Unit)
   }
 
+  /*
   def funType(functionType: Fun): Type = {
     FunctionType(
       convertType(functionType.type_),
       functionType.listtype_.asScala map convertType)
   }
+  */
 
   def convertType(typeValue: latte.Absyn.Type): Type = {
     val visitor = new latte.Absyn.Type.Visitor[Type, Any] {
@@ -243,7 +245,7 @@ object Transformations {
       override def visit(p: Str, arg: Any): Type = StringType
       override def visit(p: Bool, arg: Any): Type = BoolType
       override def visit(p: Void, arg: Any): Type = VoidType
-      override def visit(p: Fun, arg: Any): Type = funType(p)
+      // override def visit(p: Fun, arg: Any): Type = funType(p)
       override def visit(p: ArrayT, arg: Any): Type = ArrayType(convertType(p.type_))
       override def visit(p: latte.Absyn.Class, arg: Any): Type = ClassType(p.ident_)
     }
@@ -308,9 +310,8 @@ object LatteParser extends Parser[UntypedLatte.Code] {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
-    Right(Transformations.program(p.pProgram))
+    // Right(Transformations.program(p.pProgram))
 
-    /*
 
     try {
       Right(Transformations.program(p.pProgram))
@@ -318,6 +319,6 @@ object LatteParser extends Parser[UntypedLatte.Code] {
       case e: Exception => Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
     }
 
-    */
+
   }
 }

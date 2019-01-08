@@ -11,8 +11,8 @@ object Latte extends Language {
   }
 
   case class TypeInformation(defined: Map[ClassType, Offset]) {
-    def fieldOffset(className: ClassType): OffsetContainer = defined(className).fields
-    def methodOffset(className: ClassType): OffsetContainer = defined(className).methods
+    def fieldOffset(className: ClassType): OffsetContainer[Type] = defined(className).fields
+    def methodOffset(className: ClassType): OffsetContainer[FunctionType] = defined(className).methods
 
     def fieldType(className: ClassType, field: String): Option[Type] =
       fieldOffset(className).elts.find(_._1 == field).map(_._2)
@@ -20,14 +20,15 @@ object Latte extends Language {
       methodOffset(className).elts.find(_._1 == field).map(_._2)
 
     def fieldTypes(className: ClassType): Seq[Type] = fieldOffset(className).types
+    def methodTypes(className: ClassType): Seq[FunctionType] = methodOffset(className).types
 
     def containedClasses: List[ClassType] = defined.keys.toList
   }
 
-  case class Offset(fields: OffsetContainer, methods: OffsetContainer)
+  case class Offset(fields: OffsetContainer[Type], methods: OffsetContainer[FunctionType])
 
-  case class OffsetContainer(elts: List[(String, Type)]) {
-    def types: Seq[Type] = elts map (_._2)
+  case class OffsetContainer[T <: Type](elts: List[(String, T)]) {
+    def types: Seq[T] = elts map (_._2)
 
     def offset(elt: String): Option[Int] =
       elts
@@ -41,13 +42,16 @@ object Latte extends Language {
                   globalLLVM: String = "",
                   typeInformation: TypeInformation)
 
-  type Block = List[Instruction]
+  trait Block
+  case class VtableFuncAssignment(funcs: List[(String, FunctionType)]) extends Block
 
   trait Expression {
     def isLiteral: Boolean = false
     def getType: Type = VoidType
   }
+  case class Null(t: Type) extends Expression
   case object Void extends Expression
+
   trait FunLocation
   case class FunName(name: String) extends FunLocation
   case class VTableLookup(expression: Expression, offset: Int) extends FunLocation
@@ -80,7 +84,7 @@ object Latte extends Language {
   trait Instruction
   case class Declaration(identifier: String, typeValue: Type) extends Instruction
   case class Assignment(location: Location, expr: Expression) extends Instruction
-  case class BlockInstruction(block: Block) extends Instruction
+  case class BlockInstruction(block: List[Instruction]) extends Instruction with Block
   case class DiscardValue(expression: Expression) extends Instruction
   case class Return(value: Option[Expression]) extends Instruction
   case class IfThen(condition: Expression, thenInst: Instruction, elseOpt: Option[Instruction] = None) extends Instruction

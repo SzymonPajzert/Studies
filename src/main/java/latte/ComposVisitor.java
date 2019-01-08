@@ -206,15 +206,6 @@ public class ComposVisitor<A> implements
     {
       String ident_ = p.ident_;
       return new latte.Absyn.Class(ident_);
-    }    public Type visit(latte.Absyn.Fun p, A arg)
-    {
-      Type type_ = p.type_.accept(this, arg);
-      ListType listtype_ = new ListType();
-      for (Type x : p.listtype_)
-      {
-        listtype_.add(x.accept(this,arg));
-      }
-      return new latte.Absyn.Fun(type_, listtype_);
     }    public Type visit(latte.Absyn.ArrayT p, A arg)
     {
       Type type_ = p.type_.accept(this, arg);
@@ -283,15 +274,15 @@ public class ComposVisitor<A> implements
     {
       String string_ = p.string_;
       return new latte.Absyn.EString(string_);
-    }    public Expr visit(latte.Absyn.EClassCons p, A arg)
-    {
-      Type type_ = p.type_.accept(this, arg);
-      return new latte.Absyn.EClassCons(type_);
     }    public Expr visit(latte.Absyn.EArrayCons p, A arg)
     {
       Type type_ = p.type_.accept(this, arg);
       Expr expr_ = p.expr_.accept(this, arg);
       return new latte.Absyn.EArrayCons(type_, expr_);
+    }    public Expr visit(latte.Absyn.EClassCons p, A arg)
+    {
+      Type type_ = p.type_.accept(this, arg);
+      return new latte.Absyn.EClassCons(type_);
     }    public Expr visit(latte.Absyn.ECast p, A arg)
     {
       Type type_ = p.type_.accept(this, arg);

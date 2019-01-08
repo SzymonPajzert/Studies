@@ -282,7 +282,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       case f: UntypedLatte.Func => {
         val sig = f.signature
         val newSignature = sig.copy(
-          arguments = ("this", ClassType(className)) :: sig.arguments,
+          arguments = ("this", PointerType(ClassType(className))) :: sig.arguments,
           identifier = s"method_${className}_${sig.identifier}")
         Seq((sig.identifier, f.copy(signature = newSignature)))
       }
@@ -347,9 +347,10 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
 
   override def compile(code: UntypedLatte.Code): Either[List[CompileException], TypedLatte.Code] = {
     val typePhase: TypeEnvironment[TypedLatte.Code] = for {
-      _ <- mapM(code._1.toList, addTopDefinition)
+      methods: List[List[UntypedLatte.Func]] <- mapM(code._1.toList, addTopDefinition)
       s <- get[KS]: TypeEnvironment[KS]
-      typedCode <- EitherT[S, List[CompileException], List[TypedLatte.TopDefinition]](state(runWithSeparateStates(code._1.toList, s)))
+      typedCodeT = runWithSeparateStates(methods.flatten ::: code._1.toList, s)
+      typedCode <- EitherT[S, List[CompileException], List[TypedLatte.TopDefinition]](state(typedCodeT))
       typeInformation <- getTypeInformation
     } yield (typedCode, typeInformation)
 

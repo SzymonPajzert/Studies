@@ -93,10 +93,14 @@ object LLVM extends Language {
     }
   }
 
+  def call(returnT: Type, name: String, args: List[Expression]) = new LLVM.Func[Nothing] {
+    override def getLine: String = s"call ${returnT.llvmRepr} $name(${LLVM.convertArgs(args)})"
+  }
+
   sealed trait Instruction
   case class JumpIf(expression: Expression, ifTrue: JumpPoint, ifFalse: JumpPoint) extends Instruction
   case class Assign[T <: Type](destination: Register[T], function: Func[T]) extends Instruction
-  case class AssignFuncall(destination: RegisterT, functionId: FunctionId, args: List[Expression]) extends Instruction
+  case class AssignFuncall[T <: Type](destination: RegisterT, retType: Type, func: Func[T]) extends Instruction
   case class AssignOp(destination: RegisterT, op: Operation, left: Expression, right: Expression) extends Instruction
   case class PrintInt(expression: Expression) extends Instruction
   case class Return(expression: Option[Expression]) extends Instruction
@@ -123,11 +127,12 @@ object LLVM extends Language {
     case Assign(destination, code) =>
       Right(s"${destination.name} = ${code.getLine}", s"${destination.typeId.llvmRepr}")
 
-    case AssignFuncall(_, functionId, arguments) if functionId.returnType == VoidType =>
-      Left(s"call ${functionId.returnType.llvmRepr} @${functionId.name}(${convertArgs(arguments)})")
+      //
+    case AssignFuncall(_, VoidType, func)  =>
+      Left(func.getLine)
 
-    case AssignFuncall(destination, functionId, arguments) =>
-      Left(s"${destination.name} = call ${functionId.returnType.llvmRepr} @${functionId.name}(${convertArgs(arguments)})")
+    case AssignFuncall(destination, _, func) =>
+      Left(s"${destination.name} = ${func.getLine}")
 
     case PrintInt(expression) =>
       Left(s"""call void @printInt(${expression.typeId.llvmRepr} ${expression.name})""")

@@ -107,7 +107,7 @@ trait HighLatte extends Language {
 
 
   case class FunctionSignature(identifier: String, returnType: Type, arguments: List[(String, Type)]) {
-    def getType: Type = FunctionType(returnType, arguments map (_._2))
+    def getType: FunctionType = FunctionType(returnType, arguments map (_._2))
   }
 }
 

@@ -27,6 +27,11 @@ object Type {
 
   case class ClassType(name: String) extends Type {
     override def llvmRepr: String = s"%class.$name"
+    def vtable: Type = new Type {
+      def llvmRepr: String = s"%class.$name.vtable"
+    }
+
+    def constructor: String = s"class.$name.constructor"
   }
 
   case class AggregateType(name: String, elements: Seq[Type]) extends Type {
@@ -48,6 +53,9 @@ object Type {
   }
 
   case class FunctionType(returnType: Type, argsType: Seq[Type]) extends Type {
-    override def llvmRepr: String = ???
+    override def llvmRepr: String = {
+      val args = (argsType map (_.llvmRepr)).mkString(",")
+      s"${returnType.llvmRepr}($args)"
+    }
   }
 }

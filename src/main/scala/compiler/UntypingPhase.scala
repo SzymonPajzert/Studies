@@ -53,7 +53,8 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
         case t => t
       }
 
-      result = AggregateType(className, types) : Type
+      vtableId = s"$className.vtable"
+      result = AggregateType(className, PointerType(AggregateType(vtableId, Seq())) :: types.toList) : Type
     } yield if(addPtr) PointerType(result) else result
     case PointerType(t) => transformType(false)(t) map PointerType
     case a => a
@@ -64,6 +65,13 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       case TypedLatte.FunctionCall((TypedLatte.FunName(functionName), _), a) => for {
         arguments <- mapM(a.toList, compileExpr)
       } yield Latte.FunctionCall(Latte.FunName(functionName), arguments)
+
+      case TypedLatte.FunctionCall((TypedLatte.VTableLookup(exprInfU, ident), _), argumentsU) => for {
+        expr <- compileExpr(exprInfU)
+        typeInformation <- get[KS]: Compiler[KS]
+        offset = typeInformation.methodOffset(exprInfU._2.asInstanceOf[ClassType]).offset(ident).get
+        arguments <- mapM(argumentsU.toList, compileExpr)
+      } yield Latte.FunctionCall(Latte.VTableLookup(expr, offset), arguments)
 
       case TypedLatte.ConstValue(v) => Latte.ConstValue(v)
 
@@ -76,7 +84,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
         loc <- location(locU)
       } yield loc
 
-      case TypedLatte.Null => Latte.ConstValue(0)
+      case TypedLatte.Null => Latte.Null(expression._2)
 
       case TypedLatte.Void => Latte.Void
     }
@@ -125,21 +133,38 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
     func match {
       case TypedLatte.Func(signature, code) => for {
         codeParsed <- mapM(code, instruction)
-      } yield Latte.Func(transformSignature(signature), codeParsed)
+      } yield Latte.Func(transformSignature(signature), Latte.BlockInstruction(codeParsed))
     }
   }
 
-  def exportStructures(information: Latte.TypeInformation): Compiler[String] = (for {
+  def exportConstructors(information: TypedLatte.CodeInformation): Compiler[List[Latte.Func]] = {
+    val constructors: List[Latte.Func] = for {
+      className <- information.defined.keys.toList
+      vtableAssignment = information.methodOffset(className).elts
+      signature = Latte.FunctionSignature(className.constructor, VoidType, List(("this", PointerType(className))))
+    } yield Latte.Func(signature, Latte.VtableFuncAssignment(vtableAssignment))
+
+    ok(constructors)
+  }
+
+  def exportStructures(information: Latte.TypeInformation): Compiler[String] = ok((for {
     className <- information.containedClasses
-    result = s"${className.llvmRepr} = type { ${information.fieldTypes(className).map(_.llvmRepr).mkString(", ")} }"
-  } yield result).mkString("\n")
+    elements = information.fieldTypes(className).map(_.llvmRepr).mkString(", ")
+
+    methods = information.methodTypes(className).map("  " + PointerType(_).llvmRepr).mkString(",\n")
+
+    vtableType = PointerType(className.vtable).llvmRepr
+    vtable = s"${className.vtable.llvmRepr} = type { \n$methods\n}\n"
+    classType = s"${className.llvmRepr} = type { $vtableType, $elements }"
+  } yield s"$vtable\n$classType").mkString("\n\n"))
 
 
   override def compile(code: TypedLatte.Code): Either[List[CompileException], Latte.Code] = {
     val untyping = for {
       latteCode <- mapM(code._1.toList, compileFunc)
+      constructors <- exportConstructors(code._2)
       allStructures <- exportStructures(code._2)
-    } yield Latte.Code(latteCode, allStructures, code._2)
+    } yield Latte.Code(constructors ::: latteCode, allStructures, code._2)
 
     untyping.run(code._2)._2.toEither
   }

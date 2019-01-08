@@ -74,7 +74,7 @@ Void.      Type ::= "void" ;
 
 Class.     Type ::= Ident ;
 
-internal   Fun. Type ::= Type "(" [Type] ")" ;
+-- internal   Fun. Type ::= Type "(" [Type] ")" ;
 
 ArrayT.    Type ::= Type "[]" ;
 
@@ -82,8 +82,8 @@ separator  Type "," ;
 
 -- Expressions ---------------------------------------------
 
-ArrAccess. ArrayE ::= Expr5 "[" Expr "]" ;
-FldAccess. FieldE ::= Expr5 "." Ident ;
+ArrAccess. ArrayE ::= Expr6 "[" Expr "]" ;
+FldAccess. FieldE ::= Expr6 "." Ident ;
 
 IVar.        Expr7 ::= Ident ;
 
@@ -96,21 +96,22 @@ ELitTrue.    Expr7 ::= "true" ;
 
 ELitFalse.   Expr7 ::= "false" ;
 
-EApp.        Expr6 ::= Ident "(" [Expr] ")" ;
+EApp.        Expr7 ::= Ident "(" [Expr] ")" ;
 
 EMethod.     Expr6 ::= Expr6 "." Ident "(" [Expr] ")" ;
 
 EString.     Expr6 ::= String ;
 
+
 EClassCons.  Expr5 ::= "new" Type ;
 
-EArrayCons.  Expr5 ::= "new" Type "[" Expr "]" ;
+EArrayCons.  Expr6 ::= "new" Type "[" Expr "]" ;
 
 ECast.       Expr5 ::= "(" Type ")" Expr6;
 
-Neg.         Expr5 ::= "-" Expr6 ;
+Neg.         Expr5 ::= "-" Expr5 ;
 
-Not.         Expr5 ::= "!" Expr6 ;
+Not.         Expr5 ::= "!" Expr5 ;
 
 EMul.        Expr4 ::= Expr4 MulOp Expr5 ;
 

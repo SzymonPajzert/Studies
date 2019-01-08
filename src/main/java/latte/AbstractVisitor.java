@@ -62,7 +62,6 @@ public class AbstractVisitor<R,A> implements AllVisitor<R,A> {
     public R visit(latte.Absyn.Bool p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.Void p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.Class p, A arg) { return visitDefault(p, arg); }
-    public R visit(latte.Absyn.Fun p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.ArrayT p, A arg) { return visitDefault(p, arg); }
     public R visitDefault(latte.Absyn.Type p, A arg) {
       throw new IllegalArgumentException(this.getClass().getName() + ": " + p);
@@ -85,13 +84,13 @@ public class AbstractVisitor<R,A> implements AllVisitor<R,A> {
     public R visit(latte.Absyn.ELitInt p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.ELitTrue p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.ELitFalse p, A arg) { return visitDefault(p, arg); }
-
     public R visit(latte.Absyn.EApp p, A arg) { return visitDefault(p, arg); }
+
     public R visit(latte.Absyn.EMethod p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.EString p, A arg) { return visitDefault(p, arg); }
+    public R visit(latte.Absyn.EArrayCons p, A arg) { return visitDefault(p, arg); }
 
     public R visit(latte.Absyn.EClassCons p, A arg) { return visitDefault(p, arg); }
-    public R visit(latte.Absyn.EArrayCons p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.ECast p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.Neg p, A arg) { return visitDefault(p, arg); }
     public R visit(latte.Absyn.Not p, A arg) { return visitDefault(p, arg); }

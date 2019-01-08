@@ -207,15 +207,6 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       return r;
     }
-    public R visit(latte.Absyn.Fun p, A arg) {
-      R r = leaf(arg);
-      r = combine(p.type_.accept(this, arg), r, arg);
-      for (Type x : p.listtype_)
-      {
-        r = combine(x.accept(this, arg), r, arg);
-      }
-      return r;
-    }
     public R visit(latte.Absyn.ArrayT p, A arg) {
       R r = leaf(arg);
       r = combine(p.type_.accept(this, arg), r, arg);
@@ -289,15 +280,15 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       R r = leaf(arg);
       return r;
     }
-    public R visit(latte.Absyn.EClassCons p, A arg) {
-      R r = leaf(arg);
-      r = combine(p.type_.accept(this, arg), r, arg);
-      return r;
-    }
     public R visit(latte.Absyn.EArrayCons p, A arg) {
       R r = leaf(arg);
       r = combine(p.type_.accept(this, arg), r, arg);
       r = combine(p.expr_.accept(this, arg), r, arg);
+      return r;
+    }
+    public R visit(latte.Absyn.EClassCons p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
       return r;
     }
     public R visit(latte.Absyn.ECast p, A arg) {
