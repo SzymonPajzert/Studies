@@ -18,7 +18,17 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   case class VariableState(counter: Int, fromCurrentBlock: Boolean, typeId: Type)
   type VarBinds = Map[String, VariableState]
   type FunBinds = Map[String, Type]
-  case class Binds(variables: VarBinds, functions: Map[String, Type])
+
+  def putNewFunBind(name: String, typeId: Type) : TypeEnvironment[Unit] = for {
+    funBinds <- gets[KS, FunBinds](_._1.functions) : TypeEnvironment[FunBinds]
+    _ <- (funBinds get name) match {
+      case Some(_) => createError(s"$name already defined")
+      case None => modifyBinds { binds => binds.copy(
+        functions = binds.functions + (name -> typeId))}
+    }
+  } yield Unit
+
+  case class Binds(variables: VarBinds, functions: FunBinds)
 
   type KS = (Binds, TypeInformation)
 
@@ -74,11 +84,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       place <- expression(placeU)
       typeInformation <- getTypeInformation
       elementType <- (place._2 match {
-        case c @ ClassType(_) => typeInformation.fieldType(c, element) match {
-          case Some(t) => t
-          case None => createError(s"No field $element in $c")
-        }
-        case PointerType(c @ ClassType(_)) => typeInformation.fieldType(c, element) match {
+        case PointerType(c @ ClassType(_)) => typeInformation.field(c).findType(element) match {
           case Some(t) => t
           case None => createError(s"No field $element in $c")
         }
@@ -114,27 +120,28 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   def funLocation(fLoc: UntypedLatte.FunLocation): TypeEnvironment[TypedLatte.FunLocationInf] = fLoc match {
     case UntypedLatte.FunName(name: String) => for {
       functionType <- (name match {
-        case "printInt" => FunctionType (VoidType, Seq (IntType))
-        case "printString" => FunctionType (VoidType, Seq (StringType))
+        case "printInt" => FunctionType(VoidType, Seq(IntType))
+        case "printString" => FunctionType(VoidType, Seq(StringType))
         case _ if primitiveFunctions contains name => primitiveFunctions(name)
-        case "bool_not" => FunctionType (BoolType, Seq (BoolType))
+        case "bool_not" => FunctionType(BoolType, Seq(BoolType))
         case userDefinedName => lookupFunctionSignature(userDefinedName)
-      }) : TypeEnvironment[Type]
+      }): TypeEnvironment[Type]
     } yield (TypedLatte.FunName(name), functionType)
 
-    case vtable @ UntypedLatte.VTableLookup(exprU, ident) => for {
+    case vtable@UntypedLatte.VTableLookup(exprU, ident) => for {
       expr <- expression(exprU)
-      expressionType = expr._2
       typeInformation <- getTypeInformation
 
-      methodType <- expr._2 match {
-        case expressionType: ClassType => typeInformation.methodType (expressionType, ident) match {
-          case None => createError (s"$expressionType has no field $ident")
-          case Some (t) => ok (t)
-          }
+      methodType <- (expr._2 match {
+        case PointerType(expressionType: ClassType) =>
+          typeInformation.method(expressionType)
+            .findType(ident)
+            .map(ok)
+            .getOrElse(createError(s"$expressionType has no field $ident"): TypeEnvironment[FunctionType])
+
         case _ => createError(s"Wrong type: $vtable")
-      }
-    } yield (TypedLatte.VTableLookup(expr, ident), methodType)
+      }): TypeEnvironment[FunctionType]
+    } yield (TypedLatte.VTableLookup(expr, ident), methodType): TypedLatte.FunLocationInf
   }
 
   def extractType(value: Any): Type = value match {
@@ -169,7 +176,11 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       arrayType = ArrayType(elementType)
     } yield (TypedLatte.ArrayCreation(elementType, typedSize), arrayType)
 
-    case UntypedLatte.Null => (TypedLatte.Null, VoidType)
+    case UntypedLatte.Cast(castType, expressionInfU) => for {
+      expressionInf <- expression(expressionInfU)
+    } yield (expressionInf._1, castType)
+
+    case UntypedLatte.Null(c) => (TypedLatte.Null(c), PointerType(c))
 
     case UntypedLatte.InstanceCreation(typeT) => (TypedLatte.InstanceCreation(typeT), typeT)
 
@@ -197,12 +208,18 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   def instruction(ins: UntypedLatte.Instruction): TypeEnvironment[TypedLatte.Instruction] = ins match {
     case UntypedLatte.Declaration(identifier, typeValue) => for {
       binds <- getBinds
+
+      transType = typeValue match {
+        case c: ClassType => PointerType(c)
+        case t => t
+      }
+
       counter <- (binds.variables get identifier match {
         case Some(state) if state.fromCurrentBlock => createError(s"$identifier already defined")
-        case Some(state) => setCounter(identifier, state.counter + 1, typeValue)
-        case None => setCounter(identifier, 0, typeValue)
+        case Some(state) => setCounter(identifier, state.counter + 1, transType)
+        case None => setCounter(identifier, 0, transType)
         }) : TypeEnvironment[Int]
-    } yield TypedLatte.Declaration(identifier + counter.toString , typeValue)
+    } yield TypedLatte.Declaration(identifier + counter.toString , typeValue): TypedLatte.Instruction
 
     case UntypedLatte.Assignment(locU, exprU) => for {
       loc <- location(locU)
@@ -246,6 +263,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       val returnInst = returnType match {
         case VoidType => TypedLatte.Return(None)
         case IntType => TypedLatte.Return(Some((TypedLatte.ConstValue(0), returnType)))
+        case PointerType(_) => TypedLatte.Return(Some((TypedLatte.Null(returnType.deref.asInstanceOf[ClassType]), returnType)))
       }
       instructions ::: List(returnInst)
     } else instructions
@@ -273,9 +291,10 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
   def convertMemberFunction(identifierTypePairs: List[(String, Type)], className: String): UntypedLatte.ClassMember => Seq[(String, UntypedLatte.Func)] = {
     case f: UntypedLatte.Func =>
       val sig = f.signature
+      val classType = ClassType(className)
       val newSignature = sig.copy(
         arguments = ("this", PointerType(ClassType(className))) :: sig.arguments,
-        identifier = s"method_${className}_${sig.identifier}")
+        identifier = classType.methodName(sig.identifier))
 
       val fields: Map[String, Type] = identifierTypePairs.toMap
 
@@ -318,13 +337,10 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       case (identifier, func) => (identifier, func.signature.getType)
     }
 
+    val classT = ClassType(className)
+
     for {
-      _ <- modifyTypeInformation { typeInformation => new TypeInformation(
-        typeInformation.defined + (ClassType(className) -> Offset(
-          fields = OffsetContainer(identifierTypePairs),
-          methods = OffsetContainer(memberFunctionsPairs.toList)
-        )
-      ))}
+      _ <- modifyTypeInformation { _.addClassStructure(classT, identifierTypePairs, memberFunctionsPairs) }
     } yield memberFunctions.map(_._2).toList
   }
 
@@ -335,21 +351,31 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
     case _ => ok(None)
   }
 
+  /**
+    * Add signature of the function to the environment or fail
+    * @param signature
+    * @return
+    */
+  def addSignature(signature: UntypedLatte.FunctionSignature): TypeEnvironment[Unit] = {
+    val name = signature.identifier
+    val typeId = FunctionType(signature.returnType, signature.arguments.map(_._2))
+    for {
+      binds <- getBinds: TypeEnvironment[Binds]
+      _ <- putNewFunBind(name, typeId) : TypeEnvironment[Unit]
+    } yield Unit
+  }
+
+  /**
+    * Parse top level definitions and return methods that were hidden inside class
+    * @return
+    */
   def addTopDefinition: UntypedLatte.TopDefinition => TypeEnvironment[List[UntypedLatte.Func]] = {
-    case UntypedLatte.Func(signature, _) =>
-      val name = signature.identifier
-      val typeId = FunctionType(signature.returnType, signature.arguments.map(_._2))
-      for {
-        binds <- getBinds: TypeEnvironment[Binds]
-        _ <- (binds.functions get name match {
-          case Some(_) => createError(s"$name already defined")
-          case None => modifyBinds { binds => binds.copy(
-            functions = binds.functions + (name -> typeId))}
-        }) : TypeEnvironment[Unit]
-      } yield List()
+    case UntypedLatte.Func(signature, _) => for (_ <- addSignature(signature)) yield List()
+
     case UntypedLatte.Class(name, base, insidesU) => for {
       _ <- subclass(name, base)
       methods <- parseClassStructure(name, insidesU)
+      _ <- mapM(methods map (_.signature), addSignature)
     } yield methods
   }
 

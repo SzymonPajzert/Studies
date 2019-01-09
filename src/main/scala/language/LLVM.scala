@@ -58,10 +58,9 @@ object LLVM extends Language {
   // TODO it should check types of the incomming registers
   def getElementPtr[T <: Type](elementType: Type,
                                pointer: Register[T],
-                               indices: List[Expression] = List(Value("0", IntType), Value("0", IntType)),
-                               sourceTypeOpt: Option[Type] = None): Func[T] = new Func[T] {
+                               indices: List[Expression] = List(Value("0", IntType), Value("0", IntType))): Func[T] = new Func[T] {
     override def getLine: String = {
-      val sourceType = sourceTypeOpt.getOrElse(PointerType(elementType))
+      val sourceType = PointerType(elementType)
       val accessTypes = s"${elementType.llvmRepr}, ${sourceType.llvmRepr}"
       val indicesStr = (indices map (index => s"${index.typeId.llvmRepr} ${index.name}")).mkString(", ")
       s"getelementptr $accessTypes ${pointer.name}, $indicesStr"

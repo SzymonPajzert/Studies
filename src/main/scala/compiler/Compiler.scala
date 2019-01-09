@@ -8,12 +8,7 @@ case class ErrorString(message: String) extends CompileException
 
 // TODO add <: Language
 trait Compiler[A, B] {
-
   self =>
-
-  trait ResultWithFail[F, G]
-  case class Good[F, G](result: G) extends ResultWithFail[F, G]
-  case class Fail[F, G](result: G, fail: F) extends ResultWithFail[F, G]
 
   def compile(code: A): Either[List[CompileException], B]
 

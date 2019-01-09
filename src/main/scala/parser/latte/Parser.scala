@@ -111,7 +111,7 @@ object Transformations {
 
       override def visit(p: ECast, arg: Any): Expression = Cast(convertType(p.type_), expression(p.expr_))
 
-      override def visit(p: ENull, arg: Any): HighLatte.Expression = UntypedLatte.Null
+      override def visit(p: ENull, arg: Any): HighLatte.Expression = UntypedLatte.Null(null)
     }
 
     (expr.accept(visitor, Unit), Unit)
@@ -245,9 +245,8 @@ object Transformations {
       override def visit(p: Str, arg: Any): Type = StringType
       override def visit(p: Bool, arg: Any): Type = BoolType
       override def visit(p: Void, arg: Any): Type = VoidType
-      // override def visit(p: Fun, arg: Any): Type = funType(p)
       override def visit(p: ArrayT, arg: Any): Type = ArrayType(convertType(p.type_))
-      override def visit(p: latte.Absyn.Class, arg: Any): Type = ClassType(p.ident_)
+      override def visit(p: latte.Absyn.Class, arg: Any): Type = PointerType(ClassType(p.ident_))
     }
 
     typeValue.accept(visitor, Unit)

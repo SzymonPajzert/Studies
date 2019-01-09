@@ -10,25 +10,65 @@ object Latte extends Language {
     def empty: TypeInformation = new TypeInformation(Map())
   }
 
-  case class TypeInformation(defined: Map[ClassType, Offset]) {
-    def fieldOffset(className: ClassType): OffsetContainer[Type] = defined(className).fields
-    def methodOffset(className: ClassType): OffsetContainer[FunctionType] = defined(className).methods
+  case class TypeInformation(private val defined: Map[ClassType, Offset]) {
+    def field(className: ClassType): OffsetContainer[Type] = defined(className).fields
+    def method(className: ClassType): OffsetContainer[FunctionType] = defined(className).methods
 
-    def fieldType(className: ClassType, field: String): Option[Type] =
-      fieldOffset(className).elts.find(_._1 == field).map(_._2)
-    def methodType(className: ClassType, field: String): Option[Type] =
-      methodOffset(className).elts.find(_._1 == field).map(_._2)
+    def vtable(className: ClassType): AggregateType = AggregateType(
+      s"${className.name}.vtable",
+      method(className).types.map(PointerType))
 
-    def fieldTypes(className: ClassType): Seq[Type] = fieldOffset(className).types
-    def methodTypes(className: ClassType): Seq[FunctionType] = methodOffset(className).types
+    def aggregate(className: ClassType): AggregateType = {
+      val vtableType = PointerType(vtable(className).toRef)
+      val fields = field(className).types.toList
+      AggregateType(className.name, vtableType :: fields)
+    }
 
     def containedClasses: List[ClassType] = defined.keys.toList
+
+    def addClassStructure(classT: ClassType,
+                          fields: Seq[(String, Type)],
+                          methods: Seq[(String, FunctionType)]): TypeInformation = {
+
+
+      new TypeInformation(defined + (classT -> Offset(
+        OffsetContainer(fields.toList), OffsetContainer(methods.toList)
+      )))
+    }
+
+
+
+    def exportStructures: String = (for {
+      className <- containedClasses
+
+      vtable = s"${className.vtable.llvmRepr} = ${this.vtable(className).structure}"
+
+      funcIdentifiers = method(className).elts.map { case ((name, fType)) =>
+        s"${PointerType(fType).llvmRepr} @${className.methodName(name)}"
+      }
+
+      defaultVtable =
+        s"""${className.vtableDefault} = global ${className.vtable.llvmRepr} {
+           |  ${funcIdentifiers.mkString(",\n  ")}
+           |}""".stripMargin
+
+      classType = s"${className.llvmRepr} = ${this.aggregate(className).structure}"
+    } yield
+      s"""
+         |$vtable
+         |
+         |$defaultVtable
+         |
+         |$classType""".stripMargin).mkString("\n\n\n")
   }
 
   case class Offset(fields: OffsetContainer[Type], methods: OffsetContainer[FunctionType])
 
   case class OffsetContainer[T <: Type](elts: List[(String, T)]) {
     def types: Seq[T] = elts map (_._2)
+
+    def findType(field: String): Option[T] =
+      elts.find(_._1 == field).map(_._2)
 
     def offset(elt: String): Option[Int] =
       elts
@@ -40,7 +80,13 @@ object Latte extends Language {
 
   case class Code(definitions: Seq[Func],
                   globalLLVM: String = "",
-                  typeInformation: TypeInformation)
+                  typeInformation: TypeInformation) {
+    def signatures: Map[String, FunctionType] = {
+      (definitions map (func => {
+        func.signature.identifier -> FunctionType(func.signature.returnType, func.signature.arguments map (_._2))
+      })).toMap
+    }
+  }
 
   trait Block
   case class VtableFuncAssignment(funcs: List[(String, FunctionType)]) extends Block
@@ -54,7 +100,7 @@ object Latte extends Language {
 
   trait FunLocation
   case class FunName(name: String) extends FunLocation
-  case class VTableLookup(expression: Expression, offset: Int) extends FunLocation
+  case class VTableLookup(expression: Expression, offset: Int, funcType: FunctionType) extends FunLocation
 
   case class FunctionCall(location: FunLocation, arguments: Seq[Expression]) extends Expression
   case class ConstValue[+T](value: T) extends Expression {

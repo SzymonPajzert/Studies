@@ -4,8 +4,9 @@ object Type {
   case class DerefException(t: Type) extends Exception(s"trying to deref: $t")
 
   sealed trait Type {
-    def deref: Type = throw new DerefException(this)
+    def deref: Type = throw DerefException(this)
     def llvmRepr: String
+    def ptr: PointerType = PointerType(this)
   }
 
   case object IntType extends Type {
@@ -27,15 +28,28 @@ object Type {
 
   case class ClassType(name: String) extends Type {
     override def llvmRepr: String = s"%class.$name"
-    def vtable: Type = new Type {
-      def llvmRepr: String = s"%class.$name.vtable"
-    }
+    def vtable: ClassType = ClassType(s"$name.vtable")
+
+    def vtableDefault: String = s"@class.${vtable.name}.value"
+
+    def methodName(methodName: String): String = s"class.$name.method.$methodName"
 
     def constructor: String = s"class.$name.constructor"
   }
 
   case class AggregateType(name: String, elements: Seq[Type]) extends Type {
     override def llvmRepr: String = s"%class.$name"
+
+    /**
+      * Structure like "type { * }"
+      * @return
+      */
+    def structure: String = {
+      val eltsMapped = (elements map (_.llvmRepr)).mkString(",\n  ")
+      s"type { \n  $eltsMapped \n}"
+    }
+
+    def toRef: ClassType = ClassType(name)
   }
 
   case object StringType extends Type {

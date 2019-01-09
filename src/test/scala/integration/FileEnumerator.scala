@@ -37,6 +37,7 @@ object FileEnumerator {
 
   def getWithResult: List[Test] =
     latteTestPositive(Set(
+      1, // TODO string is class
       18,
       19,
       12) // TODO string class
@@ -48,11 +49,11 @@ object FileEnumerator {
     parserTest("structures.latte"),
     parserTest("virtual_methods.latte"),
 
-    testOnPath("lattests/extensions/arrays1/array001"),
-    testOnPath("lattests/extensions/arrays1/array002"),
+    // TODO testOnPath("lattests/extensions/arrays1/array001"),
+    // TODO testOnPath("lattests/extensions/arrays1/array002"),
     testOnPath("lattests/extensions/objects1/counter"),
     testOnPath("lattests/extensions/objects1/linked"),
-    testOnPath("lattests/extensions/objects1/points"),
+    // TODO inheritance testOnPath("lattests/extensions/objects1/points"),
     // TODO testOnPath("lattests/extensions/objects1/queue"),
 
     // TODO inheritance in type system testOnPath("lattests/extensions/objects2/shapes"),
@@ -63,6 +64,8 @@ object FileEnumerator {
     positiveTest("latte/pos/changing_func_args.latte", List("2")),
     // TODO positiveTest("latte/pos/struct/recursive.latte", ((1 to 8) map (_.toString)).toList),
     positiveTest("latte/pos/struct/wrapper.latte", List("1")),
+    positiveTest("latte/pos/struct/wrapper_methods.latte", List("1")),
+    positiveTest("latte/pos/struct/wrapper_methods_this.latte", List("1")),
     positiveTest("latte/pos/struct/pair.latte", List("1")),
     positiveTest("latte/pos/struct/triple.latte", List("5")),
     positiveTest("latte/pos/struct/complex.latte", List("3")),

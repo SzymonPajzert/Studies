@@ -8,13 +8,14 @@ import language.{LLVM, Latte, Type}
 import scalaz.Scalaz._
 import scalaz.{State, _}
 
+
 object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   // TODO remove globalCode section
   case class CompilationState(globalCode: String = "",
                               tmpCounter: Int = 0,
                               currentSubstitutions: Registers = Map(),
                               functionTypes: Functions,
-                              typeInformation: TypeInformation,
+                              typeInformation: TypeInformation, // TODO remove
                               code: Vector[LLVM.CodeBlock] = Vector(),
                               lastJumpPoint: LLVM.JumpPoint = null)
 
@@ -41,7 +42,8 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   } yield LLVM.constRegister(s"tmp$counter", t)
 
   def allocate(identifier: String, t: Type): StateOf[Unit] = for {
-    register <- getRegister(PointerType(transformType(t)))
+    eltType <- transformType(t)
+    register <- getRegister(PointerType(eltType))
     _ <- putLine(LLVM.Assign(register, LLVM.alloca(t)))
     state <- get[CompilationState]
     _ <- put (state.copy(currentSubstitutions = state.currentSubstitutions + (identifier -> register)))
@@ -77,21 +79,25 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     _ <- putLine(LLVM.Assign(register, LLVM.getElementPtr(arrayType, constName)))
   } yield register
 
-  def transformType(value: Type): Type = value match {
-    case IntType => IntType
-    case VoidType => VoidType
-    case CharType => CharType
-    case BoolType => BoolType
-    case a: PointerType => a
-    case StringType => PointerType(CharType)
-    case ArrayType(t) => PointerType(transformType(t))
-    case ConstArrayType(t, _) => PointerType(transformType(t))
-    case AggregateType(name, elts) => AggregateType(name, elts map transformType)
+  def transformType(value: Type): StateOf[Type] = value match {
+    case IntType =>        state(IntType)
+    case VoidType =>       state(VoidType)
+    case CharType =>       state(CharType)
+    case BoolType =>       state(BoolType)
+    case a: PointerType => state(a)
+    case StringType =>     state(PointerType(CharType))
+
+    case ArrayType(t) =>         transformType(t) map PointerType
+    case ConstArrayType(t, _) => transformType(t) map PointerType
+
+    case AggregateType(name, elts) =>
+      (elts.toList.traverseS(t => transformType(t)): StateOf[List[Type]]) map (AggregateType(name, _))
+    case c: ClassType => gets[CompilationState, Type](_.typeInformation.aggregate(c))
   }
 
   def isPrimitiveName(location: Latte.FunLocation): Boolean = location match {
     case Latte.FunName(name) => TypePhase.primitiveFunctions contains name
-    case Latte.VTableLookup(_, _) => false
+    case Latte.VTableLookup(_, _, _) => false
   }
 
   /**
@@ -101,7 +107,8 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     */
   def loadRegister(valueLocation: LLVM.RegisterT): StateOf[LLVM.RegisterT] = {
     for {
-      tmpRegister <- getRegister(transformType(valueLocation.typeId.deref))
+      eltType <- transformType(valueLocation.typeId.deref)
+      tmpRegister <- getRegister(eltType)
       _ <- putLine(LLVM.Assign(tmpRegister, LLVM.load(valueLocation)))
     } yield tmpRegister
   }
@@ -118,47 +125,45 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           for {
             arrayLocation <- getLocation(array)      // t**
             arrayPtr <- loadRegister(arrayLocation)  // t*
-            valueLocation <- getRegister(transformType(arrayLocation.typeId.deref))
+            arrayType <- transformType(arrayLocation.typeId.deref)
+            valueLocation <- getRegister(arrayType)
 
             index <- compileExpression(element)
             _ <- putLine(
               LLVM.Assign(
                 valueLocation,
-                LLVM.getElementPtr(transformType(arrayPtr.typeId.deref), arrayPtr, List(index))))
+                LLVM.getElementPtr(arrayType.deref, arrayPtr, List(index))))
           } yield valueLocation
       }
     }
-
-    def lookupTypeStructure(c: ClassType): StateOf[AggregateType] = for {
-      typeInformation <- gets[CompilationState, TypeInformation](_.typeInformation)
-    } yield AggregateType(c.name, typeInformation.fieldTypes(c))
 
     /**
     * Given field access, calculate address where it is stored
     * @param expression being aggregate containing given address
     * @return Register of type (T*)
     */
-    def calculateFieldAddress(expression: LLVM.RegisterT, i: Int): StateOf[LLVM.RegisterT] = (for {
-      tStructure <- (expression.typeId match {
-        case PointerType(c: ClassType) => lookupTypeStructure(c)
-        case PointerType(tStr: AggregateType) => state(tStr)
-      }) : StateOf[AggregateType]
+    def calculateFieldAddress(expression: LLVM.RegisterT, i: Int): StateOf[LLVM.RegisterT] = {
+      val exprPointerType: PointerType = expression.typeId.asInstanceOf[PointerType]
+      val exprType : ClassType = exprPointerType.deref.asInstanceOf[ClassType]
 
-      elements = tStructure.elements
-      elementType = elements(i + 1)
-      registerType = PointerType(elementType)
+      for {
+        elements <- gets[CompilationState, Seq[Type]](_.typeInformation.aggregate(exprType).elements)
+        elementType = elements(i + 1)
+        registerType = PointerType(elementType)
 
-      valueLocation <- getRegister(registerType)
+        valueLocation <- getRegister(registerType)
 
-      _ <- putLine(
-        LLVM.Assign(
-          valueLocation,
-          LLVM.getElementPtr(expression.typeId.deref, expression, List(0, i + 1), Some(expression.typeId))))
-    } yield valueLocation) : StateOf[LLVM.RegisterT]
+        _ <- putLine(
+          LLVM.Assign(
+            valueLocation,
+            LLVM.getElementPtr(expression.typeId.deref, expression, List(0, i + 1))))
+      } yield valueLocation
+    } : StateOf[LLVM.RegisterT]
 
     def compileExpression(expression: Latte.Expression): StateOf[LLVM.Expression] = {
       expression match {
 
+        case Latte.Null(nullType) => state(LLVM.Value("null", PointerType(nullType)))
         case Latte.Void => for (r <- getRegister(IntType)) yield r
         case Latte.ConstValue(value) if expression.getType == StringType => {
           val string = value
@@ -167,15 +172,13 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           } yield register
         }
 
-        case Latte.ConstValue(value) if expression.getType == BoolType => {
-          val typeT = transformType(expression.getType)
-          state(LLVM.Value(if (value.asInstanceOf[Boolean]) "1" else "0", typeT))
-        }
+        case Latte.ConstValue(value) if expression.getType == BoolType => for {
+          typeT <- transformType(expression.getType)
+        } yield LLVM.Value(if (value.asInstanceOf[Boolean]) "1" else "0", typeT)
 
-        case Latte.ConstValue(value) => {
-          val typeT = transformType(expression.getType)
-          state(LLVM.Value(value.toString, typeT))
-        }
+        case Latte.ConstValue(value) => for {
+          typeT <- transformType(expression.getType)
+        } yield LLVM.Value(value.toString, typeT)
 
         case arrayAccess @ Latte.ArrayAccess(Latte.Variable(_), _) => for {
           valueLocation <- calculateArrayAddress(arrayAccess)
@@ -282,31 +285,24 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           for {
             functions <- gets[CompilationState, Functions](_.functionTypes)
 
-            identifier = name match {
-              case "printInt" => LLVM.FunctionId(name, VoidType)
-              case "printString" => LLVM.FunctionId(name, VoidType)
-              case definedName if functions contains definedName => {
-                LLVM.FunctionId(definedName, transformType(functions(definedName).returnType))
-              }
-            }
+            identifier <- (name match {
+              case "printInt" => state(LLVM.FunctionId(name, VoidType))
+              case "printString" => state(LLVM.FunctionId(name, VoidType))
+              case definedName if functions contains definedName => for {
+                funcType <- transformType(functions(definedName).returnType)
+              } yield LLVM.FunctionId(definedName, funcType)
+            }): StateOf[LLVM.FunctionId]
 
             returnRegister <- getRegister(identifier.returnType)
-            argsRegisters <- arguments.toList.traverseS(compileExpression)
+            argsRegisters <- arguments.toList.traverseS(e => compileExpression(e))
             _ <- putLine(LLVM.AssignFuncall(returnRegister, returnRegister.typeId,
               LLVM.call(returnRegister.typeId, s"@$name", argsRegisters)))
           } yield returnRegister: LLVM.Expression
 
-        case Latte.FunctionCall(Latte.VTableLookup(exprU, offset), argumentsU) => for {
+        case Latte.FunctionCall(Latte.VTableLookup(exprU, offset, funcType), argumentsU) => for {
           expr <- compileExpression(exprU)
-          exprType: ClassType = expr.typeId match {
-            case c : ClassType => c
-            case AggregateType(name, _) => ClassType(name)
-            case PointerType(AggregateType(name, _)) => ClassType(name)
-          }
+          exprType = expr.typeId.deref.asInstanceOf[ClassType]
           arguments <- mapM(argumentsU.toList, compileExpression)
-          typeInformation <- gets[CompilationState, TypeInformation](_.typeInformation)
-
-          funcType = typeInformation.methodOffset(exprType).types(offset)
 
           vTablePP <- getRegister(PointerType(PointerType(exprType.vtable)))
           vTableP <- getRegister(PointerType(exprType.vtable))
@@ -314,7 +310,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           functionP <- getRegister(PointerType(funcType))
 
           _ <- putLine(LLVM.Assign(vTablePP,
-            LLVM.getElementPtr(expr.typeId.deref, expr.asInstanceOf[RegisterT], List(0, 0), Some(expr.typeId))))
+            LLVM.getElementPtr(expr.typeId.deref, expr.asInstanceOf[RegisterT], List(0, 0))))
           _ <- putLine(LLVM.Assign(vTableP, LLVM.load(vTablePP)))
 
           _ <- putLine(LLVM.Assign(functionPP,
@@ -328,17 +324,19 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         } yield returnRegister : LLVM.Expression
 
         case Latte.ArrayCreation(elementType, sizeExpr) => for {
-          returnRegister <- getRegister(PointerType(transformType(elementType)))
+          arrayType <- transformType(elementType)
+          returnRegister <- getRegister(PointerType(arrayType))
           size <- compileExpression(sizeExpr)
-          _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(transformType(elementType), Some(size))))
+          _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(arrayType, Some(size))))
         } yield returnRegister
 
-        case Latte.InstanceCreation(instanceType: AggregateType) => for {
+        case Latte.InstanceCreation(classType: ClassType) => for {
+          instanceType <- transformType(classType)
           returnRegister <- getRegister(PointerType(instanceType))
           placeholder <- getRegister(VoidType)
-          classType = ClassType(instanceType.name)
 
-          _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(transformType(instanceType))))
+          aggregateType <- transformType(instanceType)
+          _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(aggregateType)))
           _ <- putLine(LLVM.AssignFuncall(placeholder, VoidType,
             LLVM.call(VoidType, s"@${classType.constructor}", List(returnRegister))))
         } yield returnRegister
@@ -376,7 +374,11 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
     def addOneLine(instruction: Latte.Instruction): StateOf[Unit] = {
       instruction match {
-        case Latte.Declaration(identifier, typeId) => allocate(identifier, transformType(typeId))
+        case Latte.Declaration(identifier, typeId) => for {
+          transType <- transformType(typeId)
+          _ <- allocate(identifier, transType)
+        } yield Unit
+
         case Latte.Assignment(Latte.Variable(identifier), value) => for {
           location <- getLocation(identifier)
           _ <- calculateExpressionIntoRegister(location, value)
@@ -457,49 +459,83 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     def putSignature(signatureArgs: List[(String, Type)]): StateOf[Unit] = signatureArgs match {
       case Nil => state(Unit)
       case (identifier, t) :: rest => for {
-        _ <- allocate(identifier, transformType(t))
+        idType <- transformType(t)
+        _ <- allocate(identifier, idType)
         argRegister <- getLocation(identifier)
         _ <- putLine(LLVM.Literal(s"store ${argRegister.typeId.deref.llvmRepr} %$identifier, ${argRegister.typeId.llvmRepr} ${argRegister.name}"))
         _ <- putSignature(rest)
       } yield Unit
     }
 
-  def createConstructor(signature: Latte.FunctionSignature,
-                        types: List[(String, Type.FunctionType)]): LLVM.Block = {
-    blockFromCode(signature, Vector(LLVM.Subblock(Vector(LLVM.Return(None)))))
-  }
+  def calcEltPtr(eltType: Type, sourceType: Type,
+                 register: LLVM.RegisterT, indices: List[Int] = List(0, 0)): StateOf[LLVM.RegisterT] = for {
+    result <- getRegister(eltType)
+    _ <- putLine(
+      LLVM.Assign(
+        result,
+        LLVM.getElementPtr(sourceType, register, List(0, 0))))
+  } yield result
 
-  def blockFromCode(signature: Latte.FunctionSignature, code: Vector[LLVM.CodeBlock]): LLVM.Block = {
-    LLVM.Block(LLVM.FunctionId(signature.identifier, transformType(signature.returnType)),
-      signature.arguments map { case (name, t) => LLVM.register(name, transformType(t)) }, code)
+  def createConstructor(signature: Latte.FunctionSignature,
+                        types: List[(String, Type.FunctionType)]): StateOf[LLVM.Block] = for {
+
+    constructor <- blockFromCode(signature)
+    classType = signature.arguments.head._2.deref.asInstanceOf[ClassType]
+
+    _ <- putSignature(signature.arguments)
+    thisPtr <- compileExpression(Latte.Variable(signature.arguments.head._1)).map(_.asInstanceOf[RegisterT])
+
+    vTablePP <- calcEltPtr(classType.vtable.ptr.ptr, thisPtr.typeId.deref, thisPtr)
+
+    _ <- putLine(LLVM.Literal(s"store ${PointerType(classType.vtable).llvmRepr} ${classType.vtableDefault}, ${vTablePP.typeId.llvmRepr} ${vTablePP.name}"))
+
+    _ <- putLine(LLVM.Return(None))
+
+    codeBlock <- gets[CompilationState, Vector[LLVM.CodeBlock]](_.code)
+  } yield constructor(codeBlock)
+
+  type BlockCons = Vector[LLVM.CodeBlock] => LLVM.Block
+
+  def blockFromCode(signature: Latte.FunctionSignature): StateOf[BlockCons] = for {
+    funcSignature <- transformType(signature.returnType)
+    functionId = LLVM.FunctionId(signature.identifier, funcSignature)
+
+    newSignature <- signature.arguments.traverseS {
+      case (name: String, t: Type) => for { transT <- transformType(t) } yield LLVM.register(name, transT)
+    }
+
+  } yield (b: Vector[LLVM.CodeBlock]) => LLVM.Block(functionId, newSignature, b)
+
+  type GlobalDefinitions = String
+
+  /**
+    * Compile function
+    * @return global static definitions needed by the function and its code
+    */
+  def compileFunction(compilationState: CompilationState): Latte.Func => (GlobalDefinitions, LLVM.Block) = {
+    case Latte.Func(signature, Latte.BlockInstruction(codeBlock)) => {
+      val codeCalculation: StateOf[(CompilationState, BlockCons)] = for {
+        _ <- putSignature(signature.arguments)
+        _ <- addManyLines(codeBlock)
+        s <- get
+        constructor <- blockFromCode(signature)
+      } yield (s, constructor)
+
+      val compiledFunction = codeCalculation(compilationState)._2
+
+      (compiledFunction._1.globalCode, compiledFunction._2(compiledFunction._1.code))
+    }
+
+    case Latte.Func(signature, Latte.VtableFuncAssignment(funcs)) =>
+      ("", createConstructor(signature, funcs)(compilationState)._2)
   }
 
   override def compile(code: Latte.Code): Either[List[CompileException], LLVM.Code] = {
-    val signatures = (code.definitions map (func => {
-      func.signature.identifier -> FunctionType(func.signature.returnType, func.signature.arguments map (_._2))
-    })).toMap
+    val compilationState = CompilationState(
+      typeInformation = code.typeInformation,
+      functionTypes = code.signatures)
 
-    val mapFunction: Latte.Func => (String, LLVM.Block) = {
-      case Latte.Func(signature, Latte.BlockInstruction(codeBlock)) => {
-        val codeCalculation: StateOf[CompilationState] = for {
-          _ <- putSignature(signature.arguments)
-          _ <- addManyLines(codeBlock)
-          s <- get
-        } yield s
-
-        val compiledFunction = codeCalculation(CompilationState(
-          typeInformation = code.typeInformation,
-          functionTypes = signatures))._2
-
-        (compiledFunction.globalCode, blockFromCode(signature, compiledFunction.code))
-      }
-
-      case Latte.Func(signature, Latte.VtableFuncAssignment(funcs)) => {
-        ("", createConstructor(signature, funcs))
-      }
-    }
-
-    val (globalsFromFunctions, blocks) = (code.definitions map mapFunction).unzip
+    val (globalsFromFunctions, blocks) = (code.definitions map compileFunction(compilationState)).unzip
     val globals = globalsFromFunctions.mkString("\n") + "\n" + code.globalLLVM
 
     Right(LLVM.Code(globals, blocks.toList))
