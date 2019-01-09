@@ -476,6 +476,24 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
         LLVM.getElementPtr(sourceType, register, List(0, 0))))
   } yield result
 
+  def initializeFields(classType: Type.ClassType, thisPtr: LLVM.RegisterT): StateOf[Unit] = for {
+    fields <- gets[CompilationState, Seq[Type]](_.typeInformation.field(classType).types)
+
+    _ <- fields.zipWithIndex.toList.traverseS { case ((typeId, offset: Int)) => {
+      val value = typeId match {
+        case Type.IntType =>                         Latte.ConstValue(0)
+        case Type.StringType =>                      Latte.ConstValue("")
+        case c: Type.ClassType =>                    Latte.Null(c)
+        case Type.PointerType(c: Type.ClassType) =>  Latte.Null(c)
+      }
+
+      for {
+        location <- calculateFieldAddress(thisPtr, offset)
+        _ <- calculateExpressionIntoRegister(location, value)
+      } yield Unit
+    }}
+  } yield Unit
+
   def createConstructor(signature: Latte.FunctionSignature,
                         types: List[(String, Type.FunctionType)]): StateOf[LLVM.Block] = for {
 
@@ -484,6 +502,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
     _ <- putSignature(signature.arguments)
     thisPtr <- compileExpression(Latte.Variable(signature.arguments.head._1)).map(_.asInstanceOf[RegisterT])
+    _ <- initializeFields(classType, thisPtr)
 
     vTablePP <- calcEltPtr(classType.vtable.ptr.ptr, thisPtr.typeId.deref, thisPtr)
 
