@@ -35,7 +35,7 @@ object LlvmRunner extends BackendRunner[LLVM.Code] {
     runner.finish
   }
 
-  override def run(outputDirectory: OutputDirectory): List[String] = {
-    FileUtil.runCommand(s"lli ${outputDirectory.llvmExecutable}", outputDirectory) map FileUtil.parseOut stdout
+  override def run(outputDirectory: OutputDirectory): CommandResult[String] = {
+    FileUtil.runCommand(s"lli ${outputDirectory.llvmExecutable}", outputDirectory)
   }
 }

@@ -53,16 +53,21 @@ object FileEnumerator {
     // TODO testOnPath("lattests/extensions/arrays1/array002"),
     testOnPath("lattests/extensions/objects1/counter"),
     testOnPath("lattests/extensions/objects1/linked"),
-    // TODO inheritance testOnPath("lattests/extensions/objects1/points"),
-    // TODO testOnPath("lattests/extensions/objects1/queue"),
 
+    testOnPath("lattests/extensions/objects1/queue"),
+
+    // TODO inheritance testOnPath("lattests/extensions/objects1/points"),
     // TODO inheritance in type system testOnPath("lattests/extensions/objects2/shapes"),
     testOnPath("lattests/extensions/struct/list"),
+    positiveTest("lattests/extensions/struct/list_short0.lat", List()),
+    positiveTest("lattests/extensions/struct/list_short1.lat", List("1", "2")),
+    positiveTest("lattests/extensions/struct/list_short2.lat", List("1", "2", "3")),
+    positiveTest("lattests/extensions/struct/list_short3.lat", List("1", "2", "3")),
 
 
       // TODO multidimenstional arrays
     positiveTest("latte/pos/changing_func_args.latte", List("2")),
-    // TODO positiveTest("latte/pos/struct/recursive.latte", ((1 to 8) map (_.toString)).toList),
+    positiveTest("latte/pos/struct/recursive.latte", ((0 to 6) map (_.toString)).toList),
     positiveTest("latte/pos/struct/wrapper.latte", List("1")),
     positiveTest("latte/pos/struct/wrapper_methods.latte", List("1")),
     positiveTest("latte/pos/struct/wrapper_methods_this.latte", List("1")),

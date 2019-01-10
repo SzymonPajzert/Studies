@@ -20,28 +20,31 @@ trait Compiler[A, B] {
 }
 
 // Registers every stage in
-class DebugCompiler[T](val phaseName: String, val wrapped: Compiler[Directory, T]) extends Compiler[Directory, T] {
+class DebugCompiler[T](val phaseName: String,
+                       val wrapped: Compiler[Directory, T],
+                       val phaseCounter: Int) extends Compiler[Directory, T] {
   import sext._
 
   override def compile(directory: Directory): Either[List[CompileException], T] = {
+    val filename = s"${phaseCounter}_$phaseName"
     val returnValue = wrapped.compile(directory)
     returnValue match {
       case Right(value) => {
-        FileUtil.saveToFile(value.toString, directory.subfile(phaseName))
-        FileUtil.saveToFile(value.treeString, directory.subfile(phaseName + ".pretty"))
+        FileUtil.saveToFile(value.toString, directory.subfile(filename))
+        FileUtil.saveToFile(value.treeString, directory.subfile(filename + ".pretty"))
       }
-      case Left(error) => FileUtil.saveToFile(error.toString, directory.subfile(phaseName + ".err"))
+      case Left(error) => FileUtil.saveToFile(error.toString, directory.subfile(filename + ".err"))
     }
 
     returnValue
   }
 
   def nextStage[C](stageName: String, compiler: Compiler[T, C]): DebugCompiler[C] = {
-    Compiler.debug(stageName, this ~> compiler)
+    new DebugCompiler[C](stageName, this ~> compiler, phaseCounter + 1)
   }
 }
 
 object Compiler {
   def debug[T](name: String, compiler: Compiler[Directory, T]): DebugCompiler[T] =
-    new DebugCompiler[T](name, compiler)
+    new DebugCompiler[T](name, compiler, 0)
 }

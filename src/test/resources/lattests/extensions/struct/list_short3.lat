@@ -1,0 +1,23 @@
+class list {
+  int elem;
+  list next;
+}
+
+
+int main() {
+  list a = cons(1, cons(2, cons(3, (list)null)));
+
+  printInt(a.elem);
+  printInt(a.next.elem);
+  printInt(a.next.next.elem);
+
+  return 0;
+}
+ 
+list cons (int x, list xs) {
+  list n;
+  n = new list;
+  n.elem = x;
+  n.next = xs;
+  return n;
+}

@@ -18,7 +18,7 @@ object CommandResult {
 trait BackendRunner[Code] {
   val rand = new Random
 
-  def runCode(assemblyCode: Code): List[String] = {
+  def runCode(assemblyCode: Code): CommandResult[String] = {
     val directoryCounter = rand.nextInt()
     val outputDirectory = OutputDirectory.create(new File(s"/tmp/mrjp$directoryCounter"))
 
@@ -28,5 +28,5 @@ trait BackendRunner[Code] {
   }
 
   def compile(code: Code, outputDirectory: OutputDirectory): CommandResult[String]
-  def run(outputDirectory: OutputDirectory): List[String]
+  def run(outputDirectory: OutputDirectory): CommandResult[String]
 }

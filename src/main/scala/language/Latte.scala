@@ -36,6 +36,13 @@ object Latte extends Language {
       )))
     }
 
+    def memsize(classType: ClassType): Int = {
+      aggregate(classType).elements map {
+        case PointerType(_) => 8
+        case IntType => 4
+        case _ => 4
+      } sum
+    }
 
 
     def exportStructures: String = (for {

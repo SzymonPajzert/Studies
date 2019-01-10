@@ -179,6 +179,7 @@ object LLVM extends Language {
     s"""
        |declare void @printInt(i32)
        |declare void @printString(i8*)
+       |declare i8* @malloc(i32)
        |
        |; begin global section
        |${code.globalCode}

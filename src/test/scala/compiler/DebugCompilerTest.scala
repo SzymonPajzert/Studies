@@ -18,16 +18,19 @@ class DebugCompilerTest extends FlatSpec with Matchers with FileMatchers {
 
     val outputDirectory = OutputDirectory.createTemporary.withSourceFile("source", "aaa")
 
-    outputDirectory.subfile("integer") should not be existingFile
-    outputDirectory.subfile("string") should not be existingFile
+    val integerFile = outputDirectory.subfile("0_integer")
+    val stringFile = outputDirectory.subfile("1_string")
+
+    integerFile should not be existingFile
+    stringFile should not be existingFile
 
     compiler compile outputDirectory
 
-    outputDirectory.subfile("integer") should be an existingFile
-    outputDirectory.subfile("string") should be an existingFile
+    integerFile should be an existingFile
+    stringFile should be an existingFile
 
-    outputDirectory.subfile("integer") should be a nonemptyFile
-    outputDirectory.subfile("string") should be a nonemptyFile
+    integerFile should be a nonemptyFile
+    stringFile should be a nonemptyFile
   }
 
   it should "stop creating files on error" in {
@@ -35,23 +38,26 @@ class DebugCompilerTest extends FlatSpec with Matchers with FileMatchers {
 
     val outputDirectory = OutputDirectory.createTemporary.withSourceFile("source", "aaa")
 
-    outputDirectory.subfile("failing") should not be existingFile
-    outputDirectory.subfile("string") should not be existingFile
+    val failingFile = outputDirectory.subfile("0_failing")
+    val stringFile = outputDirectory.subfile("1_string")
+
+    failingFile should not be existingFile
+    stringFile should not be existingFile
 
     compiler compile outputDirectory
 
-    outputDirectory.subfile("failing") should not be existingFile
-    outputDirectory.subfile("string") should not be existingFile
+    failingFile should not be existingFile
+    stringFile should not be existingFile
   }
   it should "generate error message on error" in {
     val compiler = failingPhase.nextStage("string", toStringCompiler)
 
     val outputDirectory = OutputDirectory.createTemporary.withSourceFile("source", "aaa")
 
-    outputDirectory.subfile("failing.err") should not be existingFile
+    outputDirectory.subfile("0_failing.err") should not be existingFile
 
     compiler compile outputDirectory
 
-    outputDirectory.subfile("failing.err") should be an existingFile
+    outputDirectory.subfile("0_failing.err") should be an existingFile
   }
 }

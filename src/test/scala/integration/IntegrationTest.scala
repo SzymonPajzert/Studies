@@ -1,6 +1,6 @@
 package integration
 
-import backend.OutputDirectory
+import backend.{FileUtil, OutputDirectory}
 import backend.llvm.LlvmRunner
 import compiler.{Compiler, TypePhase}
 import org.scalatest.{FlatSpec, Matchers}
@@ -40,13 +40,18 @@ class IntegrationTest extends FlatSpec with Matchers {
 
 
         llvmCodeOrError match {
-          case Left(exceptions) if exceptions.forall(_.isInstanceOf[ParseError]) => fail(exceptions.toString)
           case Left(exceptions) => assert(Left(exceptions) == result.get)
           case Right(llvmCode) => {
             val result = LlvmRunner.compile(llvmCode, directory)
             if (result.success) {
-
-              checkListEq(LlvmRunner.run(directory), fileWithResult.expectedResult.get.right.get)
+              val runResult = LlvmRunner.run(directory)
+              if(runResult.success) {
+                val output = FileUtil.parseOut(runResult.stdout)
+                val expected = fileWithResult.expectedResult.get.right.get
+                checkListEq(output, expected)
+              } else {
+                fail("Runtime error:\n" + result.stderr)
+              }
             } else {
               fail(result.stdout ++ result.stderr)
             }

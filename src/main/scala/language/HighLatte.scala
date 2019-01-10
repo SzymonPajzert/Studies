@@ -51,10 +51,17 @@ trait HighLatte extends Language {
 
   trait ClassMember
 
+  def mapFunLocOnLocation(locF: Location => Location): FunLocationInf => FunLocationInf = {
+    case ((VTableLookup(expression, ident), i)) =>
+      (VTableLookup(mapExpressionOnLocation(locF)(expression), ident), i)
+    case t => t
+  }
+
   type Block = List[Instruction]
   def mapExpressionOnLocation(locF: Location => Location): ExpressionInf => ExpressionInf =
     {
-      case (FunctionCall(location, arguments), i) => (FunctionCall(location, arguments map mapExpressionOnLocation(locF)), i)
+      case (FunctionCall(location, arguments), i) => (FunctionCall(
+        mapFunLocOnLocation(locF)(location), arguments map mapExpressionOnLocation(locF)), i)
 
       case (Cast(typeT, expression), i) => (Cast(typeT, mapExpressionOnLocation(locF)(expression)), i)
       case (ArrayCreation(typeT, size), i) => (ArrayCreation(typeT, mapExpressionOnLocation(locF)(size)), i)

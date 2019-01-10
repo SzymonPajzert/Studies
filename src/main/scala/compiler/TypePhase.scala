@@ -293,14 +293,14 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
       val sig = f.signature
       val classType = ClassType(className)
       val newSignature = sig.copy(
-        arguments = ("this", PointerType(ClassType(className))) :: sig.arguments,
+        arguments = ("self", PointerType(ClassType(className))) :: sig.arguments,
         identifier = classType.methodName(sig.identifier))
 
       val fields: Map[String, Type] = identifierTypePairs.toMap
 
       def locationMap: UntypedLatte.Location => UntypedLatte.Location = {
         case UntypedLatte.Variable(identifier) if fields contains identifier => {
-          UntypedLatte.FieldAccess((UntypedLatte.Variable("this"), ()), identifier)
+          UntypedLatte.FieldAccess((UntypedLatte.Variable("self"), ()), identifier)
         }
         case UntypedLatte.Variable(identifier) => UntypedLatte.Variable(identifier)
 
@@ -308,7 +308,7 @@ object TypePhase extends Compiler[UntypedLatte.Code, TypedLatte.Code] {
           UntypedLatte.ArrayAccess(UntypedLatte.mapExpressionOnLocation(locationMap)(array), element)
 
         case UntypedLatte.FieldAccess(place, element) =>
-          UntypedLatte.ArrayAccess(UntypedLatte.mapExpressionOnLocation(locationMap)(place), element)
+          UntypedLatte.FieldAccess(UntypedLatte.mapExpressionOnLocation(locationMap)(place), element)
       }
 
       val newCode = UntypedLatte.mapBlockOnLocation(locationMap)(f.code)

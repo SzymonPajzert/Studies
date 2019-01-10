@@ -332,11 +332,14 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
         case Latte.InstanceCreation(classType: ClassType) => for {
           instanceType <- transformType(classType)
+          rawMemory <- getRegister(PointerType(CharType))
           returnRegister <- getRegister(PointerType(instanceType))
           placeholder <- getRegister(VoidType)
 
-          aggregateType <- transformType(instanceType)
-          _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(aggregateType)))
+          classSize <- gets[CompilationState, Int](_.typeInformation.memsize(classType))
+
+          _ <- putLine(LLVM.Literal(s"${rawMemory.name} = call i8* @malloc(i32 $classSize)"))
+          _ <- putLine(LLVM.Literal(s"${returnRegister.name} = bitcast i8* ${rawMemory.name} to ${classType.ptr.llvmRepr}"))
           _ <- putLine(LLVM.AssignFuncall(placeholder, VoidType,
             LLVM.call(VoidType, s"@${classType.constructor}", List(returnRegister))))
         } yield returnRegister
