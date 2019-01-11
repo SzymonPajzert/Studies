@@ -12,7 +12,11 @@ class TypePhaseTest extends FlatSpec {
   private val typer =
     Compiler
       .debug("parser", LatteParser)
+      .nextStage("parse_class", ParseClasses)
       .nextStage("typing", TypePhase)
+
+  def lattestDir(filename: String): Directory = OutputDirectory.createTemporary.withSourceFile(
+    s"$filename", FileUtil.readFile(FileUtil.testFile(s"lattests/$filename")))
 
   def testDir(filename: String): Directory = OutputDirectory.createTemporary.withSourceFile(
     s"$filename", FileUtil.readFile(FileUtil.testFile(s"latte/pos/$filename")))
@@ -66,5 +70,17 @@ class TypePhaseTest extends FlatSpec {
 
   checkClasses(testDir("struct/pair.latte")) { typeInformation =>
     assert(typeInformation.containedClasses.head == ClassType("Pair"))
+  }
+
+  checkClasses(lattestDir("extensions/objects2/shapes.lat")) { typeInformation =>
+    val shapeMethods = typeInformation.method(ClassType("Shape")).elts
+    val rectangleMethods = typeInformation.method(ClassType("Rectangle")).elts
+    val circleMethods = typeInformation.method(ClassType("Circle")).elts
+    val squareMethods = typeInformation.method(ClassType("Square")).elts
+
+    assert(shapeMethods.length == 2)
+    assert(rectangleMethods.length == 2)
+    assert(circleMethods.length == 2)
+    assert(squareMethods.length == 2)
   }
 }

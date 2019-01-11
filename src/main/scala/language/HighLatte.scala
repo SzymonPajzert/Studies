@@ -1,6 +1,5 @@
 package language
 
-import language.Latte.TypeInformation
 import language.Type.Type
 
 import scala.language.implicitConversions
@@ -20,12 +19,74 @@ object UntypedLatte extends HighLatte {
   }
 }
 
+abstract class LatteCompiler(val A: HighLatte, val B: HighLatte) {
+
+  def mapInformation: A.ExpressionInformation => B.ExpressionInformation
+
+  def locationInteresting: PartialFunction[A.LocationInf, B.LocationInf] = PartialFunction.empty
+
+  def funLocation: A.FunLocationInf => B.FunLocationInf = {
+    case (floc, inf) => (floc match {
+      case x : A.FunName => B.FunName(x.name)
+      case x : A.VTableLookup => B.VTableLookup(expression(x.expression), x.ident)
+    }, mapInformation(inf))
+  }
+
+
+  def location: A.LocationInf => B.LocationInf = locationInteresting orElse {
+    case (loc, inf) => (loc match {
+      case A.Variable(ident) => B.Variable(ident)
+      case A.ArrayAccess(arrayU, elementU) => B.ArrayAccess(
+        expression(arrayU.asInstanceOf[A.ExpressionInf])  : B.ExpressionInf,
+        expression(elementU.asInstanceOf[A.ExpressionInf]): B.ExpressionInf)
+      case A.FieldAccess(placeU, elementU) => B.FieldAccess(
+        expression(placeU.asInstanceOf[A.ExpressionInf]), elementU)
+    }, mapInformation(inf))
+  }
+
+  def expression: A.ExpressionInf => B.ExpressionInf = {
+    case (expr, inf) => (expr match {
+      case x : A.FunctionCall =>
+        B.FunctionCall(funLocation(x.location), x.arguments map expression)
+
+      case A.ConstValue(value) => B.ConstValue(value)
+
+      case x : A.ArrayCreation => B.ArrayCreation(x.typeT, expression(x.size))
+
+      case x : A.Cast => B.Cast(x.t, expression(x.expression))
+
+      case A.Null(c) => B.Null(c)
+
+      case A.InstanceCreation(typeT) => B.InstanceCreation(typeT)
+
+      case loc: A.Location => location((loc, inf))._1
+    }, mapInformation(inf))
+  }
+
+  def instruction: A.Instruction => B.Instruction = {
+    case x: A.Declaration => B.Declaration(x.identifier, x.typeValue)
+    case x: A.Assignment => B.Assignment(location(x.location), expression(x.expr))
+    case x: A.BlockInstruction => B.BlockInstruction(x.block map instruction)
+    case x: A.DiscardValue => B.DiscardValue(expression(x.expression))
+    case x: A.Return => B.Return(x.value map expression)
+    case x: A.IfThen => B.IfThen(expression(x.condition), instruction(x.thenInst), x.elseOpt map instruction)
+    case x: A.While => B.While(expression(x.condition), instruction(x.instr))
+  }
+}
+
+object ParsedClasses extends HighLatte {
+  override type CodeInformation = TypeInformation
+  override type ExpressionInformation = Unit
+}
+
 object TypedLatte extends HighLatte {
   override type CodeInformation = TypeInformation
   override type ExpressionInformation = Type
 }
 
 trait HighLatte extends Language {
+  self =>
+
   import language.Type._
   LanguageRegister.register(Latte)
 
@@ -51,59 +112,27 @@ trait HighLatte extends Language {
 
   trait ClassMember
 
-  def mapFunLocOnLocation(locF: Location => Location): FunLocationInf => FunLocationInf = {
-    case ((VTableLookup(expression, ident), i)) =>
-      (VTableLookup(mapExpressionOnLocation(locF)(expression), ident), i)
-    case t => t
-  }
-
   type Block = List[Instruction]
-  def mapExpressionOnLocation(locF: Location => Location): ExpressionInf => ExpressionInf =
-    {
-      case (FunctionCall(location, arguments), i) => (FunctionCall(
-        mapFunLocOnLocation(locF)(location), arguments map mapExpressionOnLocation(locF)), i)
-
-      case (Cast(typeT, expression), i) => (Cast(typeT, mapExpressionOnLocation(locF)(expression)), i)
-      case (ArrayCreation(typeT, size), i) => (ArrayCreation(typeT, mapExpressionOnLocation(locF)(size)), i)
-      case (loc: Location, i) => (locF(loc), i)
-      case a => a
-    }
-
-  def mapBlockOnLocation(locF: Location => Location): Block => Block = { block =>
-    def e: ExpressionInf => ExpressionInf = mapExpressionOnLocation(locF)
-
-    def i: Instruction => Instruction = {
-      case Assignment(loc, expr) => Assignment((locF(loc._1), loc._2), e(expr))
-      case BlockInstruction(b) => BlockInstruction(b map i)
-      case DiscardValue(expression) => DiscardValue(e(expression))
-      case Return(value: Option[ExpressionInf]) => Return(value map e)
-      case IfThen(condition, thenInst, elseOpt) => IfThen(e(condition), i(thenInst), elseOpt map i)
-      case While(condition, instr) => While(e(condition), i(instr))
-      case any => any
-    }
-
-    block map i
-  }
 
   sealed trait Instruction
-  type ExpressionInf = (Expression, ExpressionInformation)
-  type LocationInf = (Location, ExpressionInformation)
-  type FunLocationInf = (FunLocation, ExpressionInformation)
+  type ExpressionInf = (self.Expression, self.ExpressionInformation)
+  type LocationInf = (self.Location, self.ExpressionInformation)
+  type FunLocationInf = (self.FunLocation, self.ExpressionInformation)
 
   case class Declaration(identifier: String, typeValue: Type) extends Instruction with ClassMember
-  case class Assignment(location: LocationInf, expr: ExpressionInf) extends Instruction
+  case class Assignment(location: self.LocationInf, expr: self.ExpressionInf) extends Instruction
   case class BlockInstruction(block: Block) extends Instruction
-  case class DiscardValue(expression: ExpressionInf) extends Instruction
-  case class Return(value: Option[ExpressionInf]) extends Instruction
-  case class IfThen(condition: ExpressionInf, thenInst: Instruction, elseOpt: Option[Instruction] = None) extends Instruction
-  case class While(condition: ExpressionInf, instr: Instruction) extends Instruction
+  case class DiscardValue(expression: self.ExpressionInf) extends Instruction
+  case class Return(value: Option[self.ExpressionInf]) extends Instruction
+  case class IfThen(condition: self.ExpressionInf, thenInst: Instruction, elseOpt: Option[Instruction] = None) extends Instruction
+  case class While(condition: self.ExpressionInf, instr: Instruction) extends Instruction
 
   /**
     * Specifies location of the functions and provides therefore access to methods
     */
   trait FunLocation
   case class FunName(name: String) extends FunLocation
-  case class VTableLookup(expression: ExpressionInf, ident: String) extends FunLocation
+  case class VTableLookup(expression: self.ExpressionInf, ident: String) extends FunLocation
 
 
   trait Expression {
@@ -113,7 +142,7 @@ trait HighLatte extends Language {
 
   case class Null(classType: ClassType) extends Expression
   case object Void extends Expression
-  case class FunctionCall(location: FunLocationInf, arguments: Seq[ExpressionInf]) extends Expression
+  case class FunctionCall(location: self.FunLocationInf, arguments: Seq[self.ExpressionInf]) extends Expression
   case class ConstValue[+T](value: T) extends Expression {
     override def isLiteral: Boolean = true
 
@@ -124,16 +153,16 @@ trait HighLatte extends Language {
       case _ => VoidType
     }
   }
-  case class Cast(t: Type, expression: ExpressionInf) extends Expression
+  case class Cast(t: Type, expression: self.ExpressionInf) extends Expression
 
-  case class ArrayCreation(typeT: Type, size: ExpressionInf) extends Expression
+  case class ArrayCreation(typeT: Type, size: self.ExpressionInf) extends Expression
   case class InstanceCreation(typeT: Type) extends Expression
 
 
   trait Location extends Expression
   case class Variable(identifier: String) extends Location
-  case class ArrayAccess(array: ExpressionInf, element: ExpressionInf) extends Location
-  case class FieldAccess(place: ExpressionInf, element: String) extends Location
+  case class ArrayAccess(array: self.ExpressionInf, element: self.ExpressionInf) extends Location
+  case class FieldAccess(place: self.ExpressionInf, element: String) extends Location
 
 
 

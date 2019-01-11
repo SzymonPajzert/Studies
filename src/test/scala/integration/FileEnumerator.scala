@@ -56,9 +56,10 @@ object FileEnumerator {
 
     testOnPath("lattests/extensions/objects1/queue"),
 
-    // TODO inheritance testOnPath("lattests/extensions/objects1/points"),
-    // TODO inheritance in type system testOnPath("lattests/extensions/objects2/shapes"),
-    testOnPath("lattests/extensions/struct/list"),
+    testOnPath("lattests/extensions/objects1/points"),
+    testOnPath("lattests/extensions/objects2/shapes"),
+
+      testOnPath("lattests/extensions/struct/list"),
     positiveTest("lattests/extensions/struct/list_short0.lat", List()),
     positiveTest("lattests/extensions/struct/list_short1.lat", List("1", "2")),
     positiveTest("lattests/extensions/struct/list_short2.lat", List("1", "2", "3")),

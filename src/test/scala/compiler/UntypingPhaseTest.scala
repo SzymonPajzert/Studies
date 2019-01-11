@@ -1,7 +1,7 @@
 package compiler
 
 import language.Latte
-import language.Latte.TypeInformation
+import language.TypeInformation
 import language.Type.IntType
 import org.scalatest.{FlatSpec, Matchers}
 

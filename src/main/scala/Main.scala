@@ -18,7 +18,7 @@ object Main extends App {
   }
 
   val compilers = args(0) match {
-    case "llvm" => LatteParser ~> TypePhase ~> UntypingPhase ~> LatteToQuadCode ~> saveLLVM
+    case "llvm" => LatteParser ~> ParseClasses ~> TypePhase ~> UntypingPhase ~> LatteToQuadCode ~> saveLLVM
   }
 
   compilers compile directory

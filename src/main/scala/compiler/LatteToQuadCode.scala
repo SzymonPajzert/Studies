@@ -1,9 +1,8 @@
 package compiler
 
 import language.LLVM.RegisterT
-import language.Latte.TypeInformation
 import language.Type._
-import language.{LLVM, Latte, Type}
+import language.{LLVM, Latte, Type, TypeInformation}
 
 import scalaz.Scalaz._
 import scalaz.{State, _}
