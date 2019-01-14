@@ -128,16 +128,19 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       expr <- expression(exprU)
       typeInformation <- getTypeInformation
 
-      methodType <- (expr._2 match {
+      (methodType, definedInClass) <- (expr._2 match {
         case PointerType(expressionType: ClassType) =>
           typeInformation.method(expressionType)
-            .findType(ident)
+            .find(ident)
             .map(ok)
-            .getOrElse(createError(s"$expressionType has no field $ident"): TypeEnvironment[FunctionType])
+            .getOrElse(createError(s"$expressionType has no field $ident"))
 
         case _ => createError(s"Wrong type: $vtable")
-      }): TypeEnvironment[FunctionType]
-    } yield (TypedLatte.VTableLookup(expr, ident), methodType): TypedLatte.FunLocationInf
+      }): TypeEnvironment[(FunctionType, ClassType)]
+
+      cast: TypedLatte.ExpressionInf = (TypedLatte.Cast(PointerType(definedInClass), expr), PointerType(definedInClass))
+
+    } yield (TypedLatte.VTableLookup(cast, ident), methodType): TypedLatte.FunLocationInf
   }
 
   def extractType(value: Any): Type = value match {

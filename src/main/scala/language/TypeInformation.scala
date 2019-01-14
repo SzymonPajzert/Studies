@@ -35,6 +35,8 @@ case class Offset(fields: OffsetContainer[Type, Any], methods: OffsetContainer[F
 }
 
 case class OffsetContainer[T <: Type, E](elts: List[(String, T, E)]) {
+  def find(field: String): Option[(T, E)] = elts.find(_._1 == field).map(x => (x._2, x._3))
+
   def types: Seq[T] = elts map (_._2)
 
   def findType(field: String): Option[T] =
