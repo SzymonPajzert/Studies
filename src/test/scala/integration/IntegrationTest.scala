@@ -35,27 +35,24 @@ class IntegrationTest extends FlatSpec with Matchers {
 
     val result = fileWithResult.expectedResult
 
-    if (result.isDefined) {
-      it should s"return good result in LLVM for file ${fileWithResult.filename} in ${directory.directory}" in {
-        val llvmCodeOrError = llvmCompiler compile directory
+    it should s"return good result in LLVM for file ${fileWithResult.filename} in ${directory.directory}" in {
+      val llvmCodeOrError = llvmCompiler compile directory
 
 
-        llvmCodeOrError match {
-          case Left(exceptions) => assert(Left(exceptions) == result.get)
-          case Right(llvmCode) => {
-            val result = LlvmRunner.compile(llvmCode, directory)
-            if (result.success) {
-              val runResult = LlvmRunner.run(directory)
-              if(runResult.success) {
-                val output = FileUtil.parseOut(runResult.stdout)
-                val expected = fileWithResult.expectedResult.get.right.get
-                checkListEq(output, expected)
-              } else {
-                fail("Runtime error:\n" + result.stderr)
-              }
+      llvmCodeOrError match {
+        case Left(exceptions) => fileWithResult.expectedResult(Left(exceptions))
+        case Right(llvmCode) => {
+          val result = LlvmRunner.compile(llvmCode, directory)
+          if (result.success) {
+            val runResult = LlvmRunner.run(directory)
+            if(runResult.success) {
+              val output = FileUtil.parseOut(runResult.stdout)
+              fileWithResult.expectedResult(Right(output))
             } else {
-              fail(result.stdout ++ result.stderr)
+              fail("Runtime error:\n" + result.stderr)
             }
+          } else {
+            fail(result.stdout ++ result.stderr)
           }
         }
       }

@@ -2,8 +2,7 @@
 
 package parser.latte
 
-import integration.FileEnumerator
-import integration.FileEnumerator.Test
+import integration.{FileEnumerator, Test}
 import org.scalatest.{FlatSpec, Matchers}
 
 class ParserSpec extends FlatSpec with Matchers {
