@@ -19,7 +19,7 @@ object Latte extends Language {
   }
 
   trait Block
-  case class VtableFuncAssignment(funcs: List[(String, FunctionType)]) extends Block
+  case class VtableFuncAssignment(funcs: List[(String, FunctionType, ClassType)]) extends Block
 
   trait Expression {
     def isLiteral: Boolean = false
@@ -32,6 +32,7 @@ object Latte extends Language {
   case class FunName(name: String) extends FunLocation
   case class VTableLookup(expression: Expression, offset: Int, funcType: FunctionType) extends FunLocation
 
+  case class Cast(p: PointerType, expr: Expression) extends Expression
   case class FunctionCall(location: FunLocation, arguments: Seq[Expression]) extends Expression
   case class ConstValue[+T](value: T) extends Expression {
     override def isLiteral: Boolean = true

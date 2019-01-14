@@ -2,20 +2,39 @@ package language
 
 import language.Type._
 
-case class Offset(fields: OffsetContainer[Type], methods: OffsetContainer[FunctionType]) {
-  def extendBy(newFields: Seq[(String, Type)],
+object Offset {
+  def empty: Offset = Offset(OffsetContainer(List()), OffsetContainer(List()))
+}
+
+case class Offset(fields: OffsetContainer[Type, Any], methods: OffsetContainer[FunctionType, ClassType]) {
+  def addField[A,B,C](list: Seq[(A, B)], value: C): List[(A, B, C)] = for {
+    (x, y) <- list.toList
+  } yield (x, y, value)
+
+  def extendBy(extendingClass: ClassType,
+               newFields: Seq[(String, Type)],
                newMethods: Seq[(String, FunctionType)]): Offset = {
     val existingFields = fields.elts.map(_._1).toSet
     val existingMethods = methods.elts.map(_._1).toSet
+    val newMethodsSet = newMethods.map(_._1).toSet
+
+    // Change type of self argument
+    val oldMethods = methods.elts map { case (name, signature, defining) => if (newMethodsSet contains name)
+      (name, signature.copy(argsType = PointerType(extendingClass) :: signature.argsType.tail.toList), extendingClass)
+      else (name, signature, defining)
+    }
+
+    val newFieldsMapped = addField(newFields, Unit) filter (x => !(existingFields contains x._1))
+    val newMethodsMapped = addField(newMethods, extendingClass) filter (x => !(existingMethods contains x._1))
 
     Offset(
-      OffsetContainer(fields.elts ::: newFields.filter(x => !(existingFields contains x._1)).toList),
-      OffsetContainer(methods.elts ::: newMethods.filter(x => !(existingMethods contains x._1)).toList)
+      OffsetContainer[Type, Any](fields.elts ::: newFieldsMapped),
+      OffsetContainer(oldMethods ::: newMethodsMapped)
     )
   }
 }
 
-case class OffsetContainer[T <: Type](elts: List[(String, T)]) {
+case class OffsetContainer[T <: Type, E](elts: List[(String, T, E)]) {
   def types: Seq[T] = elts map (_._2)
 
   def findType(field: String): Option[T] =
@@ -29,8 +48,7 @@ case class OffsetContainer[T <: Type](elts: List[(String, T)]) {
       .map (_._2)
 }
 
-case class TypeInformationBuilder(private val subclasses: Map[ClassType, Set[ClassType]],
-                                  private val parent: Map[ClassType, Option[ClassType]],
+case class TypeInformationBuilder(private val parent: Map[ClassType, ClassType],
                                   private val defined: Map[ClassType, Offset],
                                   private val modifiers: Map[ClassType, TypeInformationBuilder => TypeInformationBuilder]) {
   def addClassStructure(classT: ClassType, base: Option[ClassType],
@@ -46,12 +64,17 @@ case class TypeInformationBuilder(private val subclasses: Map[ClassType, Set[Cla
 
       // Here we know that all the necessary data has been already passed
       val offset = base match {
-        case Some(baseClass) => defined(baseClass).extendBy(fields, methods)
-        case None => Offset(OffsetContainer(fields.toList), OffsetContainer(methods.toList))
+        case Some(baseClass) => defined(baseClass).extendBy(classT, fields, methods)
+        case None => Offset.empty.extendBy(classT, fields, methods)
       }
       val classAccepted = this.copy(defined = defined + (classT -> offset))
+      val parentAdded = base match {
+        case None => classAccepted
+        case Some(b) => classAccepted.copy(parent = parent + (classT -> b))
+      }
+
       val modifier = this.modifiers.getOrElse(classT, (x: TypeInformationBuilder) => x)
-      modifier(classAccepted.copy(modifiers = modifiers - classT))
+      modifier(parentAdded.copy(modifiers = modifiers - classT))
     }
   }
 
@@ -63,15 +86,22 @@ case class TypeInformationBuilder(private val subclasses: Map[ClassType, Set[Cla
 
 
 object TypeInformation {
-  def builder: TypeInformationBuilder = TypeInformationBuilder(Map(), Map(), Map(), Map())
+  def builder: TypeInformationBuilder = TypeInformationBuilder(Map(), Map(), Map())
   def empty: TypeInformation = TypeInformation(Map(), Map())
 }
 
 
-case class TypeInformation(private val parent: Map[ClassType, Option[ClassType]],
+case class TypeInformation(private val parents: Map[ClassType, ClassType],
                            private val defined: Map[ClassType, Offset]) {
-  def field(className: ClassType): OffsetContainer[Type] = defined(className).fields
-  def method(className: ClassType): OffsetContainer[FunctionType] = defined(className).methods
+  def isParent(subclass: ClassType, baseclass: ClassType): Boolean = {
+    parents.get(subclass) match {
+      case None => false
+      case Some(parent) => (parent == baseclass) || isParent(parent, baseclass)
+    }
+
+  }
+  def field(className: ClassType): OffsetContainer[Type, Any] = defined(className).fields
+  def method(className: ClassType): OffsetContainer[FunctionType, ClassType] = defined(className).methods
 
   def vtable(className: ClassType): AggregateType = AggregateType(
     s"${className.name}.vtable",
@@ -107,8 +137,8 @@ case class TypeInformation(private val parent: Map[ClassType, Option[ClassType]]
 
     vtable = s"${className.vtable.llvmRepr} = ${this.vtable(className).structure}"
 
-    funcIdentifiers = method(className).elts.map { case ((name, fType)) =>
-      s"${PointerType(fType).llvmRepr} @${className.methodName(name)}"
+    funcIdentifiers = method(className).elts.map { case ((name, fType, definedInClass)) =>
+      s"${PointerType(fType).llvmRepr} @${definedInClass.methodName(name)}"
     }
 
     defaultVtable =

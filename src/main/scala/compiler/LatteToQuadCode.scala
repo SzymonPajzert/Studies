@@ -10,11 +10,12 @@ import scalaz.{State, _}
 
 object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   // TODO remove globalCode section
-  case class CompilationState(globalCode: String = "",
+  case class CompilationState(sectionId: String,
+                              globalCode: String = "",
                               tmpCounter: Int = 0,
                               currentSubstitutions: Registers = Map(),
                               functionTypes: Functions,
-                              typeInformation: TypeInformation, // TODO remove
+                              typeInformation: TypeInformation,
                               code: Vector[LLVM.CodeBlock] = Vector(),
                               lastJumpPoint: LLVM.JumpPoint = null)
 
@@ -31,14 +32,14 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   }
 
   def increaseCounter: StateOf[Int] = for {
-    state <- get[CompilationState]
-    tmpCounter = state.tmpCounter
-    _ <- put (state.copy(tmpCounter = tmpCounter + 1))
-  } yield tmpCounter
+    counter <- gets[CompilationState, Int](_.tmpCounter)
+    _ <- modify[CompilationState](_.copy(tmpCounter = counter + 1))
+  } yield counter
 
   def getConst(t : Type = IntType): StateOf[LLVM.Register[t.type]] = for {
     counter <- increaseCounter
-  } yield LLVM.constRegister(s"tmp$counter", t)
+    section <- gets[CompilationState, String](_.sectionId)
+  } yield LLVM.constRegister(s"$section.$counter", t)
 
   def allocate(identifier: String, t: Type): StateOf[Unit] = for {
     eltType <- transformType(t)
@@ -170,6 +171,11 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
             register <- createStringConst(string.asInstanceOf[String])
           } yield register
         }
+        case Latte.Cast(p: PointerType, value) => for {
+          valueR <- compileExpression(value)
+          returnRegister <- getRegister(p)
+          _ <- putLine(LLVM.Literal(s"${returnRegister.name} = bitcast ${valueR.typeId.llvmRepr} ${valueR.name} to ${p.llvmRepr}"))
+        } yield returnRegister
 
         case Latte.ConstValue(value) if expression.getType == BoolType => for {
           typeT <- transformType(expression.getType)
@@ -497,7 +503,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   } yield Unit
 
   def createConstructor(signature: Latte.FunctionSignature,
-                        types: List[(String, Type.FunctionType)]): StateOf[LLVM.Block] = for {
+                        types: List[(String, Type.FunctionType, ClassType)]): StateOf[LLVM.Block] = for {
 
     constructor <- blockFromCode(signature)
     classType = signature.arguments.head._2.deref.asInstanceOf[ClassType]
@@ -552,11 +558,16 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   }
 
   override def compile(code: Latte.Code): Either[List[CompileException], LLVM.Code] = {
-    val compilationState = CompilationState(
+    def compilationState(sectionId: String) = CompilationState(
+      sectionId = sectionId,
       typeInformation = code.typeInformation,
       functionTypes = code.signatures)
 
-    val (globalsFromFunctions, blocks) = (code.definitions map compileFunction(compilationState)).unzip
+    val (globalsFromFunctions, blocks) = (for {
+      definition <- code.definitions
+      name = definition.signature.identifier
+    } yield compileFunction(compilationState(name))(definition)).unzip
+
     val globals = globalsFromFunctions.mkString("\n") + "\n" + code.globalLLVM
 
     Right(LLVM.Code(globals, blocks.toList))

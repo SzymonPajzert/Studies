@@ -3,7 +3,7 @@
 package compiler
 
 import language.Type._
-import language.{Latte, TypedLatte}
+import language.{Latte, TypedLatte, UntypedLatte}
 
 import scala.language.implicitConversions
 import scalaz.Scalaz._
@@ -67,6 +67,9 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       case locU: TypedLatte.Location => for (loc <- location(locU)) yield loc
       case TypedLatte.Null(_) => Latte.Null(expression._2.deref)
       case TypedLatte.Void => Latte.Void
+      case TypedLatte.Cast(PointerType(c: ClassType), (expressionT, PointerType(s: ClassType))) => for {
+        expr <- compileExpr((expressionT, PointerType(s)))
+      } yield Latte.Cast(PointerType(c), expr)
     }
   }
 

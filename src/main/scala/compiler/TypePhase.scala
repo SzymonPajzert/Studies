@@ -74,7 +74,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.ArrayAccess(arrayU, elementU) => for {
       array <- expression(arrayU)
       element <- expression(elementU)
-    } yield (TypedLatte.ArrayAccess(array, element), VoidType)
+    } yield (TypedLatte.ArrayAccess(array, element), array._2.asInstanceOf[ArrayType].eltType)
 
     case ParsedClasses.FieldAccess(placeU, element) => for {
       place <- expression(placeU)
@@ -152,8 +152,20 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case _ => createError(s"${functionLoc._1} is not callable")
   }
 
-  def assertType(inf: TypedLatte.ExpressionInf, expectedType: Type): TypeEnvironment[Unit] =
-    if (inf._2 == expectedType) ok(Unit) else createError("Wrong type")
+  type ExprMod = TypedLatte.ExpressionInf => TypedLatte.ExpressionInf
+
+  def checkTypeWithImplicitCasts(inf: TypedLatte.ExpressionInf, expectedType: Type): TypeEnvironment[TypedLatte.ExpressionInf] = for {
+    typeInformation <- getTypeInformation
+
+    result <- (inf._2, expectedType) match {
+      case (a, b) if a == b => ok(inf)
+
+      case (PointerType(a: ClassType), PointerType(b: ClassType)) if typeInformation.isParent(a, b) =>
+        ok((TypedLatte.Cast(PointerType(b), inf), PointerType(b)))
+
+      case _ => createError(s"Wrong type. Expected: $expectedType instead ${inf._2}")
+    }
+  } yield result
 
   def expression(expr: ParsedClasses.ExpressionInf): TypeEnvironment[TypedLatte.ExpressionInf] = expr._1 match {
     case ParsedClasses.FunctionCall(locU , arguments) => for {
@@ -167,8 +179,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.ConstValue(value) => (TypedLatte.ConstValue(value), extractType(value))
 
     case ParsedClasses.ArrayCreation(elementType, size) => for {
-      typedSize <- expression(size)
-      _ <- assertType(typedSize, IntType)
+      typedSizeQ <- expression(size)
+      typedSize <- checkTypeWithImplicitCasts(typedSizeQ, IntType)
       arrayType = ArrayType(elementType)
     } yield (TypedLatte.ArrayCreation(elementType, typedSize), arrayType)
 
@@ -219,7 +231,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
 
     case ParsedClasses.Assignment(locU, exprU) => for {
       loc <- location(locU)
-      expr <- expression(exprU)
+      exprQ <- expression(exprU)
+      expr <- checkTypeWithImplicitCasts(exprQ, loc._2)
     } yield TypedLatte.Assignment(loc, expr)
 
     case ParsedClasses.BlockInstruction(blockU) => (for {
