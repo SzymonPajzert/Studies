@@ -1,0 +1,19 @@
+class Rectangle extends Shape {
+  void tellAgain() {
+    printString("I'm really a rectangle");
+  }
+
+  void doRectanglyStuff() {
+    printString("Hell yeah, rectangle!");
+  }
+}
+
+class Shape {
+  void tell () {
+    printString("I'm a shape");
+  }
+
+  void tellAgain() {
+     printString("I'm just a shape");
+  }
+}

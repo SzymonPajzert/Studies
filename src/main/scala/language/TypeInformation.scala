@@ -2,7 +2,18 @@ package language
 
 import language.Type._
 
-case class Offset(fields: OffsetContainer[Type], methods: OffsetContainer[FunctionType])
+case class Offset(fields: OffsetContainer[Type], methods: OffsetContainer[FunctionType]) {
+  def extendBy(newFields: Seq[(String, Type)],
+               newMethods: Seq[(String, FunctionType)]): Offset = {
+    val existingFields = fields.elts.map(_._1).toSet
+    val existingMethods = methods.elts.map(_._1).toSet
+
+    Offset(
+      OffsetContainer(fields.elts ::: newFields.filter(x => !(existingFields contains x._1)).toList),
+      OffsetContainer(methods.elts ::: newMethods.filter(x => !(existingMethods contains x._1)).toList)
+    )
+  }
+}
 
 case class OffsetContainer[T <: Type](elts: List[(String, T)]) {
   def types: Seq[T] = elts map (_._2)
@@ -18,27 +29,44 @@ case class OffsetContainer[T <: Type](elts: List[(String, T)]) {
       .map (_._2)
 }
 
-object TypeInformation {
-  def builder: TypeInformationBuilder = new TypeInformationBuilder(Map(), Map(), Map())
-  def empty: TypeInformation = new TypeInformation(Map(), Map())
-}
-
-class TypeInformationBuilder(private val subclasses: Map[ClassType, Set[ClassType]],
-                             private val parent: Map[ClassType, Option[ClassType]],
-                             private val defined: Map[ClassType, Offset]) {
+case class TypeInformationBuilder(private val subclasses: Map[ClassType, Set[ClassType]],
+                                  private val parent: Map[ClassType, Option[ClassType]],
+                                  private val defined: Map[ClassType, Offset],
+                                  private val modifiers: Map[ClassType, TypeInformationBuilder => TypeInformationBuilder]) {
   def addClassStructure(classT: ClassType, base: Option[ClassType],
                         fields: Seq[(String, Type)],
                         methods: Seq[(String, FunctionType)]): TypeInformationBuilder = {
-    val methodContainer = OffsetContainer(methods.toList)
 
-    new TypeInformationBuilder(subclasses, parent,
-      defined + (classT -> Offset(
-        OffsetContainer(fields.toList), methodContainer
-      )))
+    // In this case we need to wait for the data
+    if (base.nonEmpty && defined.get(base.get).isEmpty) {
+      val currentModifier = modifiers.getOrElse(classT, (x: TypeInformationBuilder) => x)
+      val nextModifier = currentModifier.andThen(_.addClassStructure(classT, base, fields, methods))
+      this.copy(modifiers = modifiers + (base.get -> nextModifier))
+    } else {
+
+      // Here we know that all the necessary data has been already passed
+      val offset = base match {
+        case Some(baseClass) => defined(baseClass).extendBy(fields, methods)
+        case None => Offset(OffsetContainer(fields.toList), OffsetContainer(methods.toList))
+      }
+      val classAccepted = this.copy(defined = defined + (classT -> offset))
+      val modifier = this.modifiers.getOrElse(classT, (x: TypeInformationBuilder) => x)
+      modifier(classAccepted.copy(modifiers = modifiers - classT))
+    }
   }
 
-  def build: TypeInformation = TypeInformation(parent, defined)
+  def build: TypeInformation = {
+    assert(modifiers.isEmpty)
+    TypeInformation(parent, defined)
+  }
 }
+
+
+object TypeInformation {
+  def builder: TypeInformationBuilder = TypeInformationBuilder(Map(), Map(), Map(), Map())
+  def empty: TypeInformation = TypeInformation(Map(), Map())
+}
+
 
 case class TypeInformation(private val parent: Map[ClassType, Option[ClassType]],
                            private val defined: Map[ClassType, Offset]) {

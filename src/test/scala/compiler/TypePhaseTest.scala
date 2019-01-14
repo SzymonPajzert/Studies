@@ -39,7 +39,7 @@ class TypePhaseTest extends FlatSpec {
   }
 
   def checkClasses(directory: Directory)(checkTypes: TypedLatte.CodeInformation => Unit): Unit = {
-    it should s"parse classes for ${directory.sourceFile.getName} (${directory.directory})" in {
+    it should s"check classes for ${directory.sourceFile.getName} (${directory.directory})" in {
       val typedCode = typer compile directory match {
         case Right(x) => x
         case Left(x) => fail(s"Parser failed: $x")
@@ -82,5 +82,21 @@ class TypePhaseTest extends FlatSpec {
     assert(rectangleMethods.length == 2)
     assert(circleMethods.length == 2)
     assert(squareMethods.length == 2)
+  }
+
+  checkClasses(lattestDir("extensions/objects2/newMethod.lat")) { typeInformation =>
+    val shapeMethods = typeInformation.method(ClassType("Shape")).elts
+    val rectangleMethods = typeInformation.method(ClassType("Rectangle")).elts
+
+    assert(shapeMethods.length == 2)
+    assert(rectangleMethods.length == 3)
+  }
+
+  checkClasses(lattestDir("extensions/objects2/baseAfterSubclass.lat")) { typeInformation =>
+    val shapeMethods = typeInformation.method(ClassType("Shape")).elts
+    val rectangleMethods = typeInformation.method(ClassType("Rectangle")).elts
+
+    assert(shapeMethods.length == 2)
+    assert(rectangleMethods.length == 3)
   }
 }
