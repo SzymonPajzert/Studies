@@ -4,7 +4,6 @@ import backend.{FileUtil, OutputDirectory}
 import backend.llvm.LlvmRunner
 import compiler.{Compiler, ParseClasses, TypePhase}
 import org.scalatest.{FlatSpec, Matchers}
-import parser.ParseError
 import parser.latte.LatteParser
 
 class IntegrationTest extends FlatSpec with Matchers {

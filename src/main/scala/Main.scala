@@ -11,7 +11,7 @@ object Main extends App {
   val directory = Directory.fromFile(new File(args(1)))
 
   val saveLLVM = new Compiler[LLVM.Code, Unit] {
-    def compile(code: LLVM.Code): Either[List[CompileException], Unit] = {
+    def compile(code: LLVM.Code): Either[CompileException, Unit] = {
       println("Compiling LLVM")
       Right(LlvmRunner.compile(code, directory))
     }

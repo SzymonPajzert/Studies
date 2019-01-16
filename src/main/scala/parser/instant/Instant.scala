@@ -1,12 +1,13 @@
 package parser.instant
 
-import java.io.{InputStreamReader, StringReader}
+import java.io.StringReader
 
-import collection.JavaConverters._
+import compiler.ParseFailure
 import instant.Absyn._
-import parser.{ParseError, Parser}
+import parser.Parser
 import instant.{Yylex, parser}
 
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 sealed trait Instant { def toSource: String }
@@ -96,7 +97,7 @@ object InstantParser extends Parser[InstantProg] {
     new Yylex(new StringReader(input))
   }
 
-  def parse(input: String): Either[List[ParseError], InstantProg] = {
+  def parse(input: String): Either[ParseFailure, InstantProg] = {
     val yylex = getYylex(input)
     val p = new parser(yylex)
 
@@ -105,7 +106,7 @@ object InstantParser extends Parser[InstantProg] {
       Right(Transformations.program(p.pProgram))
     }
     catch {
-      case e: Throwable =>  Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
+      case e: Throwable =>  Left(ParseFailure(yylex.line_num(), yylex.buff(), e.getMessage))
     }
   }
 }

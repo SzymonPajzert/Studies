@@ -2,9 +2,10 @@ package parser.latte
 
 import java.io.StringReader
 
+import compiler.ParseFailure
 import language.Type._
 import language.UntypedLatte
-import parser.{ParseError, Parser}
+import parser.Parser
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
@@ -305,7 +306,7 @@ object Transformations {
 }
 
 object LatteParser extends Parser[UntypedLatte.Code] {
-  def parse(content: String): Either[List[ParseError], UntypedLatte.Code] = {
+  def parse(content: String): Either[ParseFailure, UntypedLatte.Code] = {
     val yylex = new latte.Yylex(new StringReader(content))
     val p = new latte.parser(yylex)
 
@@ -315,7 +316,7 @@ object LatteParser extends Parser[UntypedLatte.Code] {
     try {
       Right(Transformations.program(p.pProgram))
     } catch {
-      case e: Exception => Left(List(ParseError(yylex.line_num(), yylex.buff(), e.getMessage)))
+      case e: Exception => Left(ParseFailure(yylex.line_num(), yylex.buff(), e.getMessage))
     }
 
 

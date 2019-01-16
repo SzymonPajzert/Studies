@@ -1,16 +1,28 @@
 package compiler
 
 import backend.{Directory, FileUtil}
+import language.Type.{ClassType, Type}
+import language.TypeInformation
 
-trait CompileException
-// TODO remove and substitute with errors
-case class ErrorString(message: String) extends CompileException
+sealed trait CompileException
+case class ParseFailure(lineNumber: Int, near: String, errorMsg: String) extends CompileException
+
+trait TypingFailure extends CompileException {
+  def typeInformation: TypeInformation
+}
+case class UndefinedFunction(name: String, typeInformation: TypeInformation) extends TypingFailure
+case class UndefinedVariable(name: String, typeInformation: TypeInformation) extends TypingFailure
+case class DuplicateDefinition(name: String, typeInformation: TypeInformation) extends TypingFailure
+case class FieldNotFound(name: String, classT: ClassType, expr: String = "<expr>", typeInformation: TypeInformation) extends TypingFailure // TODO get representation
+case class MethodNotFound(name: String, classT: ClassType, expr: String = "<expr>", typeInformation: TypeInformation) extends TypingFailure // TODO get representation
+case class WrongType(expected: Type, actual: Type, expr: String = "<expr>", typeInformation: TypeInformation) extends TypingFailure // TODO add representation and line number
+case class WrongArgumentNumber(expected: Int, actual: Int, name: String, typeInformation: TypeInformation) extends TypingFailure
 
 // TODO add <: Language
 trait Compiler[A, B] {
   self =>
 
-  def compile(code: A): Either[List[CompileException], B]
+  def compile(code: A): Either[CompileException, B]
 
   def ~>[C](compiler: Compiler[B, C]): Compiler[A, C] =
     (code: A) => for {
@@ -25,7 +37,7 @@ class DebugCompiler[T](val phaseName: String,
                        val phaseCounter: Int) extends Compiler[Directory, T] {
   import sext._
 
-  override def compile(directory: Directory): Either[List[CompileException], T] = {
+  override def compile(directory: Directory): Either[CompileException, T] = {
     val filename = s"${phaseCounter}_$phaseName"
     val returnValue = wrapped.compile(directory)
     returnValue match {

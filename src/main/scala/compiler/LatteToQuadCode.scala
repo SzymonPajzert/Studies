@@ -557,7 +557,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       ("", createConstructor(signature, funcs)(compilationState)._2)
   }
 
-  override def compile(code: Latte.Code): Either[List[CompileException], LLVM.Code] = {
+  override def compile(code: Latte.Code): Either[CompileException, LLVM.Code] = {
     def compilationState(sectionId: String) = CompilationState(
       sectionId = sectionId,
       typeInformation = code.typeInformation,

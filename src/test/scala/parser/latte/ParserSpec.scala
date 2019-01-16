@@ -15,9 +15,16 @@ class ParserSpec extends FlatSpec with Matchers {
   def parseFile(requirements: Test): Unit = {
     it should s"compile file: ${requirements.filename}" in {
       val parseResult = LatteParser.parse(requirements.fileContent)
-      parseResult match {
-        case Right(_) => Unit
-        case Left(error) => fail(s"$error")
+      if (requirements.parseable) {
+        parseResult match {
+          case Right(_) => Unit
+          case Left(error) => fail(s"$error")
+        }
+      } else {
+        parseResult match {
+          case Right(_) => fail(s"Should not be parsed")
+          case Left(_) => Unit
+        }
       }
     }
   }

@@ -12,12 +12,12 @@ import scalaz._
 object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
   type KS = TypedLatte.CodeInformation
   type S[A] = State[KS, A]
-  type Compiler[E] = EitherT[S, List[CompileException], E]
+  type Compiler[E] = EitherT[S, CompileException, E]
 
-  implicit def ok[A](value: A): Compiler[A] = EitherT[S, List[CompileException], A](state[KS, List[CompileException] \/ A](\/-(value)))
+  implicit def ok[A](value: A): Compiler[A] = EitherT[S, CompileException, A](state[KS, CompileException \/ A](\/-(value)))
 
   implicit def stateToEither[A](value: State[KS, A]): Compiler[A] = {
-    EitherT[S, List[CompileException], A](value map (\/-(_)))
+    EitherT[S, CompileException, A](value map (\/-(_)))
   }
 
   def mapM[A, B](list: List[A], f: A => Compiler[B]): Compiler[List[B]] =
@@ -133,7 +133,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
   }
 
 
-  override def compile(code: TypedLatte.Code): Either[List[CompileException], Latte.Code] = {
+  override def compile(code: TypedLatte.Code): Either[CompileException, Latte.Code] = {
     val untyping = for {
       latteCode <- mapM(code._1.toList, compileFunc)
       constructors <- exportConstructors(code._2)

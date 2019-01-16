@@ -1,13 +1,10 @@
 package parser
 
 import backend.{Directory, FileUtil}
-import compiler.CompileException
-import compiler.Compiler
-
-case class ParseError(lineNumber: Int, near: String, errorMsg: String) extends CompileException
+import compiler.{Compiler, ParseFailure}
 
 trait Parser[T] extends Compiler[Directory, T] {
-  type ParseResult = Either[List[ParseError], T]
+  type ParseResult = Either[ParseFailure, T]
   def parse(content: String): ParseResult
 
   def compile(directory: Directory) = {

@@ -130,19 +130,32 @@ trait HighLatte extends Language {
   /**
     * Specifies location of the functions and provides therefore access to methods
     */
-  trait FunLocation
-  case class FunName(name: String) extends FunLocation
-  case class VTableLookup(expression: self.ExpressionInf, ident: String) extends FunLocation
+  trait FunLocation {
+    def pretty: String
+  }
+  case class FunName(name: String) extends FunLocation {
+    def pretty: String = name
+  }
+  case class VTableLookup(expression: self.ExpressionInf, ident: String) extends FunLocation {
+    def pretty: String = s"${expression._1.pretty}.$ident"
+  }
 
 
   trait Expression {
     def isLiteral: Boolean = false
     def getType: Type = VoidType  // TODO remove
+    def pretty: String
   }
 
-  case class Null(classType: ClassType) extends Expression
-  case object Void extends Expression
-  case class FunctionCall(location: self.FunLocationInf, arguments: Seq[self.ExpressionInf]) extends Expression
+  case class Null(classType: ClassType) extends Expression {
+    def pretty = "null"
+  }
+  case object Void extends Expression {
+    def pretty = "void"
+  }
+  case class FunctionCall(location: self.FunLocationInf, arguments: Seq[self.ExpressionInf]) extends Expression {
+    def pretty = s"${location._1.pretty}(${(arguments map (_._1.pretty)).mkString(", ")})"
+  }
   case class ConstValue[+T](value: T) extends Expression {
     override def isLiteral: Boolean = true
 
@@ -152,17 +165,32 @@ trait HighLatte extends Language {
       case _ if value.isInstanceOf[Boolean] => BoolType
       case _ => VoidType
     }
-  }
-  case class Cast(t: Type, expression: self.ExpressionInf) extends Expression
 
-  case class ArrayCreation(typeT: Type, size: self.ExpressionInf) extends Expression
-  case class InstanceCreation(typeT: Type) extends Expression
+    def pretty: String = value.toString
+  }
+  case class Cast(t: Type, expression: self.ExpressionInf) extends Expression {
+    def pretty = s"($t) ${expression._1.pretty}"
+  }
+
+  case class ArrayCreation(typeT: Type, size: self.ExpressionInf) extends Expression {
+    def pretty = s"new array($typeT, ${size._1})"
+  }
+
+  case class InstanceCreation(typeT: Type) extends Expression {
+    def pretty = s"new $typeT"
+  }
 
 
   trait Location extends Expression
-  case class Variable(identifier: String) extends Location
-  case class ArrayAccess(array: self.ExpressionInf, element: self.ExpressionInf) extends Location
-  case class FieldAccess(place: self.ExpressionInf, element: String) extends Location
+  case class Variable(identifier: String) extends Location {
+    def pretty = identifier
+  }
+  case class ArrayAccess(array: self.ExpressionInf, element: self.ExpressionInf) extends Location {
+    def pretty = s"${array._1.pretty}[${element._1.pretty}"
+  }
+  case class FieldAccess(place: self.ExpressionInf, element: String) extends Location {
+    def pretty = s"${place._1.pretty}.${element}"
+  }
 
 
 

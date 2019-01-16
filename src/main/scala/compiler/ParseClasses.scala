@@ -34,22 +34,16 @@ object ParseClasses extends Compiler[UntypedLatte.Code, ParsedClasses.Code] {
 
   type KS = TypeInformationBuilder
   type S[A] = State[KS, A]
-  type TypeEnvironment[A] = EitherT[S, List[CompileException], A]
+  type TypeEnvironment[A] = EitherT[S, CompileException, A]
 
-  implicit def viewableOnFirst[B, A <: B]
-    (t: TypeEnvironment[(A, TypedLatte.ExpressionInformation)])
-  : TypeEnvironment[(B, TypedLatte.ExpressionInformation)] = for {
-    (value, information) <- t
-  } yield (value, information)
+
 
   implicit def ok[A](value: A): TypeEnvironment[A] =
-    EitherT[S, List[CompileException], A](state[KS, List[CompileException] \/ A](\/-(value)))
+    EitherT[S, CompileException, A](state[KS, CompileException \/ A](\/-(value)))
 
   implicit def stateToEither[A](value: State[KS, A]): TypeEnvironment[A] = {
-    EitherT[S, List[CompileException], A](value map (\/-(_)))
+    EitherT[S, CompileException, A](value map (\/-(_)))
   }
-
-  def createError[A](str: String): TypeEnvironment[A] = EitherT[S, List[CompileException], A](state(-\/(List(ErrorString(str)))))
 
   def mapM[A, B](list: List[A], f: A => TypeEnvironment[B]): TypeEnvironment[List[B]] = list match {
     case Nil => Nil
@@ -131,9 +125,9 @@ object ParseClasses extends Compiler[UntypedLatte.Code, ParsedClasses.Code] {
 
   def emptyState: KS = TypeInformation.builder
 
-  override def compile(code: UntypedLatte.Code): Either[List[CompileException], ParsedClasses.Code] = {
+  override def compile(code: UntypedLatte.Code): Either[CompileException, ParsedClasses.Code] = {
     val typePhase: TypeEnvironment[ParsedClasses.Code] = for {
-      methodsAndFunctions: List[List[ParsedClasses.Func]] <- mapM(code._1.toList, addTopDefinition)
+      methodsAndFunctions <- mapM(code._1.toList, addTopDefinition)
       typeInformationBuilder <- get[KS]: TypeEnvironment[KS]
     } yield (methodsAndFunctions.flatten, typeInformationBuilder.build)
 

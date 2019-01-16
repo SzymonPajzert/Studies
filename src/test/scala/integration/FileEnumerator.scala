@@ -1,9 +1,9 @@
 package integration
 
-import java.io.{File, FilenameFilter}
+import java.io.File
 
 import backend.FileUtil
-import compiler.{CompileException, ErrorString}
+import compiler.{CompileException, UndefinedVariable}
 import org.scalatest.{Assertions, FlatSpec}
 
 object Test extends Assertions {
@@ -23,36 +23,42 @@ object Test extends Assertions {
     val testFile = FileUtil.testFile(filename)
     Test(testFile, testFile.getName, FileUtil.readFile(testFile), {
       case Right(result) => checkListEq(result, expectedResult)
-      case _ => false
-    })
+    }, true)
   }
 
-  def anyNegative(filename: String): Test = {
+  def anyNegative(filename: String, parseable: Boolean): Test = {
     val testFile = FileUtil.testFile(filename)
     Test(testFile, testFile.getName, FileUtil.readFile(testFile), {
-      case Left(_) => true
-      case _ => false
-    })
+      case Left(_) => Unit
+    }, parseable)
   }
 
-  def negative(filename: String, expectedError: List[CompileException]): Test = {
+  def negative(filename: String, expectedError: CompileException => Boolean): Test = {
     val testFile = FileUtil.testFile(filename)
     Test(testFile, testFile.getName, FileUtil.readFile(testFile), {
-      case Left(result) => result == expectedError
-      case _ => false
-    })
+      case Left(result) => assert(expectedError(result))
+    }, true)
   }
 
   def parser(filename: String): Test = {
     val testFile = FileUtil.testFile(s"latte/pos/$filename")
-    Test(testFile, testFile.getName, FileUtil.readFile(testFile), (_: Any) => true)
+    Test(testFile, testFile.getName, FileUtil.readFile(testFile), {case _ : Any => Unit}, true)
   }
 }
 
 case class Test(sourceFile: File,
                 filename: String,
                 fileContent: String,
-                expectedResult: Either[List[CompileException], List[String]] => Boolean)
+                expectedResultPartial: PartialFunction[Either[CompileException, List[String]], Unit],
+                parseable: Boolean) {
+  import Assertions._
+
+  def expectedResult: Either[CompileException, List[String]] => Unit =
+    expectedResultPartial.orElse {
+      case Right(x) => fail(s"Unexpected $x")
+      case Left(x) => fail(s"Unexpected $x")
+    }
+}
 
 object FileEnumerator {
   def testOnPath(path: String): Test = {
@@ -62,9 +68,9 @@ object FileEnumerator {
     Test.positive(s"$path.lat", expected)
   }
 
-  def latteTestNegative(skip: Set[Int]): List[Test] = (1 to 27).toList filter (!skip.contains(_)) map { number =>
+  def latteTestNegative(skip: Set[Int], nonparseable: Set[Int]): List[Test] = (1 to 27).toList filter (!skip.contains(_)) map { number =>
     val filename = f"lattests/bad/bad$number%03d"
-    Test.anyNegative(s"$filename.lat")
+    Test.anyNegative(s"$filename.lat", !(nonparseable contains number))
   }
 
   def latteTestPositive(skip: Set[Int]): List[Test] = (1 to 22).toList filter (!skip.contains(_)) map { number =>
@@ -73,7 +79,7 @@ object FileEnumerator {
   }
 
   def getWithResult: List[Test] =
-    latteTestNegative(Set(14)) ++
+    latteTestNegative(Set(14), Set(1, 2, 4, 5)) ++
     latteTestPositive(Set(
       1, // TODO string is class
       18,
@@ -125,7 +131,7 @@ object FileEnumerator {
     "loop iteration", "2",
     "loop iteration", "1")),
     Test.positive("latte/pos/print.latte", List("Hello World")),
-    Test.negative("latte/neg/undeclared.latte", List(ErrorString("Undefined variable z")))
+    Test.negative("latte/neg/undeclared.latte", { case UndefinedVariable(_, _) => true })
   )
 }
 

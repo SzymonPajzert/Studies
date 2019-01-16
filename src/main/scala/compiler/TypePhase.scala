@@ -14,14 +14,29 @@ import scalaz._
   *   - typing the expressions
   */
 object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
+  def undefinedFunction(name: String): TypeEnvironment[TypingFailure] =
+    getTypeInformation map (UndefinedFunction(name, _))
+  def undefinedVariable(name: String): TypeEnvironment[TypingFailure] =
+    getTypeInformation map (UndefinedVariable(name, _))
+  def duplicateDefinition(name: String): TypeEnvironment[TypingFailure] =
+    getTypeInformation map (DuplicateDefinition(name, _))
+  def fieldNotFound(name: String, classT: ClassType, expr: String = "<expr>"): TypeEnvironment[TypingFailure]  =
+    getTypeInformation map (FieldNotFound(name, classT, expr, _))
+  def methodNotFound(name: String, classT: ClassType, expr: String = "<expr>"): TypeEnvironment[TypingFailure]  =
+    getTypeInformation map (MethodNotFound(name, classT, expr, _))
+  def wrongType(expected: Type, actual: Type, expr: String = "<expr>"): TypeEnvironment[TypingFailure]  =
+    getTypeInformation map (WrongType(expected, actual, expr, _))
+  def wrongArgumentNumber(expected: Int, actual: Int, name: String): TypeEnvironment[TypingFailure] =
+    getTypeInformation map (WrongArgumentNumber(expected, actual, name, _))
+
   case class VariableState(counter: Int, fromCurrentBlock: Boolean, typeId: Type)
   type VarBinds = Map[String, VariableState]
   type FunBinds = Map[String, Type]
 
   def putNewFunBind(name: String, typeId: Type) : TypeEnvironment[Unit] = for {
     funBinds <- gets[KS, FunBinds](_._1.functions) : TypeEnvironment[FunBinds]
-    _ <- (funBinds get name) match {
-      case Some(_) => createError(s"$name already defined")
+    _ <- funBinds get name match {
+      case Some(_) => createError(duplicateDefinition(name))
       case None => modifyBinds { binds => binds.copy(
         functions = binds.functions + (name -> typeId))}
     }
@@ -32,22 +47,19 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   type KS = (Binds, TypeInformation)
 
   type S[A] = State[KS, A]
-  type TypeEnvironment[A] = EitherT[S, List[CompileException], A]
-
-  implicit def viewableOnFirst[B, A <: B]
-    (t: TypeEnvironment[(A, TypedLatte.ExpressionInformation)])
-  : TypeEnvironment[(B, TypedLatte.ExpressionInformation)] = for {
-    (value, information) <- t
-  } yield (value, information)
+  type TypeEnvironment[A] = EitherT[S, CompileException, A]
 
   implicit def ok[A](value: A): TypeEnvironment[A] =
-    EitherT[S, List[CompileException], A](state[KS, List[CompileException] \/ A](\/-(value)))
+    EitherT[S, CompileException, A](state[KS, CompileException \/ A](\/-(value)))
 
   implicit def stateToEither[A](value: State[KS, A]): TypeEnvironment[A] = {
-    EitherT[S, List[CompileException], A](value map (\/-(_)))
+    EitherT[S, CompileException, A](value map (\/-(_)))
   }
 
-  def createError[A](str: String): TypeEnvironment[A] = EitherT[S, List[CompileException], A](state(-\/(List(ErrorString(str)))))
+  def createError[A](typingFailure: TypeEnvironment[TypingFailure]): TypeEnvironment[A] = for {
+      failure <- typingFailure
+      result <- EitherT[S, CompileException, A](state(-\/(failure)))
+    } yield result
 
   def mapM[A, B](list: List[A], f: A => TypeEnvironment[B]): TypeEnvironment[List[B]] = list match {
     case Nil => Nil
@@ -65,10 +77,12 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def location(loc: ParsedClasses.LocationInf): TypeEnvironment[TypedLatte.LocationInf] = loc._1 match {
     case ParsedClasses.Variable(ident) => for {
       binds <- getBinds
-      (identifier, typeId) <- (binds.variables get ident match {
+      pair <- (binds.variables get ident match {
         case Some(state) => (ident + state.counter.toString, state.typeId)
-        case None => createError(s"Undefined variable $ident")
+        case None => createError(undefinedVariable(ident))
       }): TypeEnvironment[(String, Type)]
+      (identifier, typeId) = pair
+
     } yield (TypedLatte.Variable(identifier), typeId)
 
     case ParsedClasses.ArrayAccess(arrayU, elementU) => for {
@@ -82,9 +96,9 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       elementType <- (place._2 match {
         case PointerType(c @ ClassType(_)) => typeInformation.field(c).findType(element) match {
           case Some(t) => t
-          case None => createError(s"No field $element in $c")
+          case None => createError(fieldNotFound(element, c))
         }
-        case t => createError(s"Expected class, instead: $t")
+        case t => createError(wrongType(PointerType(ClassType("class")), t))
       }) : TypeEnvironment[Type]
     } yield (TypedLatte.FieldAccess(place, element), elementType)
   }
@@ -94,7 +108,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
 
     foundValue <- (signatures.functions get functionName match {
       case Some(value) => ok(value)
-      case None => createError(s"Function: $functionName not defined. \nEnvironment: $signatures")
+      case None => createError(undefinedFunction(functionName))
     }) : TypeEnvironment[Type]
   } yield foundValue
 
@@ -113,6 +127,10 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     "int_mod" -> FunctionType (IntType, Seq(IntType, IntType))
   )
 
+  def dropFirstArgument(methodType: FunctionType): FunctionType = {
+    methodType.copy(argsType = methodType.argsType.toList.tail)
+  }
+
   def funLocation(fLoc: ParsedClasses.FunLocation): TypeEnvironment[TypedLatte.FunLocationInf] = fLoc match {
     case ParsedClasses.FunName(name: String) => for {
       functionType <- (name match {
@@ -128,15 +146,16 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       expr <- expression(exprU)
       typeInformation <- getTypeInformation
 
-      (methodType, definedInClass) <- (expr._2 match {
+      pair <- expr._2 match {
         case PointerType(expressionType: ClassType) =>
           typeInformation.method(expressionType)
             .find(ident)
             .map(ok)
-            .getOrElse(createError(s"$expressionType has no field $ident"))
+            .getOrElse(createError(methodNotFound(ident, expressionType)))
 
-        case _ => createError(s"Wrong type: $vtable")
-      }): TypeEnvironment[(FunctionType, ClassType)]
+        case _ => createError(wrongType(PointerType(VoidType), expr._2))
+      }
+      (methodType, definedInClass) = pair
 
       cast: TypedLatte.ExpressionInf = (TypedLatte.Cast(PointerType(definedInClass), expr), PointerType(definedInClass))
 
@@ -150,9 +169,10 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   }
 
 
-  def returnType(functionLoc: TypedLatte.FunLocationInf): TypeEnvironment[Type] = functionLoc._2 match {
-    case FunctionType(rT, _) => rT
-    case _ => createError(s"${functionLoc._1} is not callable")
+  def functionType(functionLoc: TypedLatte.FunLocationInf): TypeEnvironment[(Type, Seq[Type])] = functionLoc._2 match {
+    case FunctionType(rT, argsType) if functionLoc._1.isInstanceOf[TypedLatte.FunName] => (rT, argsType)
+    case FunctionType(rT, thisArg :: argsType) if functionLoc._1.isInstanceOf[TypedLatte.VTableLookup] => (rT, argsType)
+    case _ => createError(wrongType(FunctionType(VoidType, Seq()), functionLoc._2))
   }
 
   type ExprMod = TypedLatte.ExpressionInf => TypedLatte.ExpressionInf
@@ -166,18 +186,42 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       case (PointerType(a: ClassType), PointerType(b: ClassType)) if typeInformation.isParent(a, b) =>
         ok((TypedLatte.Cast(PointerType(b), inf), PointerType(b)))
 
-      case _ => createError(s"Wrong type. Expected: $expectedType instead ${inf._2}")
+      case _ => createError(wrongType(expectedType, inf._2, inf._1.pretty))
     }
   } yield result
 
+  def funName: TypedLatte.FunLocationInf => TypeEnvironment[String] = {
+    case (TypedLatte.FunName(name), _) => ok(name)
+    case (TypedLatte.VTableLookup(_, name), _) => ok(name)
+  }
+
   def expression(expr: ParsedClasses.ExpressionInf): TypeEnvironment[TypedLatte.ExpressionInf] = expr._1 match {
+    case ParsedClasses.FunctionCall((ParsedClasses.FunName(name), _), arguments) if Set("gen_eq", "gen_neq") contains name => for {
+      argsNotChecked <- mapM(arguments.toList, expression)
+      argT <- argsNotChecked match {
+        case left :: right :: Nil => if (left._2 == right._2) ok(left._2) else
+          createError(wrongType(left._2, right._2))
+        case _ => createError(wrongArgumentNumber(2, arguments.length, name))
+      }
+      funcT = FunctionType(BoolType, Seq(argT, argT))
+
+    } yield (TypedLatte.FunctionCall((TypedLatte.FunName(name), funcT), argsNotChecked), BoolType)
+
     case ParsedClasses.FunctionCall(locU , arguments) => for {
       loc <- funLocation(locU._1)
-      args <- mapM(arguments.toList, expression)
-      rt <- returnType(loc)
+      name <- funName(loc)
+      argsNotChecked <- mapM(arguments.toList, expression)
+      pair <- functionType(loc)
+      (rt, argTypes) = pair
+
+      _ <- if (argTypes.length != argsNotChecked.length)
+        createError(wrongArgumentNumber(argTypes.length, argsNotChecked.length, name))
+      else ok(Unit)
+
+      args <- mapM(argsNotChecked zip argTypes, (checkTypeWithImplicitCasts _).tupled)
 
       // TODO check args match
-    } yield (TypedLatte.FunctionCall(loc, args), rt)
+    } yield (TypedLatte.FunctionCall(loc, argsNotChecked), rt)
 
     case ParsedClasses.ConstValue(value) => (TypedLatte.ConstValue(value), extractType(value))
 
@@ -195,7 +239,9 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
 
     case ParsedClasses.InstanceCreation(typeT) => (TypedLatte.InstanceCreation(typeT), typeT)
 
-    case loc: ParsedClasses.Location => location((loc, Unit))
+    case loc: ParsedClasses.Location => for {
+      res <- location((loc, Unit))
+    } yield res
   }
 
   def markBindsAsOld(state: KS): KS = {
@@ -226,7 +272,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       }
 
       counter <- (binds.variables get identifier match {
-        case Some(state) if state.fromCurrentBlock => createError(s"$identifier already defined")
+        case Some(state) if state.fromCurrentBlock => createError(duplicateDefinition(identifier))
         case Some(state) => setCounter(identifier, state.counter + 1, transType)
         case None => setCounter(identifier, 0, transType)
         }) : TypeEnvironment[Int]
@@ -241,7 +287,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.BlockInstruction(blockU) => (for {
       s <- get[KS]: TypeEnvironment[KS]
       blockE = mapM(blockU, instruction).run(markBindsAsOld(s))._2
-      block <- EitherT[S, List[CompileException], List[TypedLatte.Instruction]](state(blockE)): TypeEnvironment[List[TypedLatte.Instruction]]
+      block <- EitherT[S, CompileException, List[TypedLatte.Instruction]](state(blockE)): TypeEnvironment[List[TypedLatte.Instruction]]
     } yield TypedLatte.BlockInstruction(block)): TypeEnvironment[TypedLatte.Instruction]
 
     case ParsedClasses.DiscardValue(expr) => expression(expr) map TypedLatte.DiscardValue
@@ -313,10 +359,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def addSignature(signature: ParsedClasses.FunctionSignature): TypeEnvironment[Unit] = {
     val name = signature.identifier
     val typeId = FunctionType(signature.returnType, signature.arguments.map(_._2))
-    for {
-      binds <- getBinds: TypeEnvironment[Binds]
-      _ <- putNewFunBind(name, typeId) : TypeEnvironment[Unit]
-    } yield Unit
+    putNewFunBind(name, typeId)
   }
 
   /**
@@ -328,7 +371,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   }
 
   def runWithSeparateStates(defs: List[ParsedClasses.TopDefinition],
-                            state: KS): List[CompileException] \/ List[TypedLatte.TopDefinition] = defs match {
+                            state: KS): CompileException \/ List[TypedLatte.TopDefinition] = defs match {
     case Nil => \/-(Nil)
     case (hM :: tM) => for {
       tail <- runWithSeparateStates(tM, state)
@@ -344,14 +387,14 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
 
   def initialState(tI: TypeInformation): KS = (Binds(Map(), Map()), tI)
 
-  override def compile(code: ParsedClasses.Code): Either[List[CompileException], TypedLatte.Code] = {
+  override def compile(code: ParsedClasses.Code): Either[CompileException, TypedLatte.Code] = {
     val typePhase: TypeEnvironment[TypedLatte.Code] = for {
       _ <- mapM(code._1.toList, addTopDefinition)
 
       s <- get[KS]: TypeEnvironment[KS]
       typedCodeT = runWithSeparateStates(code._1.toList, s)
 
-      typedCode <- EitherT[S, List[CompileException], List[TypedLatte.TopDefinition]](state(typedCodeT))
+      typedCode <- EitherT[S, CompileException, List[TypedLatte.TopDefinition]](state(typedCodeT))
       typeInformation <- getTypeInformation
     } yield (typedCode, typeInformation)
 

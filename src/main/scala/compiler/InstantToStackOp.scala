@@ -66,7 +66,7 @@ object InstantToStackOp extends Compiler[InstantProg, StackOps.Code] {
     }
   }
 
-  override def compile(code: InstantProg): Either[List[CompileException], StackOps.Code] = {
+  override def compile(code: InstantProg): Either[CompileException, StackOps.Code] = {
     val (allCompiledCode, allFrames, stackSize) = (code foldLeft (List[StackOps](), Map[String, Int](), 0)) (
       (accumulator, codeLine) => {
         val (compiledCode, frames, maxStackSize) = accumulator

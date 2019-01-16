@@ -9,7 +9,7 @@ class DebugCompilerTest extends FlatSpec with Matchers with FileMatchers {
   def integerCompiler: DebugCompiler[Int] = Compiler.debug("integer", (directory: Directory) => Right(5))
 
   def failingPhase: DebugCompiler[Int] = Compiler.debug("failing",
-    (directory: Directory) => Left(List(ErrorString("failed to produce value"))))
+    (directory: Directory) => Left(UndefinedFunction("undefined_function", null)))
 
   def toStringCompiler: Compiler[Int, String] = (value: Int) => Right(value.toString)
 
