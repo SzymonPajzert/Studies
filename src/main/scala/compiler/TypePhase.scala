@@ -190,6 +190,14 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     }
   } yield result
 
+  def checkType(left: Type, right: Type): Boolean = (left, right) match {
+    case (l, r) if l == r => true
+    case (PointerType(l), PointerType(r)) => checkType(l, r)
+    case (ClassType(_), null) => true
+    case (null, ClassType(_)) => true
+    case _ => false
+  }
+
   def funName: TypedLatte.FunLocationInf => TypeEnvironment[String] = {
     case (TypedLatte.FunName(name), _) => ok(name)
     case (TypedLatte.VTableLookup(_, name), _) => ok(name)
@@ -199,7 +207,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.FunctionCall((ParsedClasses.FunName(name), _), arguments) if Set("gen_eq", "gen_neq") contains name => for {
       argsNotChecked <- mapM(arguments.toList, expression)
       argT <- argsNotChecked match {
-        case left :: right :: Nil => if (left._2 == right._2) ok(left._2) else
+        case left :: right :: Nil => if (checkType(left._2, right._2)) ok(left._2) else
           createError(wrongType(left._2, right._2))
         case _ => createError(wrongArgumentNumber(2, arguments.length, name))
       }
