@@ -161,17 +161,10 @@ object LLVM extends Language {
   def makeArgs(args: List[RegisterT]): String =
     (args map {register => s"${register.typeId.llvmRepr} ${register.name}"}).mkString(", ")
 
-  def mergeSubblocks(blocks: List[LLVM.CodeBlock]): Vector[LLVM.CodeBlock] =
-    blocks match {
-      case Subblock(a) :: Subblock(b) :: t => mergeSubblocks(Subblock(a ++ b) :: t)
-      case a :: t => (a :: mergeSubblocks(t).toList).toVector
-      case Nil => Vector()
-    }
-
   def serializeBlock(block: Block): String = {
     s"""
        |define ${block.funcId.returnType.llvmRepr} @${block.funcId.name}(${makeArgs(block.args)}) {
-       |${(mergeSubblocks(block.code.toList) map serializeCodeBlock).mkString("\n")}
+       |${(block.code.toList map serializeCodeBlock).mkString("\n")}
        |}""".stripMargin
   }
 

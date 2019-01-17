@@ -324,17 +324,6 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     } yield TypedLatte.While(condition, instr)
   }
 
-  def addReturn(instructions: TypedLatte.Block, returnType: Type.Type): TypedLatte.Block = {
-    if(instructions.isEmpty || !instructions.last.isInstanceOf[TypedLatte.Return]) {
-      val returnInst = returnType match {
-        case VoidType => TypedLatte.Return(None)
-        case IntType => TypedLatte.Return(Some((TypedLatte.ConstValue(0), returnType)))
-        case PointerType(_) => TypedLatte.Return(Some((TypedLatte.Null(returnType.deref.asInstanceOf[ClassType]), returnType)))
-      }
-      instructions ::: List(returnInst)
-    } else instructions
-  }
-
   def toplevelFunc: ParsedClasses.Func => TypeEnvironment[TypedLatte.Func] = {
     case ParsedClasses.Func(signature, codeU) => {
       val definitions: List[ParsedClasses.Instruction] =
@@ -342,8 +331,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
 
       for {
         _ <- mapM(definitions, instruction)
-        codeWithoutReturn <- mapM(codeU, instruction)
-        code = addReturn(codeWithoutReturn, signature.returnType)
+        code <- mapM(codeU, instruction)
       } yield {
         val sig = signature.asInstanceOf[TypedLatte.FunctionSignature]
         val args = sig.arguments map {case (name, t) => (name + "0", t)}

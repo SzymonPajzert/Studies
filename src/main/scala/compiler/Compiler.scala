@@ -18,6 +18,10 @@ case class MethodNotFound(name: String, classT: ClassType, expr: String = "<expr
 case class WrongType(expected: Type, actual: Type, expr: String = "<expr>", typeInformation: TypeInformation) extends TypingFailure // TODO add representation and line number
 case class WrongArgumentNumber(expected: Int, actual: Int, name: String, typeInformation: TypeInformation) extends TypingFailure
 
+trait ReturnFailure extends CompileException
+case class MissingReturn(functionName: String) extends ReturnFailure
+case class WrongReturnType(expected: Type, instead: Type) extends ReturnFailure
+
 // TODO add <: Language
 trait Compiler[A, B] {
   self =>
