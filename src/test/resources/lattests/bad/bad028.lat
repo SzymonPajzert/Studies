@@ -18,19 +18,6 @@ class Rectangle extends Shape {
   }
 }
 
-class Node {
-  Shape elem;
-  Node next;
-
-  void setElem(Shape c) { elem = c; }
-
-  void setNext(Node n) { next = n; }
-
-  Shape getElem() { return elem; }
-
-  Node getNext() { return next; }
-}
-
 class Stack {
   Node head;
 

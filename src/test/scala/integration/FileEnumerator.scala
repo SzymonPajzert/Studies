@@ -80,12 +80,7 @@ object FileEnumerator {
 
   def getWithResult: List[Test] =
     latteTestNegative(Set(14), Set(1, 2, 4, 5)) ++
-    latteTestPositive(Set(
-      1, // TODO string is class
-      18,
-      19,
-      12) // TODO string class
-    ) ++ List(
+    latteTestPositive(Set()) ++ List(
     Test.parser("array_function.latte"),
     Test.parser("class.latte"),
     Test.parser("foreach.latte"),
@@ -93,17 +88,20 @@ object FileEnumerator {
     Test.parser("structures.latte"),
     Test.parser("virtual_methods.latte"),
 
-    // TODO testOnPath("lattests/extensions/arrays1/array001"),
-    // TODO testOnPath("lattests/extensions/arrays1/array002"),
+    testOnPath("lattests/extensions/arrays1/array001"),
+    testOnPath("lattests/extensions/arrays1/array002"),
     testOnPath("lattests/extensions/objects1/counter"),
     testOnPath("lattests/extensions/objects1/linked"),
 
     testOnPath("lattests/extensions/objects1/queue"),
 
     testOnPath("lattests/extensions/objects1/points"),
+    testOnPath("lattests/extensions/objects2/baseAfterSubclass"),
+    testOnPath("lattests/extensions/objects2/newMethod"),
+
     testOnPath("lattests/extensions/objects2/shapes"),
 
-      testOnPath("lattests/extensions/struct/list"),
+    testOnPath("lattests/extensions/struct/list"),
     Test.positive("lattests/extensions/struct/list_short0.lat", List()),
     Test.positive("lattests/extensions/struct/list_short1.lat", List("1", "2")),
     Test.positive("lattests/extensions/struct/list_short2.lat", List("1", "2", "3")),

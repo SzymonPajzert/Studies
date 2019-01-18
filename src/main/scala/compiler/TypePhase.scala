@@ -93,14 +93,15 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.FieldAccess(placeU, element) => for {
       place <- expression(placeU)
       typeInformation <- getTypeInformation
-      elementType <- (place._2 match {
-        case PointerType(c @ ClassType(_)) => typeInformation.field(c).findType(element) match {
-          case Some(t) => t
+      result <- (place._2, element) match {
+        case (ArrayType(_), "length") => ok((TypedLatte.FieldAccess(place, element), IntType))
+        case (PointerType(c@ClassType(_)), _) => typeInformation.field(c).findType(element) match {
+          case Some(t) => ok((TypedLatte.FieldAccess(place, element), t))
           case None => createError(fieldNotFound(element, c))
         }
-        case t => createError(wrongType(PointerType(ClassType("class")), t))
-      }) : TypeEnvironment[Type]
-    } yield (TypedLatte.FieldAccess(place, element), elementType)
+        case (t, _) => createError(wrongType(PointerType(ClassType("class")), t))
+      }
+    } yield result
   }
 
   def lookupFunctionSignature(functionName: String): TypeEnvironment[Type] = for {
@@ -214,6 +215,20 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       funcT = FunctionType(BoolType, Seq(argT, argT))
 
     } yield (TypedLatte.FunctionCall((TypedLatte.FunName(name), funcT), argsNotChecked), BoolType)
+
+    case ParsedClasses.FunctionCall((ParsedClasses.FunName("int_add"), _), arguments) => for {
+      argsNotChecked <- mapM(arguments.toList, expression)
+      pair <- (argsNotChecked match {
+        case left :: right :: Nil => (left._2, right._2) match {
+          case (StringType, StringType) => ("string_concat", FunctionType(StringType, Seq(StringType, StringType)))
+          case (IntType, IntType) => ("int_add", FunctionType(IntType, Seq(IntType, IntType)))
+          case _ => createError(wrongType(left._2, right._2))
+        }
+        case _ => createError(wrongArgumentNumber(2, arguments.length, "int_add"))
+      }) : TypeEnvironment[(String, FunctionType)]
+      (name, funType) = pair
+
+    } yield (TypedLatte.FunctionCall((TypedLatte.FunName(name), funType), argsNotChecked), funType.returnType)
 
     case ParsedClasses.FunctionCall(locU , arguments) => for {
       loc <- funLocation(locU._1)
