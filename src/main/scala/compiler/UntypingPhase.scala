@@ -28,8 +28,11 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
     }
 
   def location: TypedLatte.Location => Compiler[Latte.Location] = {
-    case TypedLatte.ArrayAccess((TypedLatte.Variable(name), _), index) =>
-      compileExpr(index) map (Latte.ArrayAccess(Latte.Variable(name), _))
+    case TypedLatte.ArrayAccess(exprU, indexU) => for {
+      index <- compileExpr(indexU)
+      expr <- compileExpr(exprU)
+    } yield Latte.ArrayAccess(expr, index)
+
     case TypedLatte.Variable(identifier) => Latte.Variable(identifier)
 
     case TypedLatte.FieldAccess(expressionInf, element) =>
@@ -66,7 +69,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       case TypedLatte.InstanceCreation(PointerType(classType: ClassType)) =>
         Latte.InstanceCreation(classType: ClassType)
       case locU: TypedLatte.Location => for (loc <- location(locU)) yield loc
-      case TypedLatte.Null(_) => Latte.Null(expression._2.deref)
+      case TypedLatte.Null(_) => Latte.Null(if(expression._2 != null) expression._2.deref else PointerType(VoidType))
       case TypedLatte.Void => Latte.Void
       case TypedLatte.Cast(PointerType(c: ClassType), (expressionT, PointerType(s: ClassType))) => for {
         expr <- compileExpr((expressionT, PointerType(s)))

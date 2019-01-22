@@ -102,11 +102,16 @@ case class TypeInformation(private val parents: Map[ClassType, ClassType],
     }
   }
 
+  def contains(className: ClassType): Boolean = {
+    className match {
+      case _: ArrayType => true
+      case _ => defined contains className
+    }
+  }
+
   private def lookup(className: ClassType): Offset = {
     className match {
-      case arrayType: ArrayType =>
-        val eltType = arrayType.eltType
-
+      case _: ArrayType =>
         Offset(
           fields = OffsetContainer(List(
             ("data", PointerType(CharType), Unit),

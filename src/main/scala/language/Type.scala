@@ -52,7 +52,7 @@ object Type {
   }
 
   case object StringType extends Type {
-    override def llvmRepr: String = ???
+    override def llvmRepr: String = "i8*"
   }
 
   case object BoolType extends Type {

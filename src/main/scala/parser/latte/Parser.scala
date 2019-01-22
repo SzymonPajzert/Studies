@@ -218,9 +218,33 @@ object Transformations {
         HighLatte.Assignment((fieldAccess(p.fielde_), Unit), expression(p.expr_))
       )
 
-      override def visit(p: ForAbb, arg: Any): List[Instruction] = List(
+      implicit def toExpInf(expr: UntypedLatte.Expression): UntypedLatte.ExpressionInf =
+        (expr, Unit.asInstanceOf[UntypedLatte.ExpressionInformation])
 
-      )
+      override def visit(p: ForAbb, arg: Any): List[Instruction] = {
+
+        val modifiedInside =
+          BlockInstruction(instruction(p.stmt_) :::
+          {
+            val funCall: Expression = FunctionCall("int_add", Seq(p.ident_, const(1)))
+
+            List(Assignment(p.ident_, funCall))
+          })
+
+        val length = UntypedLatte.FieldAccess(expression(p.expr_), "length")
+
+        val condition =
+          UntypedLatte.FunctionCall("gen_lt", Seq(UntypedLatte.Variable(p.ident_), length))
+
+        val zero = UntypedLatte.ConstValue(0)
+
+        List(
+          HighLatte.BlockInstruction(List(
+            HighLatte.Declaration(p.ident_, IntType),
+            HighLatte.Assignment(p.ident_, zero),
+            HighLatte.While(condition, modifiedInside))))
+      }
+
     }
 
     instr.accept(visitor, Unit)

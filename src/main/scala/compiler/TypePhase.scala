@@ -28,6 +28,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     getTypeInformation map (WrongType(expected, actual, expr, _))
   def wrongArgumentNumber(expected: Int, actual: Int, name: String): TypeEnvironment[TypingFailure] =
     getTypeInformation map (WrongArgumentNumber(expected, actual, name, _))
+  def classUndefined(className: ClassType): TypeEnvironment[TypingFailure] =
+    getTypeInformation map (ClassUndefined(className, _))
 
   case class VariableState(counter: Int, fromCurrentBlock: Boolean, typeId: Type)
   type VarBinds = Map[String, VariableState]
@@ -118,6 +120,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     "int_div" -> FunctionType (IntType, Seq (IntType, IntType)),
     "int_mul" -> FunctionType (IntType, Seq (IntType, IntType)),
     "gen_neq" -> FunctionType (BoolType, Seq (IntType, IntType)),
+    "gen_ge" -> FunctionType (BoolType, Seq (IntType, IntType)),
     "gen_gt" -> FunctionType (BoolType, Seq (IntType, IntType)),
     "gen_eq" -> FunctionType (BoolType, Seq (IntType, IntType)),
     "gen_lt" -> FunctionType (BoolType, Seq (IntType, IntType)),
@@ -148,6 +151,9 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       typeInformation <- getTypeInformation
 
       pair <- expr._2 match {
+        case PointerType(expressionType: ClassType) if !typeInformation.contains(expressionType)
+          => createError(classUndefined(expressionType))
+
         case PointerType(expressionType: ClassType) =>
           typeInformation.method(expressionType)
             .find(ident)
@@ -187,6 +193,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       case (PointerType(a: ClassType), PointerType(b: ClassType)) if typeInformation.isParent(a, b) =>
         ok((TypedLatte.Cast(PointerType(b), inf), PointerType(b)))
 
+      case (null, ptr: PointerType) => ok((TypedLatte.Cast(ptr, inf), ptr))
+
       case _ => createError(wrongType(expectedType, inf._2, inf._1.pretty))
     }
   } yield result
@@ -194,8 +202,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def checkType(left: Type, right: Type): Boolean = (left, right) match {
     case (l, r) if l == r => true
     case (PointerType(l), PointerType(r)) => checkType(l, r)
-    case (ClassType(_), null) => true
-    case (null, ClassType(_)) => true
+    case (PointerType(_), null) => true
+    case (null, PointerType(_)) => true
     case _ => false
   }
 

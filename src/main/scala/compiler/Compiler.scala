@@ -17,6 +17,7 @@ case class FieldNotFound(name: String, classT: ClassType, expr: String = "<expr>
 case class MethodNotFound(name: String, classT: ClassType, expr: String = "<expr>", typeInformation: TypeInformation) extends TypingFailure // TODO get representation
 case class WrongType(expected: Type, actual: Type, expr: String = "<expr>", typeInformation: TypeInformation) extends TypingFailure // TODO add representation and line number
 case class WrongArgumentNumber(expected: Int, actual: Int, name: String, typeInformation: TypeInformation) extends TypingFailure
+case class ClassUndefined(className: ClassType, typeInformation: TypeInformation) extends TypingFailure
 
 trait ReturnFailure extends CompileException
 case class MissingReturn(functionName: String) extends ReturnFailure

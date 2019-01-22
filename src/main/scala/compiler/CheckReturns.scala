@@ -43,13 +43,18 @@ object CheckReturns extends Compiler[TypedLatte.Code, TypedLatte.Code] {
   }
 
   def checkReturnInFunction: TypedLatte.TopDefinition => Either[CompileException, TypedLatte.TopDefinition] = {
-    case func: TypedLatte.Func if func.signature.returnType == VoidType =>
-      Right(addReturn(func))
+    case func: TypedLatte.Func if func.signature.returnType == VoidType => {
+      returnCovers(func.code, func.signature.returnType) match {
+        case -\/(error) => Left(error)
+        case \/-(__) => Right(addReturn(func))
+      }
+    }
 
     case func: TypedLatte.Func => returnCovers(func.code, func.signature.returnType) match {
       case -\/(error) => Left(error)
       case \/-(bool) => if(bool) Right(addReturn(func)) else Left(MissingReturn(func.signature.identifier))
     }
+
   }
 
   def addReturn: TypedLatte.TopDefinition => TypedLatte.TopDefinition = {

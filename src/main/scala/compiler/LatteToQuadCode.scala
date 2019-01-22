@@ -80,12 +80,16 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
   } yield register
 
   def transformType(value: Type): StateOf[Type] = value match {
-    case IntType =>        state(IntType)
-    case VoidType =>       state(VoidType)
-    case CharType =>       state(CharType)
-    case BoolType =>       state(BoolType)
-    case a: PointerType => state(a)
-    case StringType =>     state(PointerType(CharType))
+    case IntType =>          state(IntType)
+    case VoidType =>         state(VoidType)
+    case CharType =>         state(CharType)
+    case BoolType =>         state(BoolType)
+    case p: PointerType =>   state(p)
+    case StringType =>       state(PointerType(CharType))
+    case array: ArrayType => for {
+      internal <- transformType(array.eltType)
+      result <- gets[CompilationState, Type](_.typeInformation.aggregate(new ArrayType(internal)))
+    } yield result
 
     case AggregateType(name, elts) =>
       (elts.toList.traverseS(t => transformType(t)): StateOf[List[Type]]) map (AggregateType(name, _))
@@ -120,9 +124,15 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       arrayAccess match {
         case Latte.ArrayAccess(Latte.Variable(arrayAggregate), element) =>
           for {
-            arrayAggregateLocation <- getLocation(arrayAggregate)      // AggregateType*
-            arrayAggregate <- loadRegister(arrayAggregateLocation)
-            arrayPtr <- calculateFieldAddress(arrayAggregate, 1)
+            arrayAggregateLocation <- getLocation(arrayAggregate)      // AggregateType**
+            arrayAggregate <- loadRegister(arrayAggregateLocation)     // AggregateType*
+
+            eltType = arrayAggregate.typeId.deref.asInstanceOf[ArrayType].eltType
+            arrayPtrRawLoc <- calculateFieldAddress(arrayAggregate, 0)    // i8*
+            arrayPtrRaw <- loadRegister(arrayPtrRawLoc)
+
+            arrayPtr <- getRegister(PointerType(eltType))
+            _ <- putLine(LLVM.Literal(s"${arrayPtr.name} = bitcast i8* ${arrayPtrRaw.name} to ${eltType.ptr.llvmRepr}"))
             arrayType <- transformType(arrayPtr.typeId)
             valueLocation <- getRegister(arrayType)
 
@@ -209,7 +219,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           typeT <- transformType(expression.getType)
         } yield LLVM.Value(value.toString, typeT)
 
-        case arrayAccess @ Latte.ArrayAccess(Latte.Variable(_), _) => for {
+        case arrayAccess : Latte.ArrayAccess => for {
           valueLocation <- calculateArrayAddress(arrayAccess)
           value <- loadRegister(valueLocation)
         } yield value
@@ -315,6 +325,8 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
             functions <- gets[CompilationState, Functions](_.functionTypes)
 
             identifier <- (name match {
+              case "string_concat" => state(LLVM.FunctionId(name, PointerType(CharType)))
+              case "readInt" => state(LLVM.FunctionId(name, IntType))
               case "printInt" => state(LLVM.FunctionId(name, VoidType))
               case "printString" => state(LLVM.FunctionId(name, VoidType))
               case definedName if functions contains definedName => for {
