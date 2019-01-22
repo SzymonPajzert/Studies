@@ -68,7 +68,7 @@ object FileEnumerator {
     Test.positive(s"$path.lat", expected)
   }
 
-  def latteTestNegative(skip: Set[Int], nonparseable: Set[Int]): List[Test] = (1 to 27).toList filter (!skip.contains(_)) map { number =>
+  def latteTestNegative(skip: Set[Int], nonparseable: Set[Int]): List[Test] = (1 to 28).toList filter (!skip.contains(_)) map { number =>
     val filename = f"lattests/bad/bad$number%03d"
     Test.anyNegative(s"$filename.lat", !(nonparseable contains number))
   }
@@ -81,13 +81,17 @@ object FileEnumerator {
   def getWithResult: List[Test] =
     latteTestNegative(Set(14), Set(1, 2, 4, 5)) ++
     latteTestPositive(Set()) ++ List(
+    Test.anyNegative("lattests/bad/class/virtual_wrong_type.lat", true),
     Test.parser("array_function.latte"),
     Test.parser("class.latte"),
     Test.parser("foreach.latte"),
     Test.parser("inheritance.latte"),
     Test.parser("structures.latte"),
     Test.parser("virtual_methods.latte"),
+    Test.parser("multidim_array.latte"),
 
+    testOnPath("latte/pos/infinite_loop_with_return"),
+    testOnPath("latte/pos/type/arrays"),
     testOnPath("lattests/extensions/arrays1/array001"),
     testOnPath("lattests/extensions/arrays1/array002"),
     testOnPath("lattests/extensions/objects1/counter"),
