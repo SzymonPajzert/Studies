@@ -13,7 +13,7 @@ class ParserSpec extends FlatSpec with Matchers {
     * @param requirements Test requirements
     */
   def parseFile(requirements: Test): Unit = {
-    it should s"compile file: ${requirements.filename}" in {
+    it should s"parse file: ${requirements.sourceFile}" in {
       val parseResult = LatteParser.parse(requirements.fileContent)
       if (requirements.parseable) {
         parseResult match {

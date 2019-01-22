@@ -88,13 +88,12 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.ArrayAccess(arrayU, elementU) => for {
       array <- expression(arrayU)
       element <- expression(elementU)
-    } yield (TypedLatte.ArrayAccess(array, element), array._2.asInstanceOf[ArrayType].eltType)
+    } yield (TypedLatte.ArrayAccess(array, element), array._2.deref.asInstanceOf[ArrayType].eltType)
 
     case ParsedClasses.FieldAccess(placeU, element) => for {
       place <- expression(placeU)
       typeInformation <- getTypeInformation
       result <- (place._2, element) match {
-        case (ArrayType(_), "length") => ok((TypedLatte.FieldAccess(place, element), IntType))
         case (PointerType(c@ClassType(_)), _) => typeInformation.field(c).findType(element) match {
           case Some(t) => ok((TypedLatte.FieldAccess(place, element), t))
           case None => createError(fieldNotFound(element, c))
@@ -137,6 +136,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       functionType <- (name match {
         case "printInt" => FunctionType(VoidType, Seq(IntType))
         case "printString" => FunctionType(VoidType, Seq(StringType))
+        case "readInt" => FunctionType(IntType, Seq())
         case _ if primitiveFunctions contains name => primitiveFunctions(name)
         case "bool_not" => FunctionType(BoolType, Seq(BoolType))
         case userDefinedName => lookupFunctionSignature(userDefinedName)
@@ -251,14 +251,14 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.ArrayCreation(elementType, size) => for {
       typedSizeQ <- expression(size)
       typedSize <- checkTypeWithImplicitCasts(typedSizeQ, IntType)
-      arrayType = ArrayType(elementType)
+      arrayType = PointerType(new ArrayType(elementType))
     } yield (TypedLatte.ArrayCreation(elementType, typedSize), arrayType)
 
     case ParsedClasses.Cast(castType, expressionInfU) => for {
       expressionInf <- expression(expressionInfU)
     } yield (expressionInf._1, castType)
 
-    case ParsedClasses.Null(c) => (TypedLatte.Null(c), PointerType(c))
+    case ParsedClasses.Null(c) => (TypedLatte.Null(c), c)
 
     case ParsedClasses.InstanceCreation(typeT) => (TypedLatte.InstanceCreation(typeT), typeT)
 

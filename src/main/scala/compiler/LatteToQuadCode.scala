@@ -87,9 +87,6 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     case a: PointerType => state(a)
     case StringType =>     state(PointerType(CharType))
 
-    case ArrayType(t) =>         transformType(t) map PointerType
-    case ConstArrayType(t, _) => transformType(t) map PointerType
-
     case AggregateType(name, elts) =>
       (elts.toList.traverseS(t => transformType(t)): StateOf[List[Type]]) map (AggregateType(name, _))
     case c: ClassType => gets[CompilationState, Type](_.typeInformation.aggregate(c))
@@ -121,11 +118,12 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       */
     def calculateArrayAddress(arrayAccess: Latte.ArrayAccess): StateOf[LLVM.RegisterT] = {
       arrayAccess match {
-        case Latte.ArrayAccess(Latte.Variable(array), element) =>
+        case Latte.ArrayAccess(Latte.Variable(arrayAggregate), element) =>
           for {
-            arrayLocation <- getLocation(array)      // t**
-            arrayPtr <- loadRegister(arrayLocation)  // t*
-            arrayType <- transformType(arrayLocation.typeId.deref)
+            arrayAggregateLocation <- getLocation(arrayAggregate)      // AggregateType*
+            arrayAggregate <- loadRegister(arrayAggregateLocation)
+            arrayPtr <- calculateFieldAddress(arrayAggregate, 1)
+            arrayType <- transformType(arrayPtr.typeId)
             valueLocation <- getRegister(arrayType)
 
             index <- compileExpression(element)
@@ -144,7 +142,10 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     */
     def calculateFieldAddress(expression: LLVM.RegisterT, i: Int): StateOf[LLVM.RegisterT] = {
       val exprPointerType: PointerType = expression.typeId.asInstanceOf[PointerType]
-      val exprType : ClassType = exprPointerType.deref.asInstanceOf[ClassType]
+      val exprType : ClassType = exprPointerType.deref match {
+        case classType: ClassType => classType
+        case aggregate: AggregateType => aggregate.toRef
+      }
 
       for {
         elements <- gets[CompilationState, Seq[Type]](_.typeInformation.aggregate(exprType).elements)
@@ -159,6 +160,29 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
             LLVM.getElementPtr(expression.typeId.deref, expression, List(0, i + 1))))
       } yield valueLocation
     } : StateOf[LLVM.RegisterT]
+
+    def allocClassHeapAndCast(castType: ClassType): StateOf[LLVM.RegisterT] = for {
+      instanceType <- transformType(castType)
+      classSize <- gets[CompilationState, Int](_.typeInformation.memsize(castType))
+      instanceRawMemory <- getRegister(PointerType(CharType))
+      returnRegister <- getRegister(PointerType(castType))
+
+      _ <- putLine(LLVM.Literal(s"${instanceRawMemory.name} = call i8* @malloc(i32 $classSize)"))
+      _ <- putLine(LLVM.Literal(s"${returnRegister.name} = bitcast i8* ${instanceRawMemory.name} to ${castType.ptr.llvmRepr}"))
+    } yield returnRegister
+
+    def allocHeapAndCast(castType: Type, size: LLVM.Expression): StateOf[LLVM.RegisterT] = for {
+      sizeMult <- getRegister(IntType)
+      _ <- putLine(LLVM.Assign(sizeMult, new LLVM.Func[Nothing] {
+        override def getLine: String = s"mul i32 8, ${size.name}"
+      }))
+
+      instanceRawMemory <- getRegister(PointerType(CharType))
+      returnRegister <- getRegister(PointerType(castType))
+
+      _ <- putLine(LLVM.Literal(s"${instanceRawMemory.name} = call i8* @malloc(i32 ${sizeMult.name})"))
+      _ <- putLine(LLVM.Literal(s"${returnRegister.name} = bitcast i8* ${instanceRawMemory.name} to ${castType.ptr.llvmRepr}"))
+    } yield returnRegister
 
     def compileExpression(expression: Latte.Expression): StateOf[LLVM.Expression] = {
       expression match {
@@ -328,23 +352,38 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
             LLVM.call(funcType.returnType, functionP.name, expr :: arguments)))
         } yield returnRegister : LLVM.Expression
 
-        case Latte.ArrayCreation(elementType, sizeExpr) => for {
-          arrayType <- transformType(elementType)
-          returnRegister <- getRegister(PointerType(arrayType))
-          size <- compileExpression(sizeExpr)
-          _ <- putLine(LLVM.Assign(returnRegister, LLVM.alloca(arrayType, Some(size))))
-        } yield returnRegister
+        case Latte.ArrayCreation(elementType, sizeExpr) => {
+          val arrayType = new ArrayType(elementType)
+
+          for {
+            returnRegister <- getRegister(PointerType(arrayType))
+            size <- compileExpression(sizeExpr)
+
+            // Memory allocation
+            returnRegister <- allocClassHeapAndCast(arrayType)
+
+            // Vtable initialization
+            vTablePP <- calcEltPtr(arrayType.vtable.ptr.ptr, returnRegister.typeId.deref, returnRegister)
+            _ <- store(arrayType.vtableDefault, vTablePP)
+
+            // Data initialization
+            dataLocation <- calculateFieldAddress(returnRegister, 0)
+            dataMemory <- allocHeapAndCast(CharType, size)
+            _ <- store(dataMemory, dataLocation)
+
+            // Length initialization
+            lengthLocation <- calculateFieldAddress(returnRegister, 1)
+            _ <- store(size, lengthLocation)
+          } yield returnRegister
+        }
+
 
         case Latte.InstanceCreation(classType: ClassType) => for {
-          instanceType <- transformType(classType)
-          rawMemory <- getRegister(PointerType(CharType))
-          returnRegister <- getRegister(PointerType(instanceType))
-          placeholder <- getRegister(VoidType)
-
           classSize <- gets[CompilationState, Int](_.typeInformation.memsize(classType))
 
-          _ <- putLine(LLVM.Literal(s"${rawMemory.name} = call i8* @malloc(i32 $classSize)"))
-          _ <- putLine(LLVM.Literal(s"${returnRegister.name} = bitcast i8* ${rawMemory.name} to ${classType.ptr.llvmRepr}"))
+          returnRegister <- allocClassHeapAndCast(classType)
+          placeholder <- getRegister(VoidType)
+
           _ <- putLine(LLVM.AssignFuncall(placeholder, VoidType,
             LLVM.call(VoidType, s"@${classType.constructor}", List(returnRegister))))
         } yield returnRegister
@@ -369,6 +408,10 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       ))
     } yield Unit
 
+    def store(expression: LLVM.Expression, location: LLVM.RegisterT): StateOf[Unit] = for {
+      _ <- putLine(LLVM.Literal(s"store ${expression.typeId.llvmRepr} ${expression.name}, ${location.typeId.llvmRepr} ${location.name}"))
+    } yield Unit
+
     /**
       * Given register to store the value, calculate expression and store it there
       * @param location Location to store the value
@@ -377,7 +420,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       */
     def calculateExpressionIntoRegister(location: LLVM.RegisterT, value: Latte.Expression): StateOf[Unit] = for {
       expression <- compileExpression(value)
-      _ <- putLine(LLVM.Literal(s"store ${expression.typeId.llvmRepr} ${expression.name}, ${location.typeId.llvmRepr} ${location.name}"))
+      _ <- store(expression, location)
     } yield Unit
 
     def addOneLine(instruction: Latte.Instruction): StateOf[Unit] = {
@@ -514,8 +557,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
     vTablePP <- calcEltPtr(classType.vtable.ptr.ptr, thisPtr.typeId.deref, thisPtr)
 
-    _ <- putLine(LLVM.Literal(s"store ${PointerType(classType.vtable).llvmRepr} ${classType.vtableDefault}, ${vTablePP.typeId.llvmRepr} ${vTablePP.name}"))
-
+    _ <- store(classType.vtableDefault, vTablePP)
     _ <- putLine(LLVM.Return(None))
 
     codeBlock <- gets[CompilationState, Vector[LLVM.CodeBlock]](_.code)

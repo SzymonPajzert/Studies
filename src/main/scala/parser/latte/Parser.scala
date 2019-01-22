@@ -246,7 +246,7 @@ object Transformations {
       override def visit(p: Str, arg: Any): Type = StringType
       override def visit(p: Bool, arg: Any): Type = BoolType
       override def visit(p: Void, arg: Any): Type = VoidType
-      override def visit(p: ArrayT, arg: Any): Type = ArrayType(convertType(p.type_))
+      override def visit(p: ArrayT, arg: Any): Type = PointerType(new ArrayType(convertType(p.type_)))
       override def visit(p: latte.Absyn.Class, arg: Any): Type = PointerType(ClassType(p.ident_))
     }
 
@@ -316,6 +316,7 @@ object LatteParser extends Parser[UntypedLatte.Code] {
     try {
       Right(Transformations.program(p.pProgram))
     } catch {
+      case e: java.lang.NumberFormatException => Left(ParseFailure(yylex.line_num(), yylex.buff(), e.getMessage))
       case e: Exception => Left(ParseFailure(yylex.line_num(), yylex.buff(), e.getMessage))
     }
 

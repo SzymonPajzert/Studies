@@ -100,19 +100,33 @@ case class TypeInformation(private val parents: Map[ClassType, ClassType],
       case None => false
       case Some(parent) => (parent == baseclass) || isParent(parent, baseclass)
     }
-
   }
-  def field(className: ClassType): OffsetContainer[Type, Any] = defined(className).fields
-  def method(className: ClassType): OffsetContainer[FunctionType, ClassType] = defined(className).methods
+
+  private def lookup(className: ClassType): Offset = {
+    className match {
+      case arrayType: ArrayType =>
+        val eltType = arrayType.eltType
+
+        Offset(
+          fields = OffsetContainer(List(
+            ("data", PointerType(CharType), Unit),
+            ("length", IntType, Unit))),
+          methods = OffsetContainer(List()))
+      case _ => defined(className)
+    }
+  }
+
+  def field(className: ClassType): OffsetContainer[Type, Any] = lookup(className).fields
+  def method(className: ClassType): OffsetContainer[FunctionType, ClassType] = lookup(className).methods
 
   def vtable(className: ClassType): AggregateType = AggregateType(
-    s"${className.name}.vtable",
+    className.vtable,
     method(className).types.map(PointerType))
 
   def aggregate(className: ClassType): AggregateType = {
     val vtableType = PointerType(vtable(className).toRef)
     val fields = field(className).types.toList
-    AggregateType(className.name, vtableType :: fields)
+    AggregateType(className, vtableType :: fields)
   }
 
   def containedClasses: List[ClassType] = defined.keys.toList
@@ -135,7 +149,7 @@ case class TypeInformation(private val parents: Map[ClassType, ClassType],
 
 
   def exportStructures: String = (for {
-    className <- containedClasses
+    className <- new ArrayType(VoidType) :: containedClasses
 
     vtable = s"${className.vtable.llvmRepr} = ${this.vtable(className).structure}"
 
@@ -144,7 +158,7 @@ case class TypeInformation(private val parents: Map[ClassType, ClassType],
     }
 
     defaultVtable =
-    s"""${className.vtableDefault} = global ${className.vtable.llvmRepr} {
+    s"""${className.vtableDefault.name} = global ${className.vtable.llvmRepr} {
        |  ${funcIdentifiers.mkString(",\n  ")}
        |}""".stripMargin
 
@@ -153,7 +167,7 @@ case class TypeInformation(private val parents: Map[ClassType, ClassType],
     s"""
        |$vtable
        |
-         |$defaultVtable
+       |$defaultVtable
        |
-         |$classType""".stripMargin).mkString("\n\n\n")
+       |$classType""".stripMargin).mkString("\n\n\n")
 }

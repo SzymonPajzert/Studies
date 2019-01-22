@@ -18,8 +18,9 @@ object Type {
   case object CharType extends Type {
     override def llvmRepr: String = "i8"
   }
-  case class ArrayType(eltType: Type) extends Type {
-    override def llvmRepr: String = ???
+
+  class ArrayType(val eltType: Type) extends ClassType(s"array") {
+    override def vtable: ClassType = ClassType("internal.empty")
   }
 
   case class ConstArrayType(eltType: Type, size: Int) extends Type {
@@ -30,15 +31,15 @@ object Type {
     override def llvmRepr: String = s"%class.$name"
     def vtable: ClassType = ClassType(s"$name.vtable")
 
-    def vtableDefault: String = s"@class.${vtable.name}.value"
+    def vtableDefault: LLVM.Expression = LLVM.Value(s"@class.${vtable.name}.value", PointerType(vtable))
 
     def methodName(methodName: String): String = s"class.$name.method.$methodName"
 
     def constructor: String = s"class.$name.constructor"
   }
 
-  case class AggregateType(name: String, elements: Seq[Type]) extends Type {
-    override def llvmRepr: String = s"%class.$name"
+  case class AggregateType(toRef: ClassType, elements: Seq[Type]) extends Type {
+    override def llvmRepr: String = s"%class.${toRef.name}"
 
     /**
       * Structure like "type { * }"
@@ -48,8 +49,6 @@ object Type {
       val eltsMapped = (elements map (_.llvmRepr)).mkString(",\n  ")
       s"type { \n  $eltsMapped \n}"
     }
-
-    def toRef: ClassType = ClassType(name)
   }
 
   case object StringType extends Type {

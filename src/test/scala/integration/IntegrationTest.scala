@@ -36,7 +36,7 @@ class IntegrationTest extends FlatSpec with Matchers {
 
     val result = fileWithResult.expectedResult
 
-    it should s"return good result in LLVM for file ${fileWithResult.filename} in ${directory.directory}" in {
+    it should s"work for file ${fileWithResult.sourceFile} in ${directory.directory}" in {
       val llvmCodeOrError = llvmCompiler compile directory
 
 

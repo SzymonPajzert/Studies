@@ -1,0 +1,3 @@
+[submodule "src/test/resources/studenttests"]
+	path = src/test/resources/studenttests
+	url = git@github.com:tomwys/mrjp-tests.git

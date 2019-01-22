@@ -31,6 +31,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
     case TypedLatte.ArrayAccess((TypedLatte.Variable(name), _), index) =>
       compileExpr(index) map (Latte.ArrayAccess(Latte.Variable(name), _))
     case TypedLatte.Variable(identifier) => Latte.Variable(identifier)
+
     case TypedLatte.FieldAccess(expressionInf, element) =>
       val className = expressionInf._2 match {
         case c: ClassType => c

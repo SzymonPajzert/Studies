@@ -60,7 +60,7 @@ object CheckReturns extends Compiler[TypedLatte.Code, TypedLatte.Code] {
         val returnInst = returnType match {
           case VoidType => TypedLatte.Return(None)
           case IntType => TypedLatte.Return(Some((TypedLatte.ConstValue(0), returnType)))
-          case PointerType(_) => TypedLatte.Return(Some((TypedLatte.Null(returnType.deref.asInstanceOf[ClassType]), returnType)))
+          case ptrType : PointerType => TypedLatte.Return(Some((TypedLatte.Null(ptrType), returnType)))
         }
 
         f.copy(code = instructions ::: List(returnInst))

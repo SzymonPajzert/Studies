@@ -1,6 +1,6 @@
 package language
 
-import language.Type.Type
+import language.Type.{PointerType, Type}
 
 import scala.language.implicitConversions
 
@@ -13,9 +13,10 @@ object UntypedLatte extends HighLatte {
 
   def defaultValue(t: Type): UntypedLatte.ExpressionInf = t match {
     case Type.IntType => (UntypedLatte.ConstValue(0), Unit)
-    case Type.PointerType(c: Type.ClassType) => (UntypedLatte.Null(c), Unit)
+    case Type.PointerType(c: Type.ClassType) => (UntypedLatte.Null(PointerType(c)), Unit)
     case Type.StringType => (UntypedLatte.ConstValue(""), Unit)
-    case c: Type.ClassType => (UntypedLatte.Null(c), Unit)
+    case c: Type.ClassType => (UntypedLatte.Null(PointerType(c)), Unit)
+    case Type.VoidType => /* ignore */ (UntypedLatte.Null(PointerType(Type.VoidType)), Unit)
   }
 }
 
@@ -147,7 +148,7 @@ trait HighLatte extends Language {
     def pretty: String
   }
 
-  case class Null(classType: ClassType) extends Expression {
+  case class Null(nullType: PointerType) extends Expression {
     def pretty = "null"
   }
   case object Void extends Expression {
