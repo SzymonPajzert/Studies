@@ -19,30 +19,30 @@ object Test extends Assertions {
     result == expected
   }
 
-  def positive(filename: String, expectedResult: List[String]): Test = {
+  def positive(filename: String, expectedResult: List[String], input: String = ""): Test = {
     val testFile = FileUtil.testFile(filename)
     Test(testFile, testFile.getName, FileUtil.readFile(testFile), {
       case Right(result) => checkListEq(result, expectedResult)
-    }, true)
+    }, input, true)
   }
 
   def anyNegative(filename: String, parseable: Boolean): Test = {
     val testFile = FileUtil.testFile(filename)
     Test(testFile, testFile.getName, FileUtil.readFile(testFile), {
       case Left(_) => Unit
-    }, parseable)
+    }, "", parseable)
   }
 
   def negative(filename: String, expectedError: CompileException => Boolean): Test = {
     val testFile = FileUtil.testFile(filename)
     Test(testFile, testFile.getName, FileUtil.readFile(testFile), {
       case Left(result) => assert(expectedError(result))
-    }, true)
+    }, "", true)
   }
 
   def parser(filename: String): Test = {
     val testFile = FileUtil.testFile(s"latte/pos/$filename")
-    Test(testFile, testFile.getName, FileUtil.readFile(testFile), {case _ : Any => Unit}, true)
+    Test(testFile, testFile.getName, FileUtil.readFile(testFile), {case _ : Any => Unit}, "", true)
   }
 }
 
@@ -50,6 +50,7 @@ case class Test(sourceFile: File,
                 filename: String,
                 fileContent: String,
                 expectedResultPartial: PartialFunction[Either[CompileException, List[String]], Unit],
+                input: String,
                 parseable: Boolean) {
   import Assertions._
 
@@ -65,7 +66,11 @@ object FileEnumerator {
     import FileUtil._
 
     val expected = parseOut(readFile(testFile(s"$path.output")))
-    Test.positive(s"$path.lat", expected)
+    val input = {
+      val possibleInput = testFile(s"$path.input")
+      if (!possibleInput.exists()) "" else readFile(possibleInput)
+    }
+    Test.positive(s"$path.lat", expected, input)
   }
 
   def latteTestNegative(skip: Set[Int], nonparseable: Set[Int]): List[Test] = (1 to 28).toList filter (!skip.contains(_)) map { number =>

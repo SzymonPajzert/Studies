@@ -18,7 +18,7 @@ case class MethodNotFound(name: String, classT: ClassType, expr: String = "<expr
 case class WrongType(expected: Type, actual: Type, expr: String = "<expr>", typeInformation: TypeInformation) extends TypingFailure // TODO add representation and line number
 case class WrongArgumentNumber(expected: Int, actual: Int, name: String, typeInformation: TypeInformation) extends TypingFailure
 case class ClassUndefined(className: ClassType, typeInformation: TypeInformation) extends TypingFailure
-
+case class FunctionVoidArgument(funName: String, argName: String, typeInformation: TypeInformation) extends TypingFailure
 trait MainFailure extends CompileException
 case object NoMainFunction extends MainFailure
 case class WrongMainSignature(signature: FunctionType) extends MainFailure

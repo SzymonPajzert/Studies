@@ -122,13 +122,12 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
       */
     def calculateArrayAddress(arrayAccess: Latte.ArrayAccess): StateOf[LLVM.RegisterT] = {
       arrayAccess match {
-        case Latte.ArrayAccess(Latte.Variable(arrayAggregate), element) =>
+        case Latte.ArrayAccess(arrayAggregateU, element) =>
           for {
-            arrayAggregateLocation <- getLocation(arrayAggregate)      // AggregateType**
-            arrayAggregate <- loadRegister(arrayAggregateLocation)     // AggregateType*
+            arrayAggregate <- compileExpression(arrayAggregateU)     // AggregateType*
 
             eltType = arrayAggregate.typeId.deref.asInstanceOf[ArrayType].eltType
-            arrayPtrRawLoc <- calculateFieldAddress(arrayAggregate, 0)    // i8*
+            arrayPtrRawLoc <- calculateFieldAddress(arrayAggregate.asInstanceOf[RegisterT], 0)    // i8*
             arrayPtrRaw <- loadRegister(arrayPtrRawLoc)
 
             arrayPtr <- getRegister(PointerType(eltType))

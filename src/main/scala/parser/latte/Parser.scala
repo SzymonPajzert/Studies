@@ -221,17 +221,22 @@ object Transformations {
       implicit def toExpInf(expr: UntypedLatte.Expression): UntypedLatte.ExpressionInf =
         (expr, Unit.asInstanceOf[UntypedLatte.ExpressionInformation])
 
+      def swapAccess(ident: String, expr: ExpressionInf): UntypedLatte.Instruction => UntypedLatte.Instruction = {
+        x => x
+      }
+
       override def visit(p: ForAbb, arg: Any): List[Instruction] = {
 
+        val expr = expression(p.expr_)
+        val increment: Expression = FunctionCall("int_add", Seq(p.ident_, const(1)))
+
         val modifiedInside =
-          BlockInstruction(instruction(p.stmt_) :::
-          {
-            val funCall: Expression = FunctionCall("int_add", Seq(p.ident_, const(1)))
+          BlockInstruction(
+            (instruction(p.stmt_) map swapAccess(p.ident_, expr)) :::
+            List(Assignment(p.ident_, increment))
+          )
 
-            List(Assignment(p.ident_, funCall))
-          })
-
-        val length = UntypedLatte.FieldAccess(expression(p.expr_), "length")
+        val length = UntypedLatte.FieldAccess(expr, "length")
 
         val condition =
           UntypedLatte.FunctionCall("gen_lt", Seq(UntypedLatte.Variable(p.ident_), length))

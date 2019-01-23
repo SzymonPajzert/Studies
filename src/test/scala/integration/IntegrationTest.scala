@@ -35,18 +35,18 @@ class IntegrationTest extends FlatSpec with Matchers {
     val directory = OutputDirectory.createTemporary.withSourceFile(
       fileWithResult.filename, fileWithResult.fileContent)
 
-    val result = fileWithResult.expectedResult
+
 
     it should s"work for file ${fileWithResult.sourceFile} in ${directory.directory}" in {
       val llvmCodeOrError = llvmCompiler compile directory
-
+      val input = fileWithResult.input
 
       llvmCodeOrError match {
         case Left(exceptions) => fileWithResult.expectedResult(Left(exceptions))
         case Right(llvmCode) => {
           val result = LlvmRunner.compile(llvmCode, directory)
           if (result.success) {
-            val runResult = LlvmRunner.run(directory)
+            val runResult = LlvmRunner.run(directory, input)
             if(runResult.success) {
               val output = FileUtil.parseOut(runResult.stdout)
               fileWithResult.expectedResult(Right(output))

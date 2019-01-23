@@ -23,10 +23,10 @@ trait BackendRunner[Code] {
     val outputDirectory = OutputDirectory.create(new File(s"/tmp/mrjp$directoryCounter"))
 
     val result = compile(assemblyCode, outputDirectory)
-    val output = run(outputDirectory)
+    val output = run(outputDirectory, "")
     output
   }
 
   def compile(code: Code, outputDirectory: OutputDirectory): CommandResult[String]
-  def run(outputDirectory: OutputDirectory): CommandResult[String]
+  def run(outputDirectory: OutputDirectory, input: String): CommandResult[String]
 }

@@ -86,7 +86,10 @@ object FileUtil {
   def testFilesRoot: File = new File("/home/svp/Programming/mrjp/src/test/resources/")
   def testFile(filename: String): File = new File("/home/svp/Programming/mrjp/src/test/resources/" + filename)
 
-  def runCommand(command: String, directory: OutputDirectory, maybeWorkingDir: Option[File] = None): CommandResult[String] = {
+  def runCommand(command: String,
+                 directory: OutputDirectory,
+                 maybeWorkingDir: Option[File] = None,
+                 input: String = ""): CommandResult[String] = {
     val process = maybeWorkingDir match {
       case None =>
         Runtime.getRuntime.exec(command)
@@ -103,6 +106,10 @@ object FileUtil {
     val errorGobbler = new StreamGobbler(process.getErrorStream,
       (input) => stderr ++= "\n" + input)
 
+    val writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream))
+    writer.write(input)
+    writer.flush()
+
     val executor = new ScheduledThreadPoolExecutor(2)
 
     executor.execute(stdoutGobbler)
@@ -112,6 +119,7 @@ object FileUtil {
 
     executor.shutdown()
     executor.awaitTermination(10, TimeUnit.SECONDS)
+    writer.close()
 
     CommandResult(terminated && exitCode == 0, stdout.toString, stderr.toString)
   }

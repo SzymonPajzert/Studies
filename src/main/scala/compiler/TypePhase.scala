@@ -30,6 +30,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     getTypeInformation map (WrongArgumentNumber(expected, actual, name, _))
   def classUndefined(className: ClassType): TypeEnvironment[TypingFailure] =
     getTypeInformation map (ClassUndefined(className, _))
+  def functionVoidArgument(funName: String, argName: String): TypeEnvironment[TypingFailure] =
+    getTypeInformation map (FunctionVoidArgument(funName, argName, _))
 
   case class VariableState(counter: Int, fromCurrentBlock: Boolean, typeId: Type)
   type VarBinds = Map[String, VariableState]
@@ -137,6 +139,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def funLocation(fLoc: ParsedClasses.FunLocation): TypeEnvironment[TypedLatte.FunLocationInf] = fLoc match {
     case ParsedClasses.FunName(name: String) => for {
       functionType <- (name match {
+        case "error" => FunctionType(VoidType, Seq(StringType))
         case "printInt" => FunctionType(VoidType, Seq(IntType))
         case "printString" => FunctionType(VoidType, Seq(StringType))
         case "readInt" => FunctionType(IntType, Seq())
@@ -378,7 +381,10 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def addSignature(signature: ParsedClasses.FunctionSignature): TypeEnvironment[Unit] = {
     val name = signature.identifier
     val typeId = FunctionType(signature.returnType, signature.arguments.map(_._2))
-    putNewFunBind(name, typeId)
+    signature.arguments find { case (_, t) => t == VoidType} match {
+      case Some(voidArgument) => createError(functionVoidArgument(name, voidArgument._1))
+      case None => putNewFunBind(name, typeId)
+    }
   }
 
   /**

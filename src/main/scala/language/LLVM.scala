@@ -174,8 +174,10 @@ object LLVM extends Language {
 
   def serializeCode(code: Code): String = {
     s"""
+       |declare i32 @readInt()
        |declare void @printInt(i32)
        |declare void @printString(i8*)
+       |declare void @error(i8*)
        |declare i8* @malloc(i32)
        |declare i8* @string_concat(i8*, i8*)
        |
