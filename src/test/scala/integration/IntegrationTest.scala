@@ -2,7 +2,7 @@ package integration
 
 import backend.{FileUtil, OutputDirectory}
 import backend.llvm.LlvmRunner
-import compiler.{CheckReturns, Compiler, NormalizeQuadSubblocks, ParseClasses, TypePhase}
+import compiler.{CheckMain, CheckReturns, Compiler, NormalizeQuadSubblocks, ParseClasses, TypePhase}
 import org.scalatest.{FlatSpec, Matchers}
 import parser.latte.LatteParser
 
@@ -26,7 +26,8 @@ class IntegrationTest extends FlatSpec with Matchers {
         .debug("parser", LatteParser)
         .nextStage("parse_class", ParseClasses)
         .nextStage("typed", TypePhase)
-        .nextStage("returns", CheckReturns)
+        .nextStage("check_main", CheckMain)
+        .nextStage("check_returns", CheckReturns)
         .nextStage("untyped", compiler.UntypingPhase)
         .nextStage("quad", compiler.LatteToQuadCode)
         .nextStage("normalize_quad", NormalizeQuadSubblocks)

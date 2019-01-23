@@ -111,6 +111,10 @@ object LLVM extends Language {
     new File("/home/svp/Programming/mrjp/deps/runtime.bc")
   }
 
+  def externalDepsLocation: File = {
+    new File("/home/svp/Programming/mrjp/deps/external.bc")
+  }
+
   def convertArgs(expressions: List[LLVM.Expression]): String = {
     (expressions map (exp => s"${exp.typeId.llvmRepr} ${exp.name}")).mkString(", ")
   }
@@ -173,6 +177,7 @@ object LLVM extends Language {
        |declare void @printInt(i32)
        |declare void @printString(i8*)
        |declare i8* @malloc(i32)
+       |declare i8* @string_concat(i8*, i8*)
        |
        |; begin global section
        |${code.globalCode}

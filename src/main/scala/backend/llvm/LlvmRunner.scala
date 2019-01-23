@@ -14,6 +14,7 @@ object LlvmRunner extends BackendRunner[LLVM.Code] {
 
     saveToFile(LLVM.serializeCode(code), outputDirectory.llvmFile)
 
+
     runCommand(
       s"""
          |llvm-as
@@ -25,7 +26,7 @@ object LlvmRunner extends BackendRunner[LLVM.Code] {
       s"""
          |llvm-link
          | -o ${outputDirectory.llvmExecutable}
-         | ${outputDirectory.llvmTempExecutable} ${LLVM.runtimeLocation}
+         | ${outputDirectory.llvmTempExecutable} ${LLVM.runtimeLocation}  ${LLVM.externalDepsLocation}
        """.stripMargin,
       outputDirectory
     )

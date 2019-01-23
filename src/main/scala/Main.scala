@@ -22,6 +22,7 @@ object Main extends App {
       LatteParser ~>
         ParseClasses ~>
         TypePhase ~>
+        CheckMain ~>
         CheckReturns ~>
         UntypingPhase ~>
         LatteToQuadCode ~>

@@ -74,6 +74,7 @@ object UntypingPhase extends Compiler[TypedLatte.Code, Latte.Code] {
       case TypedLatte.Cast(PointerType(c: ClassType), (expressionT, PointerType(s: ClassType))) => for {
         expr <- compileExpr((expressionT, PointerType(s)))
       } yield Latte.Cast(PointerType(c), expr)
+      case TypedLatte.Cast(PointerType(c: ClassType), (TypedLatte.Null(_), _)) => Latte.Null(PointerType(c))
     }
   }
 

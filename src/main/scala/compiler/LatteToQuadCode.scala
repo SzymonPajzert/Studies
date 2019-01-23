@@ -297,6 +297,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
               case Latte.FunName("int_mod") => (s"srem i32", IntType)
 
               case Latte.FunName("gen_neq") => (s"icmp ne ${leftValue.typeId.llvmRepr}", BoolType)
+              case Latte.FunName("gen_ge") => (s"icmp sge ${leftValue.typeId.llvmRepr}", BoolType)
               case Latte.FunName("gen_gt") => (s"icmp sgt ${leftValue.typeId.llvmRepr}", BoolType)
               case Latte.FunName("gen_eq") => (s"icmp eq ${leftValue.typeId.llvmRepr}", BoolType)
               case Latte.FunName("gen_lt") => (s"icmp slt ${leftValue.typeId.llvmRepr}", BoolType)
