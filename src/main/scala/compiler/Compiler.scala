@@ -19,13 +19,14 @@ case class WrongType(expected: Type, actual: Type, expr: String = "<expr>", type
 case class WrongArgumentNumber(expected: Int, actual: Int, name: String, typeInformation: TypeInformation) extends TypingFailure
 case class ClassUndefined(className: ClassType, typeInformation: TypeInformation) extends TypingFailure
 case class FunctionVoidArgument(funName: String, argName: String, typeInformation: TypeInformation) extends TypingFailure
+case class WrongReturnType(expected: Type, instead: Type, typeInformation: TypeInformation) extends TypingFailure
+
 trait MainFailure extends CompileException
 case object NoMainFunction extends MainFailure
 case class WrongMainSignature(signature: FunctionType) extends MainFailure
 
 trait ReturnFailure extends CompileException
 case class MissingReturn(functionName: String) extends ReturnFailure
-case class WrongReturnType(expected: Type, instead: Type) extends ReturnFailure
 
 // TODO add <: Language
 trait Compiler[A, B] {

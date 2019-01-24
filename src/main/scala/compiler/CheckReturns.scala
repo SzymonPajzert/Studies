@@ -1,7 +1,7 @@
 package compiler
 
 import language.Type._
-import language.{LatteCompiler, TypedLatte}
+import language.{LatteCompiler, TypeInformation, TypedLatte}
 
 import scalaz._
 
@@ -11,48 +11,67 @@ object CheckReturns extends Compiler[TypedLatte.Code, TypedLatte.Code] {
     case _ => false
   }
 
-  def returnCovers(block: TypedLatte.Block, returnType: Type): WrongReturnType \/ Boolean = {
-    def recursive(subblock: TypedLatte.Block) = returnCovers(subblock, returnType)
-
-    type PackBool = WrongReturnType \/ Boolean
-    def or(left: PackBool, right: PackBool): PackBool = for { l <- left; r <- right } yield l || r
-    def and(left: PackBool, right: PackBool): PackBool = for { l <- left; r <- right } yield l && r
-
-
-    block match {
-      case Nil => \/-(false)
-      case TypedLatte.BlockInstruction(subblock) :: rest => or(recursive(subblock), recursive(rest))
-      case TypedLatte.Return(Some((_, t))) :: _   => if(returnType == t) \/-(true) else -\/(WrongReturnType(returnType, t))
-      case TypedLatte.Return(None) :: _           => if(returnType == VoidType) \/-(true) else -\/(WrongReturnType(returnType, VoidType))
+  class ReturnPath(val typeInformation: TypeInformation, val returnType: Type) {
+    // Exists some path that achieves return
+    def returnAchievable: TypedLatte.Block => Boolean = {
+      case Nil => false
+      case TypedLatte.BlockInstruction(subblock) :: rest => returnAchievable(subblock) || returnAchievable(rest)
+      case TypedLatte.Return(_) :: _ => true
       case (ifThen : TypedLatte.IfThen) :: rest =>
-        val thenIsCovered = recursive(List(ifThen.thenInst))
+        val thenIsCovered = returnAchievable(List(ifThen.thenInst))
         val elseIsCovered = ifThen.elseOpt match {
-          case None => \/-(false)
-          case Some(els) => recursive(List(els))
+          case None => false
+          case Some(els) => returnAchievable(List(els))
         }
 
         Unit match {
-          case _ if is(ifThen.condition, true) => or(thenIsCovered, recursive(rest))
-          case _ if is(ifThen.condition, false) => or(elseIsCovered, recursive(rest))
-          case _ => or(and(thenIsCovered, elseIsCovered), recursive(rest))
+          case _ if is(ifThen.condition, true) => thenIsCovered || returnAchievable(rest)
+          case _ if is(ifThen.condition, false) => elseIsCovered || returnAchievable(rest)
+          case _ => (thenIsCovered ||elseIsCovered) || returnAchievable(rest)
         }
-      case TypedLatte.While(condition, _) :: rest if is(condition, false) => recursive(rest)
-      case TypedLatte.While(_, instr) :: rest => or(recursive(List(instr)), recursive(rest))
-      case _ :: rest => recursive(rest)
+      case TypedLatte.While(condition, _) :: rest if is(condition, false) => returnAchievable(rest)
+      case TypedLatte.While(condition, instr) :: rest if is(condition, true) =>
+        returnAchievable(List(instr)) || returnAchievable(rest)
+      case TypedLatte.While(_, instr) :: rest => returnAchievable(List(instr)) || returnAchievable(rest)
+      case _ :: rest => returnAchievable(rest)
+    }
+
+    // Every execution path achieves return
+    def returnCovers: TypedLatte.Block => Boolean = {
+      case Nil => false
+      case TypedLatte.BlockInstruction(subblock) :: rest => returnAchievable(subblock) || returnAchievable(rest)
+      case TypedLatte.Return(_) :: _ => true
+      case (ifThen : TypedLatte.IfThen) :: rest =>
+        val thenIsCovered = returnAchievable(List(ifThen.thenInst))
+        val elseIsCovered = ifThen.elseOpt match {
+          case None => false
+          case Some(els) => returnAchievable(List(els))
+        }
+
+        Unit match {
+          case _ if is(ifThen.condition, true) => thenIsCovered || returnAchievable(rest)
+          case _ if is(ifThen.condition, false) => elseIsCovered || returnAchievable(rest)
+          case _ => (thenIsCovered && elseIsCovered) || returnAchievable(rest)
+        }
+      case TypedLatte.While(condition, _) :: rest if is(condition, false) => returnAchievable(rest)
+      case TypedLatte.While(condition, instr) :: rest if is(condition, true) =>
+        returnAchievable(List(instr)) || returnAchievable(rest)
+      case TypedLatte.While(_, instr) :: rest => returnAchievable(List(instr)) || returnAchievable(rest)
+      case _ :: rest => returnAchievable(rest)
     }
   }
 
-  def checkReturnInFunction: TypedLatte.TopDefinition => Either[CompileException, TypedLatte.TopDefinition] = {
+
+
+
+
+  def checkReturnInFunction(typeInformation: TypeInformation): TypedLatte.TopDefinition => Either[CompileException, TypedLatte.TopDefinition] = {
     case func: TypedLatte.Func if func.signature.returnType == VoidType => {
-      returnCovers(func.code, func.signature.returnType) match {
-        case -\/(error) => Left(error)
-        case \/-(__) => Right(addReturn(func))
-      }
+      Right(addReturn(func))
     }
 
-    case func: TypedLatte.Func => returnCovers(func.code, func.signature.returnType) match {
-      case -\/(error) => Left(error)
-      case \/-(bool) => if(bool) Right(addReturn(func)) else Left(MissingReturn(func.signature.identifier))
+    case func: TypedLatte.Func => new ReturnPath(typeInformation, func.signature.returnType).returnCovers(func.code) match {
+      case bool => if(bool) Right(addReturn(func)) else Left(MissingReturn(func.signature.identifier))
     }
 
   }
@@ -74,7 +93,7 @@ object CheckReturns extends Compiler[TypedLatte.Code, TypedLatte.Code] {
   }
 
   override def compile(code: TypedLatte.Code): Either[CompileException, TypedLatte.Code] = {
-    val mapped = code._1.toList map checkReturnInFunction
+    val mapped = code._1.toList map checkReturnInFunction(code._2)
     val errors = mapped collect { case Left(error) => error }
 
     errors match {

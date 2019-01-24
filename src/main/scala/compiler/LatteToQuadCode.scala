@@ -36,7 +36,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     _ <- modify[CompilationState](_.copy(tmpCounter = counter + 1))
   } yield counter
 
-  def getConst(t : Type = IntType): StateOf[LLVM.Register[t.type]] = for {
+  def getConst(t : Type = IntType): StateOf[LLVM.Register] = for {
     counter <- increaseCounter
     section <- gets[CompilationState, String](_.sectionId)
   } yield LLVM.constRegister(s"$section.$counter", t)
@@ -60,7 +60,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
   } yield location
 
-  def getRegister(t : Type = IntType): StateOf[LLVM.Register[t.type]] = for {
+  def getRegister(t : Type = IntType): StateOf[LLVM.Register] = for {
     tmpCounter <- increaseCounter
   } yield LLVM.register(s"tmp$tmpCounter", t)
 
@@ -70,7 +70,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
     * @param value
     * @return
     */
-  def createStringConst(value: String): StateOf[LLVM.Register[PointerType]] = for {
+  def createStringConst(value: String): StateOf[LLVM.Register] = for {
     constName <- getConst(PointerType(CharType))
     arrayType = ConstArrayType(CharType, value.length + 1)
     newLine = s"""${constName.name} = private unnamed_addr constant ${arrayType.llvmRepr} c"$value\\00""""
@@ -182,9 +182,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
     def allocHeapAndCast(castType: Type, size: LLVM.Expression): StateOf[LLVM.RegisterT] = for {
       sizeMult <- getRegister(IntType)
-      _ <- putLine(LLVM.Assign(sizeMult, new LLVM.Func[Nothing] {
-        override def getLine: String = s"mul i32 8, ${size.name}"
-      }))
+      _ <- putLine(LLVM.Assign(sizeMult, LLVM.Func { s"mul i32 8, ${size.name}" }))
 
       instanceRawMemory <- getRegister(PointerType(CharType))
       returnRegister <- getRegister(PointerType(castType))
@@ -305,8 +303,8 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
             }
 
             returnRegister <- getRegister(retType)
-            _ <- putLine(LLVM.Assign(returnRegister, new LLVM.Func[Nothing]{
-              def getLine: String = s"$operation ${leftValue.name}, ${rightValue.name}"
+            _ <- putLine(LLVM.Assign(returnRegister, LLVM.Func {
+              s"$operation ${leftValue.name}, ${rightValue.name}"
             }))
           } yield returnRegister
         }
@@ -315,8 +313,8 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
           argVal <- compileExpression(args.head)
           returnRegister <- getRegister(argVal.typeId)
 
-          _ <- putLine(LLVM.Assign(returnRegister, new LLVM.Func[Nothing]{
-            def getLine: String = s"xor ${argVal.typeId.llvmRepr} ${argVal.name}, 1"
+          _ <- putLine(LLVM.Assign(returnRegister, LLVM.Func {
+            s"xor ${argVal.typeId.llvmRepr} ${argVal.name}, 1"
           }))
         } yield returnRegister
 
@@ -325,7 +323,9 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
             functions <- gets[CompilationState, Functions](_.functionTypes)
 
             identifier <- (name match {
+              case "error" => state(LLVM.FunctionId(name, VoidType))
               case "string_concat" => state(LLVM.FunctionId(name, PointerType(CharType)))
+              case "readString" => state(LLVM.FunctionId(name, PointerType(CharType)))
               case "readInt" => state(LLVM.FunctionId(name, IntType))
               case "printInt" => state(LLVM.FunctionId(name, VoidType))
               case "printString" => state(LLVM.FunctionId(name, VoidType))
@@ -544,6 +544,7 @@ object LatteToQuadCode extends Compiler[Latte.Code, LLVM.Code] {
 
     _ <- fields.zipWithIndex.toList.traverseS { case ((typeId, offset: Int)) => {
       val value = typeId match {
+        case Type.BoolType =>                        Latte.ConstValue(true)
         case Type.IntType =>                         Latte.ConstValue(0)
         case Type.StringType =>                      Latte.ConstValue("")
         case c: Type.ClassType =>                    Latte.Null(c)

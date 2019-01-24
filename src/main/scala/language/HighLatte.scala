@@ -26,6 +26,8 @@ abstract class LatteCompiler(val A: HighLatte, val B: HighLatte) {
 
   def locationInteresting: PartialFunction[A.LocationInf, B.LocationInf] = PartialFunction.empty
 
+  def expressionInteresting: PartialFunction[A.ExpressionInf, B.ExpressionInf] = PartialFunction.empty
+
   def funLocation: A.FunLocationInf => B.FunLocationInf = {
     case (floc, inf) => (floc match {
       case x : A.FunName => B.FunName(x.name)
@@ -45,7 +47,7 @@ abstract class LatteCompiler(val A: HighLatte, val B: HighLatte) {
     }, mapInformation(inf))
   }
 
-  def expression: A.ExpressionInf => B.ExpressionInf = {
+  def expression: A.ExpressionInf => B.ExpressionInf = expressionInteresting orElse {
     case (expr, inf) => (expr match {
       case x : A.FunctionCall =>
         B.FunctionCall(funLocation(x.location), x.arguments map expression)

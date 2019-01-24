@@ -1,7 +1,7 @@
 package compiler
 
+import language._
 import language.Type._
-import language.{ParsedClasses, Type, TypeInformation, TypedLatte}
 
 import scala.language.implicitConversions
 import scalaz.Scalaz._
@@ -32,6 +32,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     getTypeInformation map (ClassUndefined(className, _))
   def functionVoidArgument(funName: String, argName: String): TypeEnvironment[TypingFailure] =
     getTypeInformation map (FunctionVoidArgument(funName, argName, _))
+  def wrongReturnType(expected: Type, instead: Type): TypeEnvironment[TypingFailure] =
+    getTypeInformation map (WrongReturnType(expected, instead, _))
 
   case class VariableState(counter: Int, fromCurrentBlock: Boolean, typeId: Type)
   type VarBinds = Map[String, VariableState]
@@ -48,7 +50,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
 
   case class Binds(variables: VarBinds, functions: FunBinds)
 
-  type KS = (Binds, TypeInformation)
+  type KS = (Binds, TypeInformation, Type)
 
   type S[A] = State[KS, A]
   type TypeEnvironment[A] = EitherT[S, CompileException, A]
@@ -139,10 +141,6 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def funLocation(fLoc: ParsedClasses.FunLocation): TypeEnvironment[TypedLatte.FunLocationInf] = fLoc match {
     case ParsedClasses.FunName(name: String) => for {
       functionType <- (name match {
-        case "error" => FunctionType(VoidType, Seq(StringType))
-        case "printInt" => FunctionType(VoidType, Seq(IntType))
-        case "printString" => FunctionType(VoidType, Seq(StringType))
-        case "readInt" => FunctionType(IntType, Seq())
         case _ if primitiveFunctions contains name => primitiveFunctions(name)
         case "bool_not" => FunctionType(BoolType, Seq(BoolType))
         case userDefinedName => lookupFunctionSignature(userDefinedName)
@@ -193,10 +191,8 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     result <- (inf._2, expectedType) match {
       case (a, b) if a == b => ok(inf)
 
-      case (PointerType(a: ClassType), PointerType(b: ClassType)) if typeInformation.isParent(a, b) =>
-        ok((TypedLatte.Cast(PointerType(b), inf), PointerType(b)))
-
-      case (null, ptr: PointerType) => ok((TypedLatte.Cast(ptr, inf), ptr))
+      case (a, b) if typeInformation.isParent(a, b) =>
+        ok((TypedLatte.Cast(b, inf), b))
 
       case _ => createError(wrongType(expectedType, inf._2, inf._1.pretty))
     }
@@ -218,14 +214,33 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def expression(expr: ParsedClasses.ExpressionInf): TypeEnvironment[TypedLatte.ExpressionInf] = expr._1 match {
     case ParsedClasses.FunctionCall((ParsedClasses.FunName(name), _), arguments) if Set("gen_eq", "gen_neq") contains name => for {
       argsNotChecked <- mapM(arguments.toList, expression)
-      argT <- argsNotChecked match {
-        case left :: right :: Nil => if (checkType(left._2, right._2)) ok(left._2) else
-          createError(wrongType(left._2, right._2))
+      typeInformation <- getTypeInformation
+
+      argPairWithType <- argsNotChecked match {
+        case left :: right :: Nil => (left._2, right._2) match {
+            case (a, b) if a == b => ok((Seq(left, right), a))
+
+            case (subclass, base) if typeInformation.isParent(subclass, base) => {
+              val leftCast = (TypedLatte.Cast(base, left), base)
+              ok((Seq(leftCast, right), base))
+            }
+
+            case (base, subclass) if typeInformation.isParent(subclass, base) => {
+              val rightCast = (TypedLatte.Cast(base, right), base)
+              ok((Seq(left, rightCast), base))
+            }
+
+            case (a, b) => createError(wrongType(a, b, right._1.pretty))
+          }
         case _ => createError(wrongArgumentNumber(2, arguments.length, name))
       }
+
+      args = argPairWithType._1
+      argT = argPairWithType._2
+
       funcT = FunctionType(BoolType, Seq(argT, argT))
 
-    } yield (TypedLatte.FunctionCall((TypedLatte.FunName(name), funcT), argsNotChecked), BoolType)
+    } yield (TypedLatte.FunctionCall((TypedLatte.FunName(name), funcT), args), BoolType)
 
     case ParsedClasses.FunctionCall((ParsedClasses.FunName("int_add"), _), arguments) => for {
       argsNotChecked <- mapM(arguments.toList, expression)
@@ -254,8 +269,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
 
       args <- mapM(argsNotChecked zip argTypes, (checkTypeWithImplicitCasts _).tupled)
 
-      // TODO check args match
-    } yield (TypedLatte.FunctionCall(loc, argsNotChecked), rt)
+    } yield (TypedLatte.FunctionCall(loc, args), rt)
 
     case ParsedClasses.ConstValue(value) => (TypedLatte.ConstValue(value), extractType(value))
 
@@ -285,7 +299,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       pair => (pair._1, pair._2.copy(fromCurrentBlock = false))
     })
 
-    (newBinds, state._2)
+    state.copy(_1 = newBinds)
   }
 
   def setCounter(identifier: String, counter: Int, typeValue: Type): TypeEnvironment[Int] = {
@@ -295,6 +309,10 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
       }
     } yield counter) : TypeEnvironment[Int]
   }
+
+  def functionReturnType: TypeEnvironment[Type] = for {
+    triple <- get[KS]
+  } yield triple._3
 
   def instruction(ins: ParsedClasses.Instruction): TypeEnvironment[TypedLatte.Instruction] = ins match {
     case ParsedClasses.Declaration(identifier, typeValue) => for {
@@ -327,8 +345,17 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case ParsedClasses.DiscardValue(expr) => expression(expr) map TypedLatte.DiscardValue
 
     case ParsedClasses.Return(value) => value match {
-      case None => TypedLatte.Return(None)
-      case Some(v) => expression(v) map (vE => TypedLatte.Return(Some(vE)))
+      case None => for {
+        returnType <- functionReturnType
+        _ <- if (returnType == VoidType) ok(Unit) else createError(wrongReturnType(returnType, VoidType))
+      } yield TypedLatte.Return(None)
+
+      case Some(v) => for {
+        returnType <- functionReturnType
+        _ <- if (returnType == VoidType) createError(wrongReturnType(VoidType, returnType)) else ok(Unit)
+        exprCast <- expression(v)
+        expr <- checkTypeWithImplicitCasts(exprCast, returnType)
+      } yield TypedLatte.Return(Some(expr))
     }
 
     case ParsedClasses.IfThen(conditionU, thenInstU, elseUOpt) => for {
@@ -400,7 +427,7 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
     case Nil => \/-(Nil)
     case (hM :: tM) => for {
       tail <- runWithSeparateStates(tM, state)
-      hO <- topDefinition(hM).run(state)._2
+      hO <- topDefinition(hM).run(state.copy(_3 = hM.asInstanceOf[ParsedClasses.Func].signature.returnType))._2
     } yield hO match {
       case Some(h) => h :: tail
       case None => tail
@@ -410,7 +437,9 @@ object TypePhase extends Compiler[ParsedClasses.Code, TypedLatte.Code] {
   def getTypeInformation: TypeEnvironment[TypeInformation] =
     stateToEither(get[KS] map (_._2))
 
-  def initialState(tI: TypeInformation): KS = (Binds(Map(), Map()), tI)
+  def initialState(tI: TypeInformation): KS = {
+    (Binds(Map(), DeclaredFunctions.all), tI, VoidType)
+  }
 
   override def compile(code: ParsedClasses.Code): Either[CompileException, TypedLatte.Code] = {
     val typePhase: TypeEnvironment[TypedLatte.Code] = for {

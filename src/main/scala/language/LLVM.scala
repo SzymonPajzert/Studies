@@ -33,14 +33,14 @@ object LLVM extends Language {
     override def typeId: Type = ???
   }
   case class Value(name: String, typeId: Type) extends Expression
-  case class Register[+T <: Type](value: String, typeId: Type, deref: String) extends Expression {
+  case class Register(value: String, typeId: Type, deref: String) extends Expression {
     def name: String = s"$deref$value"
   }
 
-  def register[T <: Type](value: String, typeId: Type): Register[T] = new Register(value, typeId, "%")
-  def constRegister[T <: Type](value: String, typeId: Type): Register[T] = new Register(value, typeId, "@.")
+  def register[T <: Type](value: String, typeId: Type): Register = new Register(value, typeId, "%")
+  def constRegister[T <: Type](value: String, typeId: Type): Register = new Register(value, typeId, "@.")
 
-  type RegisterT = Register[Type]
+  type RegisterT = Register
 
   sealed trait Operation { def name: String }
   case object Add extends Operation { val name = "add" }
@@ -51,57 +51,52 @@ object LLVM extends Language {
   def failJumpPoint: JumpPoint = JumpPoint("fail")
   def jump(point: JumpPoint) = JumpIf(ConstTrue, point, failJumpPoint)
 
-  trait Func[+T <: Type] {
-    def getLine: String
-  }
+  case class Func(line: String)
 
   // TODO it should check types of the incomming registers
-  def getElementPtr[T <: Type](elementType: Type,
-                               pointer: Register[T],
-                               indices: List[Expression] = List(Value("0", IntType), Value("0", IntType))): Func[T] = new Func[T] {
-    override def getLine: String = {
-      val sourceType = PointerType(elementType)
-      val accessTypes = s"${elementType.llvmRepr}, ${sourceType.llvmRepr}"
-      val indicesStr = (indices map (index => s"${index.typeId.llvmRepr} ${index.name}")).mkString(", ")
-      s"getelementptr $accessTypes ${pointer.name}, $indicesStr"
-    }
+  def getElementPtr(elementType: Type,
+                    pointer: Register,
+                    indices: List[Expression] = List(Value("0", IntType), Value("0", IntType))): Func = Func {
+    val sourceType = PointerType(elementType)
+    val accessTypes = s"${elementType.llvmRepr}, ${sourceType.llvmRepr}"
+    val indicesStr = (indices map (index => s"${index.typeId.llvmRepr} ${index.name}")).mkString(", ")
+    s"getelementptr $accessTypes ${pointer.name}, $indicesStr"
   }
 
-  def alloca(t: Type, size: Option[Expression] = None): Func[t.type] = new Func[t.type] {
-    override def getLine: String = size match {
+  def alloca(t: Type, size: Option[Expression] = None): Func = Func {
+    size match {
       case None => s"alloca ${t.llvmRepr}"
       case Some(s) => s"alloca ${t.llvmRepr}, ${s.typeId.llvmRepr} ${s.name}"
     }
   }
-  def load[T <: Type](valueLocation: Register[T]): Func[T] = new Func[T] {
-    override def getLine: String = s"load ${valueLocation.typeId.deref.llvmRepr}, ${valueLocation.typeId.llvmRepr} ${valueLocation.name}"
+
+  def load(valueLocation: Register): Func = Func {
+    s"load ${valueLocation.typeId.deref.llvmRepr}, ${valueLocation.typeId.llvmRepr} ${valueLocation.name}"
   }
-  def icmpSgt(left: Expression, right: Expression): Func[Nothing] = new Func[Nothing] {
-    override def getLine: String = s"icmp sgt ${left.typeId.llvmRepr} ${left.name}, ${right.name}"
+  def icmpSgt(left: Expression, right: Expression): Func = Func {
+    s"icmp sgt ${left.typeId.llvmRepr} ${left.name}, ${right.name}"
   }
-  def expression(expr: Expression): Func[Nothing] = new Func[Nothing] {
-    override def getLine: String = s"add i32 0, ${expr.name}"
+  def expression(expr: Expression): Func = Func {
+    s"add i32 0, ${expr.name}"
   }
-  def phi(blocks: (JumpPoint, Expression)*): Func[Nothing] = new Func[Nothing] {
+  def phi(blocks: (JumpPoint, Expression)*): Func = Func {
     def elts: String = (blocks map {
       case (jmpPoint, value) => s"[${value.name}, %${jmpPoint.name}]"
     }).mkString(", ")
 
-    override def getLine: String = {
-      s"phi ${blocks.head._2.typeId.llvmRepr} $elts"
-    }
-  }
 
-  def call(returnT: Type, name: String, args: List[Expression]) = new LLVM.Func[Nothing] {
-    override def getLine: String = s"call ${returnT.llvmRepr} $name(${LLVM.convertArgs(args)})"
+    s"phi ${blocks.head._2.typeId.llvmRepr} $elts"
+  }
+  def call(returnT: Type, name: String, args: List[Expression]): Func = Func {
+    s"call ${returnT.llvmRepr} $name(${LLVM.convertArgs(args)})"
   }
 
   sealed trait Instruction
   case class JumpIf(expression: Expression, ifTrue: JumpPoint, ifFalse: JumpPoint) extends Instruction
-  case class Assign[T <: Type](destination: Register[T], function: Func[T]) extends Instruction
-  case class AssignFuncall[T <: Type](destination: RegisterT, retType: Type, func: Func[T]) extends Instruction
+  case class Assign[T <: Type](destination: Register, function: Func) extends Instruction
+  case class AssignFuncall[T <: Type](destination: RegisterT, retType: Type, func: Func) extends Instruction
   case class AssignOp(destination: RegisterT, op: Operation, left: Expression, right: Expression) extends Instruction
-  case class PrintInt(expression: Expression) extends Instruction
+  // case class PrintInt(expression: Expression) extends Instruction
   case class Return(expression: Option[Expression]) extends Instruction
   case class Literal(code: String) extends Instruction
 
@@ -128,17 +123,13 @@ object LLVM extends Language {
       Left(s"br i1 ${expression.name}, label %${ifTrue.name}, label %${ifFalse.name}")
 
     case Assign(destination, code) =>
-      Right(s"${destination.name} = ${code.getLine}", s"${destination.typeId.llvmRepr}")
+      Right(s"${destination.name} = ${code.line}", s"${destination.typeId.llvmRepr}")
 
-      //
     case AssignFuncall(_, VoidType, func)  =>
-      Left(func.getLine)
+      Left(func.line)
 
     case AssignFuncall(destination, _, func) =>
-      Left(s"${destination.name} = ${func.getLine}")
-
-    case PrintInt(expression) =>
-      Left(s"""call void @printInt(${expression.typeId.llvmRepr} ${expression.name})""")
+      Left(s"${destination.name} = ${func.line}")
 
     case Return(None) => Left(s"ret void")
     case Return(Some(expression)) => Left(s"ret ${expression.typeId.llvmRepr} ${expression.name}")
@@ -175,11 +166,13 @@ object LLVM extends Language {
   def serializeCode(code: Code): String = {
     s"""
        |declare i32 @readInt()
+       |declare i8* @readString()
        |declare void @printInt(i32)
        |declare void @printString(i8*)
-       |declare void @error(i8*)
-       |declare i8* @malloc(i32)
+       |declare void @error()
+       |
        |declare i8* @string_concat(i8*, i8*)
+       |declare i8* @malloc(i32)
        |
        |; begin global section
        |${code.globalCode}

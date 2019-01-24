@@ -1,5 +1,6 @@
 package language
 
+import compiler.TypePhase.ok
 import language.Type._
 
 object Offset {
@@ -95,11 +96,16 @@ object TypeInformation {
 
 case class TypeInformation(private val parents: Map[ClassType, ClassType],
                            private val defined: Map[ClassType, Offset]) {
-  def isParent(subclass: ClassType, baseclass: ClassType): Boolean = {
-    parents.get(subclass) match {
-      case None => false
-      case Some(parent) => (parent == baseclass) || isParent(parent, baseclass)
-    }
+  def isParent(subclass: Type, baseclass: Type): Boolean =  (subclass, baseclass) match {
+    case (PointerType(a: ClassType), PointerType(b: ClassType)) =>
+      parents.get(a) match {
+        case None => false
+        case Some(parent) => (parent == b) || isParent(PointerType(parent), baseclass)
+      }
+
+    case (null, ptr: PointerType) => true
+
+    case _ => false
   }
 
   def contains(className: ClassType): Boolean = {

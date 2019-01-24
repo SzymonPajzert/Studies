@@ -4,7 +4,7 @@ import java.io.StringReader
 
 import compiler.ParseFailure
 import language.Type._
-import language.UntypedLatte
+import language.{LatteCompiler, UntypedLatte}
 import parser.Parser
 
 import scala.collection.JavaConverters._
@@ -222,7 +222,20 @@ object Transformations {
         (expr, Unit.asInstanceOf[UntypedLatte.ExpressionInformation])
 
       def swapAccess(ident: String, expr: ExpressionInf): UntypedLatte.Instruction => UntypedLatte.Instruction = {
-        x => x
+        val compiler = new LatteCompiler(UntypedLatte, UntypedLatte) {
+          override def mapInformation: A.ExpressionInformation => B.ExpressionInformation =
+            { x => x.asInstanceOf[B.ExpressionInformation] }
+
+          override def locationInteresting: PartialFunction[A.LocationInf, B.LocationInf] = {
+            case (A.Variable(v), _) if v == ident => {
+              val inf = Unit.asInstanceOf[B.ExpressionInformation]
+              val variable = (B.Variable(v), inf)
+              (B.ArrayAccess(expression(expr.asInstanceOf[A.ExpressionInf]), variable), inf)
+            }
+          }
+        }
+
+        compiler.instruction.asInstanceOf[UntypedLatte.Instruction => UntypedLatte.Instruction]
       }
 
       override def visit(p: ForAbb, arg: Any): List[Instruction] = {
