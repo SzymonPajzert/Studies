@@ -25,8 +25,8 @@ abstract class LatteCompiler(val A: HighLatte, val B: HighLatte) {
   def mapInformation: A.ExpressionInformation => B.ExpressionInformation
 
   def locationInteresting: PartialFunction[A.LocationInf, B.LocationInf] = PartialFunction.empty
-
   def expressionInteresting: PartialFunction[A.ExpressionInf, B.ExpressionInf] = PartialFunction.empty
+  def instructionInteresting: PartialFunction[A.Instruction, B.Instruction] = PartialFunction.empty
 
   def funLocation: A.FunLocationInf => B.FunLocationInf = {
     case (floc, inf) => (floc match {
@@ -66,7 +66,7 @@ abstract class LatteCompiler(val A: HighLatte, val B: HighLatte) {
     }, mapInformation(inf))
   }
 
-  def instruction: A.Instruction => B.Instruction = {
+  def instruction: A.Instruction => B.Instruction = instructionInteresting orElse {
     case x: A.Declaration => B.Declaration(x.identifier, x.typeValue)
     case x: A.Assignment => B.Assignment(location(x.location), expression(x.expr))
     case x: A.BlockInstruction => B.BlockInstruction(x.block map instruction)

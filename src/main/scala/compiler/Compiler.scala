@@ -2,7 +2,8 @@ package compiler
 
 import backend.{Directory, FileUtil}
 import language.Type.{ClassType, FunctionType, Type}
-import language.TypeInformation
+import language.{LLVM, TypeInformation}
+import parser.latte.LatteParser
 
 sealed trait CompileException
 case class ParseFailure(lineNumber: Int, near: String, errorMsg: String) extends CompileException
