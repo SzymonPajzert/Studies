@@ -83,8 +83,8 @@ object FileUtil {
     result.toString
   }
 
-  def testFilesRoot: File = new File("/home/svp/Programming/mrjp/src/test/resources/")
-  def testFile(filename: String): File = new File("/home/svp/Programming/mrjp/src/test/resources/" + filename)
+  def testFilesRoot: File = new File("/home/mrjp/src/test/resources/")
+  def testFile(filename: String): File = new File("/home/mrjp/src/test/resources/" + filename)
 
   def runCommand(command: String,
                  directory: OutputDirectory,

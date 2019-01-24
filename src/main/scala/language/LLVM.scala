@@ -103,11 +103,11 @@ object LLVM extends Language {
   def empty: Code = Code("", List())
 
   def runtimeLocation: File = {
-    new File("/home/svp/Programming/mrjp/deps/runtime.bc")
+    new File("/home/mrjp/deps/runtime.bc")
   }
 
   def externalDepsLocation: File = {
-    new File("/home/svp/Programming/mrjp/deps/external.bc")
+    new File("/home/mrjp/deps/external.bc")
   }
 
   def convertArgs(expressions: List[LLVM.Expression]): String = {
