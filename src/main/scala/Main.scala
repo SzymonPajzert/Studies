@@ -12,7 +12,6 @@ object Main extends App {
 
   val saveLLVM = new Compiler[LLVM.Code, Unit] {
     def compile(code: LLVM.Code): Either[CompileException, Unit] = {
-      println("Compiling LLVM")
       Right(LlvmRunner.compile(code, directory))
     }
   }
@@ -30,5 +29,8 @@ object Main extends App {
         saveLLVM
   }
 
-  compilers compile directory
+  compilers compile directory match {
+    case Right(_) => println("Compilation successful")
+    case Left(error) => println(s"Error: ${error}")
+  }
 }

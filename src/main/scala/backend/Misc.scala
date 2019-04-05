@@ -25,6 +25,8 @@ private class StreamGobbler(val inputStream: InputStream,
 }
 
 object FileUtil {
+  def root: String = "/home/svp/Programming/mrjp/"
+
   object Interactive {
     def saveToFile[T](content: String, file: File)
                      (implicit runner: Runner): Unit = {
@@ -83,8 +85,8 @@ object FileUtil {
     result.toString
   }
 
-  def testFilesRoot: File = new File("/home/mrjp/src/test/resources/")
-  def testFile(filename: String): File = new File("/home/mrjp/src/test/resources/" + filename)
+  def testFilesRoot: File = new File(root + "src/test/resources/")
+  def testFile(filename: String): File = new File(root + "src/test/resources/" + filename)
 
   def runCommand(command: String,
                  directory: OutputDirectory,

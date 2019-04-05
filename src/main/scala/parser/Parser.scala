@@ -7,7 +7,7 @@ trait Parser[T] extends Compiler[Directory, T] {
   type ParseResult = Either[ParseFailure, T]
   def parse(content: String): ParseResult
 
-  def compile(directory: Directory) = {
+  def compile(directory: Directory): ParseResult = {
     val fileContent = FileUtil.readFile(directory.sourceFile)
     for {
       instantCode <- parse(fileContent)
