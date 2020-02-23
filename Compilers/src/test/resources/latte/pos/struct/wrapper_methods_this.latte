@@ -1,0 +1,20 @@
+class Wrapper {
+    int x;
+
+    void set(int v) {
+        self.x = v;
+    }
+
+    int get() {
+        return self.x;
+    }
+}
+
+
+int main() {
+    Wrapper p = new Wrapper;
+    p.set(1);
+    printInt(p.get());
+
+    return 0;
+}

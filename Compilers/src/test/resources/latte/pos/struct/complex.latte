@@ -1,0 +1,22 @@
+class A {
+    int first;
+    int second;
+}
+
+class B {
+    A a;
+    A a2;
+}
+
+
+int main() {
+    B b = new B;
+    b.a = new A;
+
+    b.a.first = 1;
+    b.a.second = 2;
+
+    printInt(b.a.first + b.a.second);
+
+    return 0;
+}

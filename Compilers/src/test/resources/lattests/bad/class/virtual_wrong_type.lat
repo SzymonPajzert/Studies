@@ -1,0 +1,21 @@
+class Rectangle extends Shape {
+  void tellAgain() {
+    printString("I'm really a rectangle");
+  }
+
+  void doRectanglyStuff() {
+    printString("Hell yeah, rectangle!");
+  }
+}
+
+class Shape {
+  // wrong return type
+  int tell () {
+    printString("I'm a shape");
+    return 1;
+  }
+
+  void tellAgain() {
+     printString("I'm just a shape");
+  }
+}

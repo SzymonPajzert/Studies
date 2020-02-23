@@ -1,0 +1,29 @@
+class list {
+  int elem;
+  list next;
+}
+
+int main() {
+  list a = fromTo(1,3);
+
+  printInt(a.elem);
+  printInt(a.next.elem);
+  printInt(a.next.next.elem);
+
+  return 0;
+}
+ 
+list cons (int x, list xs) {
+  list n;
+  n = new list;
+  n.elem = x;
+  n.next = xs;
+  return n;
+}
+
+list fromTo (int m, int n) {
+  if (m>n)
+    return (list)null;
+  else 
+    return cons (m,fromTo (m+1,n));
+}

@@ -1,0 +1,41 @@
+class Node {
+    Node left;
+    Node right;
+    int value;
+}
+
+void traverse(Node x) {
+    if (x.left != null) {
+        traverse(x.left);
+    }
+
+    printInt(x.value);
+
+    if (x.right != null) {
+        traverse(x.right);
+    }
+}
+
+
+int main() {
+    Node tree = new Node;
+    tree.left = new Node;
+    tree.left.left = new Node;
+    tree.left.right = new Node;
+
+    tree.right = new Node;
+    tree.right.left = new Node;
+    tree.right.right = new Node;
+
+    tree.left.left.value = 0;
+    tree.left.value = 1;
+    tree.left.right.value = 2;
+    tree.value = 3;
+    tree.right.left.value = 4;
+    tree.right.value = 5;
+    tree.right.right.value = 6;
+
+    traverse(tree);
+
+    return 0;
+}

@@ -1,0 +1,34 @@
+int[] sum (int[] a, int[] b) {
+    int[] res = new int [a.length];
+    int i = 0;
+
+    while (i < a.length) {
+        res[i] = a[i] + b[i];
+        i++;
+    }
+
+    return res;
+}
+
+int[] getLength(int x) {
+    int[] res = new int[x];
+
+    int i = 0;
+    while(i < 3) {
+        res[i] = i;
+        i++;
+    }
+
+    return res;
+}
+
+int main () {
+    int[] x = getLength(5);
+    int[] y = getLength(5);
+
+    int[] z = sum(x, y);
+
+    printInt(z[4]);
+
+    return 0;
+}
