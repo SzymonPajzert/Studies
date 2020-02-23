@@ -1,0 +1,407 @@
+\documentclass{article}
+
+\usepackage{pgfplots}
+\usepackage{hyperref}
+\usepackage{polski}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}	
+\usepackage[version=3]{mhchem} % Package for chemical equation typesetting
+\usepackage{siunitx} % Provides the \SI{}{} and \si{} command for typesetting SI units
+\usepackage{graphicx} % Required for the inclusion of images
+\usepackage{natbib} % Required to change bibliography style to APA
+\usepackage{amsmath} % Required for some math elements 
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\renewcommand{\labelenumi}{\alph{enumi}.} % Make numbering in the enumerate environment by letter rather than number (e.g. section 6)
+
+%\usepackage{times} % Uncomment to use the Times New Roman font
+
+%----------------------------------------------------------------------------------------
+%	DOCUMENT INFORMATION
+%----------------------------------------------------------------------------------------
+
+\title{ Oświetlenie miejskich rowerów } % Title
+
+\author{Szymon \textsc{Pajzert}} % Author name
+\date{}
+
+\begin{document}
+
+\maketitle % Insert the title, author and date
+
+% If you wish to include an abstract, uncomment the lines below
+% \begin{abstract}
+% Abstract text
+% \end{abstract}
+
+%----------------------------------------------------------------------------------------
+%	SECTION 1
+%----------------------------------------------------------------------------------------
+
+Z agregacji danych otrzymaliśmy, że w dzień odbyło się 48,142,817 a w nocy 18,495,221 początków lub końców przejazdów. Zakładająć że ułamek $p$ (z przedziału 0 do 1) przejazdów nadal będzie możliwych oraz zakładając globalny przyrost uczestników programu o 30\% otrzymamy następujące wyniki. Okazuje się, że operacja ta przyniesie nam pozytywne skutki tylko gdy przynajmniej 20\% przejazdów będzie mogło się odbyć po ciemku. Otrzymamy 10\% zmianę dopiero przy 30\%. Jeśli więc naszym priorytetem jest zwiększenie przejazdów, usunięcie oświetlenia raczej pozytywnie na ten aspekt nie wpłynie. \\ 
+
+\begin{tikzpicture}
+\begin{axis}[
+	legend pos = south east, 
+    axis lines = left,
+    xlabel = $p$,
+    ylabel = Liczba przejazdów,
+    ymin=50000000, ymax=75000000,
+]
+%Below the red parabola is defined
+\addplot [
+    domain=0:40, 
+    samples=100, 
+    color=red,
+]
+{(48142817 + (x/100) * 18495221)*1.30};
+\addlegendentry{Usunięcie oświetlenia}
+%Here the blue parabloa is defined
+\addplot [
+    domain=0:40, 
+    samples=10, 
+    color=blue,
+    ]
+    {48142817 + 18495221};
+\addlegendentry{Aktualna sytuacja}
+ 
+\end{axis}
+\end{tikzpicture} \\
+
+Poniżej znajduje się dokładniejszy opis mojej metodologi oraz użytych narzędzi.
+
+\newpage
+\section*{Metodologia}
+
+W obliczeniach każdy przejazd jest liczony jako dwa przejazdy w jednym momencie - jego początek i koniec. Przejazdy są później akumulowane w pięciominutowe interwały, gdzie interwał 0 to pierwsze przejazdy odbywające się po zachodzie słońca lub ostatnie przed. Dajsze ujemne numery oznaczają numery w nocy, a dodatnie w dzień. Poniższy wykres dodatkowo wizualizuje udział tych interwałów w przejazdach. Do obliczenia wyników użyłem chmury BigQuery i dostępnej na niej możliwości dokonywania zapytań SQL. \\
+
+\begin{tikzpicture}
+\begin{axis}[
+    title={Wykres przejazdów},
+    xlabel={Przedział od zmiany dzień/noc},
+    ylabel={Liczba przejazdów},
+    xmin=-94, xmax=100,
+    ymin=0, ymax=900000,
+    xtick={-90,-50, 0, 50, 100},
+    ytick={0,200000,400000,600000,800000},
+    legend pos=north east,
+    ymajorgrids=true,
+    grid style=dashed,
+]
+ 
+\addplot[
+    color=blue,
+    smooth
+    ]
+    coordinates {
+    (-94,18)
+(-93,97)
+(-92,209)
+(-91,313)
+(-90,441)
+(-89,999)
+(-88,2358)
+(-87,3142)
+(-86,3662)
+(-85,4353)
+(-84,5082)
+(-83,6231)
+(-82,7381)
+(-81,8418)
+(-80,9387)
+(-79,10919)
+(-78,12293)
+(-77,13585)
+(-76,14566)
+(-75,16140)
+(-74,18185)
+(-73,20773)
+(-72,23098)
+(-71,25059)
+(-70,27216)
+(-69,30751)
+(-68,34242)
+(-67,38666)
+(-66,43156)
+(-65,46290)
+(-64,49307)
+(-63,52228)
+(-62,55373)
+(-61,59481)
+(-60,64350)
+(-59,69667)
+(-58,75242)
+(-57,81586)
+(-56,88421)
+(-55,96317)
+(-54,103424)
+(-53,110691)
+(-52,118336)
+(-51,126136)
+(-50,135272)
+(-49,145130)
+(-48,156016)
+(-47,166766)
+(-46,177371)
+(-45,190097)
+(-44,202163)
+(-43,215275)
+(-42,229137)
+(-41,240726)
+(-40,250214)
+(-39,258561)
+(-38,267055)
+(-37,275455)
+(-36,284060)
+(-35,291360)
+(-34,298737)
+(-33,305618)
+(-32,311611)
+(-31,317527)
+(-30,323074)
+(-29,330154)
+(-28,336294)
+(-27,341741)
+(-26,347696)
+(-25,355426)
+(-24,360294)
+(-23,366695)
+(-22,372342)
+(-21,378720)
+(-20,383701)
+(-19,387954)
+(-18,392384)
+(-17,395897)
+(-16,399370)
+(-15,402264)
+(-14,405119)
+(-13,407320)
+(-12,408402)
+(-11,409504)
+(-10,410329)
+(-9,409501)
+(-8,405827)
+(-7,401616)
+(-6,396493)
+(-5,389868)
+(-4,385811)
+(-3,383145)
+(-2,380304)
+(-1,379654)
+(0,376928)
+(1,375654)
+(2,376148)
+(3,376571)
+(4,376647)
+(5,378366)
+(6,379664)
+(7,382036)
+(8,384584)
+(9,388945)
+(10,393208)
+(11,399900)
+(12,405106)
+(13,409744)
+(14,416187)
+(15,422824)
+(16,430036)
+(17,435229)
+(18,441267)
+(19,448224)
+(20,457177)
+(21,463359)
+(22,472256)
+(23,479155)
+(24,488601)
+(25,497860)
+(26,507271)
+(27,517152)
+(28,523976)
+(29,533800)
+(30,542032)
+(31,549144)
+(32,557833)
+(33,568817)
+(34,579425)
+(35,589253)
+(36,597085)
+(37,609549)
+(38,621212)
+(39,630786)
+(40,644126)
+(41,656538)
+(42,667802)
+(43,679647)
+(44,691838)
+(45,706136)
+(46,718016)
+(47,729960)
+(48,740638)
+(49,749932)
+(50,762467)
+(51,770547)
+(52,781944)
+(53,789872)
+(54,800402)
+(55,795606)
+(56,771595)
+(57,763025)
+(58,755316)
+(59,749997)
+(60,741347)
+(61,736360)
+(62,726192)
+(63,719080)
+(64,711761)
+(65,702435)
+(66,693013)
+(67,680949)
+(68,670808)
+(69,658293)
+(70,642607)
+(71,624181)
+(72,603309)
+(73,582726)
+(74,558308)
+(75,537197)
+(76,515385)
+(77,491324)
+(78,468860)
+(79,445608)
+(80,419312)
+(81,392303)
+(82,364129)
+(83,338962)
+(84,310792)
+(85,280791)
+(86,246722)
+(87,209266)
+(88,168205)
+(89,115963)
+(90,30796)
+(91, 0)
+    };    
+\end{axis}
+
+\end{tikzpicture} \\
+
+\newpage
+\section*{Zapytania SQL}
+Do dokonania zapytań SQL, użyłem modelu ziemi jako kuli krążącej po okręgu wokół słońca. Do obliczeń użyłem modelu \href{https://en.wikipedia.org/wiki/Sunrise_equation}{sunrise equation}.
+\begin{verbatim}
+#standardSQL
+-- Number of days in a year
+CREATE TEMPORARY FUNCTION days(d DATE)
+RETURNS INT64 AS (
+    CASE
+    WHEN 
+        (MOD(EXTRACT(YEAR FROM d),4) = 0 
+            AND MOD((EXTRACT(YEAR FROM d)),100) != 0)
+        OR MOD((EXTRACT(YEAR FROM d)),400) = 0 
+        THEN 365
+    ELSE 366
+    END
+);
+
+-- Convert angle to radians
+CREATE TEMPORARY FUNCTION rad(ang FLOAT64)
+RETURNS FLOAT64 AS (3.141592 * ang / 180);
+
+-- Calculate declination of the sun
+CREATE TEMPORARY FUNCTION delta(d DATE)
+RETURNS FLOAT64 AS (
+    rad(-23.45)
+    * cos(rad((360 / days(d))
+    * (EXTRACT(DAYOFYEAR FROM d) + 10)))
+);
+
+-- Returns latitude of the New York
+CREATE TEMPORARY FUNCTION psi()
+RETURNS FLOAT64 AS (rad(40.748433));
+
+-- Calculates hour angle of the earth from sun eguation
+CREATE TEMPORARY FUNCTION sun_equation(d DATE)
+RETURNS FLOAT64 AS (ACOS(- TAN(psi()) * TAN(delta(d))));
+
+-- Converts time of the day to float in range from [1, to 24)
+CREATE TEMPORARY FUNCTION time_to_float(t TIME)
+RETURNS FLOAT64 AS (
+    EXTRACT(HOUR FROM t) 
+    + EXTRACT(MINUTE FROM t) / 60 + EXTRACT(SECOND FROM t) / 3600
+);
+
+-- Calculates noon time due to daylight saving
+CREATE TEMPORARY FUNCTION noon(d DATE)
+RETURNS FLOAT64 AS (
+    CASE
+        WHEN EXTRACT(MONTH FROM d) < 3 OR EXTRACT(MONTH FROM d) > 10 THEN 12
+        ELSE 13
+    END
+);
+
+-- Calculate length of half of a day
+CREATE TEMPORARY FUNCTION halfday(d DATE)
+RETURNS FLOAT64 AS (sun_equation(d) * 12 / 3.1415);
+
+-- Calculate time of sunrise
+CREATE TEMPORARY FUNCTION sunrise(d DATE)
+RETURNS FLOAT64 AS (noon(d) - halfday(d));
+
+-- Calculate time of sunset
+CREATE TEMPORARY FUNCTION sunset(d DATE)
+RETURNS FLOAT64 AS (noon(d) + halfday(d));
+
+-- Return smallest distance of t from a and b,
+-- positive when t in (a, b) 
+-- negative otherwise
+CREATE TEMPORARY FUNCTION closest(t FLOAT64, a FLOAT64, b FLOAT64)
+RETURNS FLOAT64 AS (
+    CASE
+        WHEN t < a THEN t - a
+        WHEN t > b THEN b - t
+        ELSE 
+            (CASE WHEN t - a < b - t THEN t - a ELSE b - t END)
+    END
+);
+\end{verbatim}
+\newpage
+Oto pod zapytania użyte do dokonania akumulacji wyników.
+\begin{verbatim}
+WITH   
+-- Extract times of start and stop
+    times AS (
+    SELECT * FROM (
+        SELECT DATE(starttime) as d, starttime as timestamp, 
+            time_to_float(TIME(starttime, "America/New_York")) as time 
+        FROM `bigquery-public-data.new_york.citibike_trips`)
+    UNION ALL (
+        SELECT DATE(starttime) as d, stoptime as timestamp, 
+            time_to_float(TIME(stoptime, "America/New_York")) as time 
+        FROM `bigquery-public-data.new_york.citibike_trips`)),
+  
+-- Extract offset as number of five minutes intervals from sunset/sunrise of given start/stop  
+    data AS (
+    SELECT d, timestamp, time, 
+        CAST(TRUNC(12 * closest(time, sunrise(d), sunset(d))) AS INT64) as offset
+    FROM times),
+
+-- Aggregate offsets
+    offsets AS (
+    SELECT count(*) as number, offset
+    FROM data
+    GROUP by offset),
+  
+-- Count given interval as daily or nightly
+    gradation AS ( 
+    SELECT offset, 
+        CAST(offset > 0 AS INT64) * number as day, 
+        CAST(offset <= 0 AS INT64) * number as night
+    FROM offsets)
+    
+-- Accumulate results    
+SELECT sum(day), sum(night) from gradation;
+\end{verbatim}
+
+\end{document}
+
