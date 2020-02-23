@@ -1,0 +1,56 @@
+\newpage
+\section*{1 - 2}
+Homeomorfizm pomiędzy
+\begin{itemize}
+  \item[1)] Sferą $S^n$
+  \item[2)] $\mathbb{R} ^ {n+1} \setminus \{ 0 \} / \sim $ gdzie $ \mathbf{v} \sim  \mathbf{w} \iff \exists_{\lambda > 0}  \mathbf{v}=  \lambda \mathbf{w} $
+\end{itemize}
+\begin{itemize}
+
+\item \textbf{(zwartość dziedziny)} Sfera $ S^n $ jest zbiorem zwartym: jest domkniętą i ograniczoną podprzestrzenią przestrzeni euklidesowej.\\
+
+\item \textbf{(ciągłość $g$)} Weźmy przekształcenia
+$$
+f: S^n \rightarrow \mathbb{R}^{n+1} \backslash \{0\}
+$$
+$$
+p: \mathbb{R}^{n+1} \backslash \{0\} \rightarrow \mathbb{R}^{n+1} \backslash \{0\} / \sim
+$$
+Przekształcenie $f$ jest włożeniem homeomorficznym, przekształcenie jest przekształceniem ilorazowym.
+\\
+Weźmy
+$$ g: S^n \rightarrow \mathbb{R}^{n+1} \backslash \{0\} / \sim $$
+Jest ono ciągłe, ponieważ jest złożeniem $f$ i $p$ - przekształcenia ilorazowego z przekształceniem ciągłym\\
+\end{itemize}
+
+Wprowadźmy nowy układ współrzędnych, naturalnie związany z homeomorfizmem 
+$$
+\eta : \mathbb{R}^n \rightarrow S^{n-1} \times \mathbb{R}
+$$
+Niech pierwsza współrzędna będzie promieniem sfery o środku w $0$, na której leży punkt, a druga położeniem na tej sferze. \\
+Weźmy dwa różne elementy $ a, b \in X $, wtedy ich współrzędne to:
+$$
+a = (a_r, a_s)
+$$
+$$
+b = (b_r, b_s)
+$$
+Przekształcenie $p$ jest utożsamieniem punktów o tej samej pierwszej współrzędnej.
+\begin{itemize}
+\item \textbf{(bijektywność $g$)} Reprezentantami warstw w $X$ mogą być więc wektory należące do sfery jednostkowej $S^n$ - to pokazuje, że $g$ jest bijekcją (każdej warstwie odpowiada jeden wektor na sferze jednostkowej).
+\item \textbf{(hausdorffowość przeciwdziedziny)} Sfera $S^n$ jest Hausdorfa, można dla dwóch wektorów do niej należących można wybrać rozłączne otoczenia otwarte $U_a$ i $U_b$.
+Zbiory
+$$
+V_a = p[U_a]
+$$
+$$
+V_b = p[V_b]
+$$
+są rozłączne w $X$. Załóżmy że nie. Wtedy istnieją $ \alpha \in U_a, \beta \in U_b $ takie, że $ p(\alpha) = p(\beta) $, czyli $\alpha * t = \beta$ dla jakiegoś $t > 0$, ale oba należą do sfery jednostkowej, więc sprzeczność.\\
+Pozostaje jedynie sprawdzić, że $V_a$ i $V_b$ są otwarte w $X$.
+
+Weźmy $ W = p^{-1}[V_a] $ oraz $ x = (1, x_s) \in W $. Zrzutujmy $W$ na sferę o promieniu $1$ i weźmy otwartą kulę wokół punktu $x$ na tej sferze zawierającą się w rzucie $W$ o promieniu $r_x$ - można to zrobić, bo ten rzut jest otwarty. \\
+Weźmy teraz kulę o promieniu $min(1, r_x)$ - jest ona zawarta w zbiorze $W$, bo punkty do niej należące po zrzutowaniu na sferę $S^n$ zawierają się w rzucie $W$. Wobec tego $W$ jest otwarty i przestrzeń  $\mathbb{R}^{n+1} \backslash \{0\} / \sim$  jest przestrzenią Hausdorffa.
+\end{itemize}
+
+Wiemy zatem, że $g$ jest ciągłą bijekcją z przestrzeni zwartej w przestrzeń Hausdorffa, więc jest homeomorfizmem.
